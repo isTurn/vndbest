@@ -185,11 +185,11 @@ CI 默认使用 **debug keystore** 签名 release APK，以便直接安装测试
 
 | 组件 | 用途 | 来源 |
 | --- | --- | --- |
-| VNDB优先原文和中文化 v5.0.1 | 内置浏览器中文化 | [Greasy Fork](https://greasyfork.org/scripts/445990) |
-| VNDBTranslatorLib v5.0.0 | 中文化词典 | [Greasy Fork](https://greasyfork.org/scripts/445990-vndbtranslatorlib) |
-| VNDB跨站搜索 v2.5.11 | 跨站搜索站点表来源 | Greasy Fork |
+| [VNDB优先原文和中文化](https://greasyfork.org/zh-CN/scripts/442355) v5.0.1 | 在内置浏览器里把 VNDB 页面中文化 | [Greasy Fork #442355](https://greasyfork.org/zh-CN/scripts/442355) |
+| [VNDBTranslatorLib](https://greasyfork.org/scripts/445990-vndbtranslatorlib) v5.0.0 | 上者的翻译词典（其 `@require` 依赖） | [Greasy Fork #445990](https://greasyfork.org/scripts/445990) |
+| [VNDB跨站搜索](https://greasyfork.org/zh-CN/scripts/600569) v2.5.11 | 跨站搜索站点表来源 | [Greasy Fork #600569](https://greasyfork.org/zh-CN/scripts/600569) |
 
-两个油猴脚本以源码形式固化在仓库中（`scripts/vendor/`、`VNDB优先原文和中文化.js`、`VNDB跨站搜索.js`），由 `scripts/build-vndb-translator.cjs` 拼接成可注入的 IIFE。若原作者有异议，请联系移除。
+两个油猴脚本以源码形式固化在仓库中（`scripts/vendor/`、`VNDB优先原文和中文化.js`、`VNDB跨站搜索.js`），由 `scripts/build-vndb-translator.cjs` 拼接成可注入的 IIFE。感谢以上脚本作者的劳动，版权归原作者所有；若原作者有异议，请联系移除。
 
 界面数据来自 [VNDB](https://vndb.org/) 的公开 Kana API。本项目与 VNDB 官方无关。
 

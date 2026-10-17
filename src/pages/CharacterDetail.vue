@@ -596,7 +596,7 @@ watch(
         <div class="rounded-xl border border-neutral-200/80 dark:border-neutral-700 bg-neutral-50/60 dark:bg-neutral-800/40 p-2.5 space-y-1.5">
           <!-- 剧透等级筛选 -->
           <div class="flex items-center justify-between gap-2">
-            <span class="shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+            <span class="shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-neutral-500 dark:text-neutral-400">
               <Icon icon="lucide:shield-alert" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
               {{ t('vn.characters.trait_spoiler_filter') }}
             </span>
@@ -609,7 +609,7 @@ watch(
                 ]"
                 :key="level.val"
                 @click="handleSelectTraitSpoiler(level.val)"
-                class="whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none transition-all cursor-pointer"
+                class="whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-medium leading-none transition-all cursor-pointer"
                 :class="[ traitSpoilerLevel === level.val ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
               >
                 {{ level.label }}
@@ -619,21 +619,21 @@ watch(
 
           <!-- 性内容过滤 -->
           <div class="flex items-center justify-between gap-2">
-            <span class="shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+            <span class="shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-neutral-500 dark:text-neutral-400">
               <Icon icon="lucide:layers" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
               {{ t('vn.characters.trait_sexual_filter') }}
             </span>
             <div class="flex shrink-0 items-center gap-0.5 rounded-full bg-neutral-200/70 dark:bg-neutral-700/60 p-0.5">
               <button
                 @click="showTraitSexual = false"
-                class="whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none transition-all cursor-pointer"
+                class="whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-medium leading-none transition-all cursor-pointer"
                 :class="[ !showTraitSexual ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
               >
                 {{ t('vn.characters.trait_sexual_hide') }}
               </button>
               <button
                 @click="showTraitSexual = true"
-                class="whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none transition-all cursor-pointer"
+                class="whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-medium leading-none transition-all cursor-pointer"
                 :class="[ showTraitSexual ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
               >
                 {{ t('vn.characters.trait_sexual_show') }}
@@ -654,7 +654,7 @@ watch(
             :key="group"
             class="space-y-2 bg-neutral-50/30 dark:bg-neutral-800/30 p-3 rounded-xl border border-neutral-100 dark:border-neutral-800"
           >
-            <h5 class="text-[10px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest flex items-center gap-2">
+            <h5 class="text-[11px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest flex items-center gap-2">
               {{ translateTraitGroup(group) }}
             </h5>
             <div class="flex flex-wrap gap-1.5">
@@ -662,7 +662,7 @@ watch(
                 v-for="trait in traits"
                 :key="trait.id || trait.name"
                 @click="router.push(`/browse/characters?trait=${trait.id}`)"
-                class="px-2.5 py-1 rounded-lg text-[11px] font-semibold shadow-xs transition-colors cursor-pointer active:scale-[0.98]"
+                class="px-3 py-1.5 rounded-full text-xs font-semibold shadow-xs transition-colors cursor-pointer active:scale-[0.98]"
                 :class="[ trait.spoiler === 2 ? 'bg-red-50 text-red-700 border border-red-100 hover:border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/50 dark:hover:border-red-600' : trait.spoiler === 1 ? 'bg-amber-50 text-amber-700 border border-amber-100 hover:border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/50 dark:hover:border-amber-600' : 'bg-white text-neutral-700 border border-neutral-200 hover:border-neutral-400 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700 dark:hover:border-neutral-500' ]"
               >
                 {{ translateTraitName(trait.name) }}

@@ -110,12 +110,15 @@ function handleItemClick(item) {
   router.push(`/release/${item.id}`)
 }
 
+// VNDB 的 alttitle 是日文/汉字原名，title 是罗马音/英文。
+// 展示时把原名放上面、罗马音放下面（两者相同或缺失时自动回退，不产生重复行）。
 function getTitle(item) {
-  return item.title || item.alttitle || ''
+  return item.alttitle || item.title || ''
 }
 
 function getAltTitle(item) {
-  if (item.alttitle && item.alttitle !== item.title) return item.alttitle
+  if (!item.alttitle) return ''
+  if (item.title && item.title !== item.alttitle) return item.title
   return ''
 }
 
@@ -400,7 +403,7 @@ onUnmounted(() => {
                 <span
                   v-for="lang in item.languages"
                   :key="lang.lang"
-                  class="text-[9px] px-1 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400"
+                  class="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400"
                 >{{ t(`metadata.lang.${lang.lang}`, lang.lang) }}</span>
                 <span
                   v-if="item.patch"
@@ -511,7 +514,7 @@ onUnmounted(() => {
             </div>
             <div class="p-2.5 space-y-1.5">
               <span class="text-xs font-semibold text-neutral-900 dark:text-neutral-100 block line-clamp-2 leading-tight">{{ getTitle(item) }}</span>
-              <p v-if="getAltTitle(item)" class="text-[10px] text-neutral-400 dark:text-neutral-500 line-clamp-1 leading-tight">{{ getAltTitle(item) }}</p>
+              <p v-if="getAltTitle(item)" class="text-[11px] text-neutral-400 dark:text-neutral-500 line-clamp-1 leading-tight">{{ getAltTitle(item) }}</p>
               <p v-if="getVnTitle(item)" class="text-[10px] text-neutral-400 dark:text-neutral-500 line-clamp-1 leading-tight">
                 <Icon icon="lucide:link" class="h-2.5 w-2.5 inline-block mr-0.5 -mt-px" />
                 {{ getVnTitle(item) }}
@@ -520,7 +523,7 @@ onUnmounted(() => {
                 <span
                   v-for="lang in item.languages.slice(0, 3)"
                   :key="lang.lang"
-                  class="text-[9px] px-1 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400"
+                  class="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400"
                 >{{ t(`metadata.lang.${lang.lang}`, lang.lang) }}</span>
               </div>
               <div class="flex items-center justify-between text-[10px] text-neutral-400 dark:text-neutral-500">
@@ -603,7 +606,7 @@ onUnmounted(() => {
             </div>
             <div class="p-2.5 space-y-1.5">
               <span class="text-xs font-semibold text-neutral-900 dark:text-neutral-100 block line-clamp-2 leading-tight">{{ getTitle(item) }}</span>
-              <p v-if="getAltTitle(item)" class="text-[10px] text-neutral-400 dark:text-neutral-500 line-clamp-1 leading-tight">{{ getAltTitle(item) }}</p>
+              <p v-if="getAltTitle(item)" class="text-[11px] text-neutral-400 dark:text-neutral-500 line-clamp-1 leading-tight">{{ getAltTitle(item) }}</p>
               <p v-if="getVnTitle(item)" class="text-[10px] text-neutral-400 dark:text-neutral-500 line-clamp-1 leading-tight">
                 <Icon icon="lucide:link" class="h-2.5 w-2.5 inline-block mr-0.5 -mt-px" />
                 {{ getVnTitle(item) }}
@@ -612,7 +615,7 @@ onUnmounted(() => {
                 <span
                   v-for="lang in item.languages.slice(0, 3)"
                   :key="lang.lang"
-                  class="text-[9px] px-1 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400"
+                  class="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400"
                 >{{ t(`metadata.lang.${lang.lang}`, lang.lang) }}</span>
               </div>
               <div class="flex items-center justify-between text-[10px] text-neutral-400 dark:text-neutral-500">

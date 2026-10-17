@@ -17,6 +17,28 @@ const REPO_URL = 'https://github.com/isTurn/vndbest'
 const REPO_LABEL = 'isTurn/vndbest'
 const UPSTREAM_REPO_URL = 'https://github.com/Cyancat000/vndbest'
 const UPSTREAM_REPO_LABEL = 'Cyancat000/vndbest'
+
+// 第三方油猴脚本致谢（内置浏览器中文化 + 跨站搜索站点表来源）
+const THIRD_PARTY_CREDITS = [
+  {
+    name: 'VNDB优先原文和中文化',
+    version: 'v5.0.1',
+    desc: 'settings.about.credits_translator',
+    url: 'https://greasyfork.org/zh-CN/scripts/442355'
+  },
+  {
+    name: 'VNDBTranslatorLib',
+    version: 'v5.0.0',
+    desc: 'settings.about.credits_lib',
+    url: 'https://greasyfork.org/scripts/445990'
+  },
+  {
+    name: 'VNDB跨站搜索',
+    version: 'v2.5.11',
+    desc: 'settings.about.credits_cross',
+    url: 'https://greasyfork.org/zh-CN/scripts/600569'
+  }
+]
 import { cacheManager } from '@/utils/cacheManager'
 import { useToast } from '@/composables/useToast'
 import { useAppUpdate } from '@/composables/useAppUpdate'
@@ -1108,6 +1130,32 @@ const themeOptions = [
                   <span class="font-medium text-neutral-800 dark:text-neutral-200 truncate max-w-[180px]">{{ UPSTREAM_REPO_LABEL }}</span>
                   <Icon icon="lucide:external-link" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500 shrink-0" />
                 </div>
+              </a>
+
+              <!-- 第三方脚本致谢 -->
+              <div class="pt-1">
+                <div class="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
+                  <Icon icon="lucide:heart" class="h-3 w-3 text-rose-400" />
+                  {{ t('settings.about.credits') }}
+                </div>
+                <p class="mt-0.5 text-[10px] leading-relaxed text-neutral-400 dark:text-neutral-500">{{ t('settings.about.credits_note') }}</p>
+              </div>
+              <a
+                v-for="credit in THIRD_PARTY_CREDITS"
+                :key="credit.url"
+                :href="credit.url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="flex items-start justify-between gap-2 py-2 px-3 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 transition hover:bg-neutral-100 dark:hover:bg-neutral-800 active:bg-neutral-150"
+              >
+                <div class="min-w-0">
+                  <div class="flex items-center gap-1.5">
+                    <span class="font-medium text-neutral-800 dark:text-neutral-200 truncate">{{ credit.name }}</span>
+                    <span class="text-[9px] px-1 rounded bg-neutral-200/70 dark:bg-neutral-700 text-neutral-500 dark:text-neutral-400 shrink-0">{{ credit.version }}</span>
+                  </div>
+                  <p class="text-[10px] text-neutral-400 dark:text-neutral-500 leading-snug">{{ t(credit.desc) }}</p>
+                </div>
+                <Icon icon="lucide:external-link" class="mt-0.5 h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500 shrink-0" />
               </a>
             </div>
           </div>

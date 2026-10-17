@@ -197,11 +197,11 @@ export function pickDefaultTitle(titles) {
 }
 
 /**
- * 点击跨站搜索站点的统一入口。
- * - 带 native 标记的站点（目前是 TouchGal）：
- *   内置浏览器模式下走内嵌 WebView 注入脚本自动填入关键词并回车（体验最好）；
- *   系统浏览器模式下直接打开站点搜索页（站点不认 ?tgq=，需要手动输入）。
- * - 其余站点按设置决定内置浏览器还是系统浏览器。
+ * 点击跨站搜索站点的统一入口。所有站点（含 TouchGal）都完全跟随
+ * 「跨站搜索打开方式」设置，不做任何站点特殊化：
+ * - 内置浏览器模式：TouchGal 在内嵌 WebView 里注入脚本自动填词回车，
+ *   其余站点直接在内置浏览器里打开搜索页；
+ * - 系统浏览器模式：一律交给系统浏览器打开搜索页。
  *
  * @param {{name:string,url:string,native?:string|null}} site
  * @param {string} keyword

@@ -15,7 +15,7 @@ import { useImageLoader } from '@/composables/useImageLoader'
 import { getLabelName, isVotedLabel, SYSTEM_LABEL_MAX_ID } from '@/utils/ulistLabels'
 import { PLATFORM_ICON_NAMES, APP_ICON_NAMES } from '@/icons/icon-names'
 import { buildCrossSearchLinks, buildCrossSearchTitles, pickDefaultTitle, openCrossSearchSite } from '@/utils/crossSearch'
-import { openExternalUrl, getReleaseLinkBrowserMode } from '@/utils/linkOpener'
+import { openExternalUrl, getReleaseLinkBrowserMode, getCrossSearchBrowserMode } from '@/utils/linkOpener'
 import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
 import { useFavorites } from '@/composables/useFavorites'
@@ -1469,19 +1469,21 @@ function setCrossSearchMode(mode) {
   crossSearchPickedTitle.value = ''
 }
 
-// TouchGal 需要在内嵌 WebView 里注入脚本才能自动搜索，其余站点走普通外链
+// 跨站搜索：所有站点统一由 openCrossSearchSite 按「跨站搜索打开方式」处理，
+// 不能只拦 native 站点，否则普通站点会落到全局拦截器用默认设置打开 → 切换失效。
 const handleCrossSearchClick = (e, site) => {
-  if (!site?.native) return
+  if (!site) return
   e.preventDefault()
   openCrossSearchSite(site, crossSearchKeyword.value)
 }
 
 // VNDB 的「填写游戏时长」只能在他们网页上做（Kana API 没有写入时长的端点），
 // 这里按用户的跳转方式设置打开 v{id}/lengthvote 页面。
+// 时长页属于 VNDB 站内的跨站操作，跟随「跨站搜索打开方式」设置。
 const openLengthVote = () => {
   const id = vn.value?.id
   if (!id) return
-  openExternalUrl(`https://vndb.org/${id}/lengthvote`)
+  openExternalUrl(`https://vndb.org/${id}/lengthvote`, { mode: getCrossSearchBrowserMode() })
 }
 
 // 版本卡片里的 VNDB 外链：走「版本外链」独立设置
@@ -1637,7 +1639,7 @@ watch(
                 <button
                   type="button"
                   @click="setCrossSearchMode('title')"
-                  class="px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors"
+                  class="px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors"
                   :class="crossSearchMode === 'title'
                     ? 'bg-indigo-500 border-indigo-500 text-white'
                     : 'border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400'"
@@ -1645,7 +1647,7 @@ watch(
                 <button
                   type="button"
                   @click="setCrossSearchMode('vn')"
-                  class="px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors"
+                  class="px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors"
                   :class="crossSearchMode === 'vn'
                     ? 'bg-indigo-500 border-indigo-500 text-white'
                     : 'border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400'"
@@ -1654,17 +1656,17 @@ watch(
               </div>
 
               <div v-for="group in crossSearchGroups" :key="'inline-' + group.key">
-                <div class="text-[9px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-1">{{ t(group.labelKey) }}</div>
+                <div class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-1.5">{{ t(group.labelKey) }}</div>
                 <div class="flex flex-wrap gap-1.5">
                   <a
                     v-for="site in group.sites"
                     :key="'inline-' + group.key + '-' + site.name"
                     :href="site.url"
-                    :data-native="site.native || undefined"
+                    data-cross-search
                     target="_blank"
                     rel="noopener noreferrer"
                     @click="handleCrossSearchClick($event, site)"
-                    class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 active:bg-neutral-200 dark:active:bg-neutral-700 transition-colors"
+                    class="inline-flex items-center px-3 py-1.5 rounded-full text-xs border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 active:bg-neutral-200 dark:active:bg-neutral-700 transition-colors"
                   >
                     {{ site.name }}
                   </a>
@@ -1673,7 +1675,7 @@ watch(
 
               <!-- 换个标题搜 -->
               <div v-if="crossSearchChips.length > 1" class="pt-1 border-t border-neutral-100 dark:border-neutral-700/60">
-                <div class="text-[9px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-1">{{ t('vn.links.cross_other_titles') }}</div>
+                <div class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-1.5">{{ t('vn.links.cross_other_titles') }}</div>
                 <div class="flex flex-wrap gap-1">
                   <button
                     v-for="chip in crossSearchChips"
@@ -1681,12 +1683,12 @@ watch(
                     type="button"
                     :title="chip.text"
                     @click="pickCrossSearchTitle(chip.text)"
-                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] border transition-colors max-w-full"
+                    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] border transition-colors max-w-full"
                     :class="crossSearchMode === 'title' && crossSearchKeyword === chip.text
                       ? 'bg-indigo-50 dark:bg-indigo-500/20 border-indigo-300 dark:border-indigo-500/50 text-indigo-700 dark:text-indigo-300'
                       : 'border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'"
                   >
-                    <span class="text-[8px] uppercase opacity-60 shrink-0">{{ chip.lang }}</span>
+                    <span class="rounded bg-black/5 dark:bg-white/10 px-1 py-0.5 text-[9px] uppercase opacity-70 shrink-0">{{ chip.lang }}</span>
                     <span class="truncate">{{ chip.text }}</span>
                   </button>
                 </div>
@@ -1705,10 +1707,10 @@ watch(
                   v-for="(d, i) in vn.developers"
                   :key="d.id || i"
                   @click="d.id && router.push(`/producer/${d.id}`)"
-                  class="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-600 font-medium cursor-pointer hover:bg-neutral-200 dark:hover:bg-neutral-600 hover:border-neutral-300 active:bg-neutral-300 active:scale-95 transition-all"
+                  class="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-md bg-neutral-100 dark:bg-neutral-700/70 text-neutral-700 dark:text-neutral-300 font-medium cursor-pointer hover:bg-neutral-200 dark:hover:bg-neutral-600 active:bg-neutral-300 active:scale-95 transition-all"
                 >
                   {{ d.name }}
-                  <Icon icon="lucide:external-link" class="h-2.5 w-2.5 text-neutral-400 dark:text-neutral-500 shrink-0" />
+                  <Icon icon="lucide:external-link" class="h-3 w-3 text-neutral-400 dark:text-neutral-500 shrink-0" />
                 </span>
               </template>
               <span v-else class="text-neutral-800 dark:text-neutral-300">{{ t('metadata.gender.unknown') }}</span>
@@ -1719,7 +1721,7 @@ watch(
 
             <span class="text-neutral-400 dark:text-neutral-500 pt-0.5">{{ t('vn.olang') }}</span>
             <div>
-              <span class="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-600 font-medium">
+              <span class="text-[11px] px-2 py-1 rounded-md bg-neutral-100 dark:bg-neutral-700/70 text-neutral-700 dark:text-neutral-300 font-medium">
                 {{ t(`metadata.lang.${vn.olang}`, vn.olang) || t('metadata.gender.unknown') }}
               </span>
             </div>
@@ -1727,7 +1729,7 @@ watch(
             <span class="text-neutral-400 dark:text-neutral-500 pt-0.5">{{ t('vn.languages') }}</span>
             <div class="flex flex-wrap gap-1">
               <span v-for="lang in (vn.languages || [])" :key="lang"
-                class="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-600 font-medium">
+                class="text-[11px] px-2 py-1 rounded-md bg-neutral-100 dark:bg-neutral-700/70 text-neutral-700 dark:text-neutral-300 font-medium">
                 {{ t(`metadata.lang.${lang}`, lang) }}
               </span>
               <span v-if="!vn.languages?.length" class="text-neutral-800 dark:text-neutral-300">{{ t('metadata.gender.unknown') }}</span>
@@ -1736,8 +1738,8 @@ watch(
             <span class="text-neutral-400 dark:text-neutral-500 pt-0.5">{{ t('vn.platforms') }}</span>
             <div class="flex flex-wrap gap-1">
               <span v-for="p in (vn.platforms || [])" :key="p"
-                class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-600 font-medium">
-                <Icon :icon="getPlatformIcon(p)" class="h-3 w-3 shrink-0" />
+                class="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-md bg-neutral-100 dark:bg-neutral-700/70 text-neutral-700 dark:text-neutral-300 font-medium">
+                <Icon :icon="getPlatformIcon(p)" class="h-3.5 w-3.5 shrink-0" />
                 {{ t(`metadata.platform.${p}`, p) }}
               </span>
               <span v-if="!vn.platforms?.length" class="text-neutral-800 dark:text-neutral-300">{{ t('metadata.gender.unknown') }}</span>
@@ -2034,8 +2036,8 @@ watch(
             >
               <div class="flex justify-between items-start gap-2">
                 <div class="min-w-0">
-                  <h4 class="font-semibold text-xs text-neutral-800 dark:text-neutral-200 leading-snug">{{ rel.title }}</h4>
-                  <p v-if="rel.alttitle" class="text-[10px] text-neutral-400 dark:text-neutral-500 truncate mt-0.5">{{ rel.alttitle }}</p>
+                  <h4 class="font-semibold text-xs text-neutral-800 dark:text-neutral-200 leading-snug">{{ rel.alttitle || rel.title }}</h4>
+                  <p v-if="rel.alttitle && rel.title && rel.alttitle !== rel.title" class="text-[10px] text-neutral-400 dark:text-neutral-500 truncate mt-0.5">{{ rel.title }}</p>
                 </div>
                 <span 
                   class="text-[9px] px-1.5 py-0.5 rounded flex-shrink-0"
@@ -2060,17 +2062,17 @@ watch(
               </div>
               
               <!-- 外部链接（VNDB 提供，走「版本外链」独立设置） -->
-              <div v-if="rel.extlinks?.length" class="flex flex-wrap items-center gap-1 pt-1" @click.stop>
-                <span class="text-[10px] text-neutral-500 dark:text-neutral-400 shrink-0">{{ t('release.extlinks') }}:</span>
+              <div v-if="rel.extlinks?.length" class="flex flex-wrap items-center gap-1.5 pt-1" @click.stop>
+                <span class="text-[11px] text-neutral-500 dark:text-neutral-400 shrink-0">{{ t('release.extlinks') }}</span>
                 <button
                   v-for="link in rel.extlinks"
                   :key="link.url"
                   type="button"
                   @click.stop="openReleaseExtLink(link)"
-                  class="inline-flex items-center gap-1 rounded-full bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 text-[10px] font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition active:scale-[0.98] cursor-pointer"
+                  class="inline-flex items-center gap-1 rounded-full bg-neutral-100 dark:bg-neutral-800 px-2.5 py-1 text-[11px] font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition active:scale-[0.98] cursor-pointer"
                 >
                   {{ link.label }}
-                  <Icon icon="lucide:external-link" class="h-2.5 w-2.5 shrink-0 opacity-60" />
+                  <Icon icon="lucide:external-link" class="h-3 w-3 shrink-0 opacity-60" />
                 </button>
               </div>
 
@@ -2142,7 +2144,7 @@ watch(
           <div v-else-if="characters.length > 0" class="flex flex-col gap-1.5 p-2.5 rounded-lg border border-neutral-200/80 dark:border-neutral-700 bg-neutral-50/60 dark:bg-neutral-800/40">
             <!-- 剧透等级过滤 -->
             <div class="flex items-center justify-between gap-2">
-              <span class="shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+              <span class="shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-neutral-500 dark:text-neutral-400">
                 <Icon icon="lucide:info" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
                 {{ t('vn.characters.trait_spoiler_filter') }}
               </span>
@@ -2155,7 +2157,7 @@ watch(
                   ]"
                   :key="level.val"
                   @click="handleSelectTraitSpoiler(level.val)"
-                  class="whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none transition-all cursor-pointer"
+                  class="whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-medium leading-none transition-all cursor-pointer"
                   :class="[ traitSpoilerLevel === level.val ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
                 >
                   {{ level.label }}
@@ -2165,21 +2167,21 @@ watch(
 
             <!-- 性内容过滤 -->
             <div class="flex items-center justify-between gap-2">
-              <span class="shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+              <span class="shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-neutral-500 dark:text-neutral-400">
                 <Icon icon="lucide:layers" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
                 {{ t('vn.characters.trait_sexual_filter') }}
               </span>
               <div class="flex shrink-0 items-center gap-0.5 rounded-full bg-neutral-200/70 dark:bg-neutral-700/60 p-0.5">
                 <button
                   @click="showTraitSexual = false"
-                  class="whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none transition-all cursor-pointer"
+                  class="whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-medium leading-none transition-all cursor-pointer"
                   :class="[ !showTraitSexual ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
                 >
                   {{ t('vn.characters.trait_sexual_hide') }}
                 </button>
                 <button
                   @click="showTraitSexual = true"
-                  class="whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none transition-all cursor-pointer"
+                  class="whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-medium leading-none transition-all cursor-pointer"
                   :class="[ showTraitSexual ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
                 >
                   {{ t('vn.characters.trait_sexual_show') }}
@@ -2430,7 +2432,7 @@ watch(
           <div class="flex flex-col gap-1.5 p-2.5 rounded-lg border border-neutral-200/80 dark:border-neutral-700 bg-neutral-50/60 dark:bg-neutral-800/40">
             <!-- 剧透等级过滤 -->
             <div class="flex items-center justify-between gap-2">
-              <span class="shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+              <span class="shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-neutral-500 dark:text-neutral-400">
                 <Icon icon="lucide:info" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
                 {{ t('vn.tags.spoiler_filter') }}
               </span>
@@ -2443,7 +2445,7 @@ watch(
                   ]"
                   :key="level.val"
                   @click="handleSelectSpoiler(level.val)"
-                  class="whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none transition-all cursor-pointer"
+                  class="whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-medium leading-none transition-all cursor-pointer"
                   :class="[ spoilerLevel === level.val ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
                 >
                   {{ level.label }}
@@ -2453,7 +2455,7 @@ watch(
 
             <!-- 标签分类过滤（多选，三分类与 VNDB 官网一致） -->
             <div class="flex items-center justify-between gap-2">
-              <span class="shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+              <span class="shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-neutral-500 dark:text-neutral-400">
                 <Icon icon="lucide:layers" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
                 {{ t('vn.tags.category_filter') }}
               </span>
@@ -2466,7 +2468,7 @@ watch(
                   ]"
                   :key="cat.val"
                   @click="toggleTagCategory(cat.val)"
-                  class="whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none transition-all cursor-pointer"
+                  class="whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-medium leading-none transition-all cursor-pointer"
                   :class="[ activeTagCategories.includes(cat.val) ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
                 >
                   {{ cat.label }}
@@ -2476,7 +2478,7 @@ watch(
 
             <!-- 标签范围过滤（单选） -->
             <div class="flex items-center justify-between gap-2">
-              <span class="shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+              <span class="shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-neutral-500 dark:text-neutral-400">
                 <Icon icon="lucide:filter" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
                 {{ t('vn.tags.search_mode_filter') }}
               </span>
@@ -2488,7 +2490,7 @@ watch(
                   ]"
                   :key="mode.val"
                   @click="tagSearchMode = mode.val"
-                  class="whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none transition-all cursor-pointer"
+                  class="whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-medium leading-none transition-all cursor-pointer"
                   :class="[ tagSearchMode === mode.val ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
                 >
                   {{ mode.label }}
@@ -2505,12 +2507,12 @@ watch(
               v-for="tag in filteredTags"
               :key="tag.id"
               @click="router.push(`/browse/vn?tag=${tag.id}`)"
-              class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[13px] border cursor-pointer active:scale-[0.98] transition hover:border-neutral-400 dark:hover:border-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              class="inline-flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-full text-[13px] border cursor-pointer active:scale-[0.98] transition hover:border-neutral-400 dark:hover:border-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
               :class="[ tag.spoiler === 2 ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/50' : tag.spoiler === 1 ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/50' : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700' ]"
               :title="t('vn.tag_rating_title', { rating: tag.rating.toFixed(1), spoiler: tag.spoiler })"
             >
-              <span>{{ translateTagName(tag.name) }}</span>
-              <span class="text-[9px] opacity-60 font-mono">
+              <span class="leading-snug">{{ translateTagName(tag.name) }}</span>
+              <span class="shrink-0 rounded-full bg-black/5 dark:bg-white/10 px-1.5 py-0.5 text-[10px] font-mono leading-none opacity-70">
                 {{ tag.rating.toFixed(1) }}
               </span>
             </div>

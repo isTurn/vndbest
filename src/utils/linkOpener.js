@@ -1,10 +1,13 @@
 /**
  * 外部链接打开方式：内置浏览器（App 内 WebView）或系统浏览器。
  *
- * - 设置项存在 localStorage 的 `vndb_link_browser`，取值 `'inapp'` | `'system'`。
+ * - 目前只有两项独立设置：`vndb_link_browser_cross`（跨站搜索 / 站内 VNDB 网页跳转）
+ *   与 `vndb_link_browser_release`（版本外链），两者都默认系统浏览器。
+ * - 旧的 `vndb_link_browser` 默认项已废弃：设置页不再有对应控件，若还残留
+ *   （老版本写过）会让「切内置浏览器」看起来失效，这里启动时直接清掉。
  * - 只拦截 http(s) 且跨域的链接；站内路由跳转不受影响。
- * - 带 `data-native` 标记的链接交给调用方自己处理（APK 下载必须走系统浏览器、
- *   跨站搜索里的 TouchGal 需要在内嵌 WebView 里注入脚本才能自动搜索）。
+ * - 带 `data-native` 的链接交给调用方自己处理（APK 下载必须走系统浏览器）；
+ *   带 `data-cross-search` 的链接由 openCrossSearchSite 按跨站搜索设置处理。
  * - 非原生平台（浏览器里跑 dev）一律走默认行为，内置浏览器只在 App 里可用。
  */
 
@@ -37,14 +40,14 @@ function writeMode(key, mode) {
   }
 }
 
-/** 读取默认设置（未单独指定的外部链接都走这个），默认系统浏览器 */
+/** 读取默认设置：没有单独指定设置的外链跟随「跨站搜索打开方式」，默认系统浏览器 */
 export function getLinkBrowserMode() {
-  return readMode(LINK_BROWSER_KEY) || LINK_BROWSER_SYSTEM
+  return readMode(LINK_BROWSER_CROSS_KEY) || LINK_BROWSER_SYSTEM
 }
 
-/** 写入默认设置 */
+/** 写入默认设置（同时写进跨站搜索那一项，避免出现两个互相矛盾的开关） */
 export function setLinkBrowserMode(mode) {
-  writeMode(LINK_BROWSER_KEY, mode)
+  writeMode(LINK_BROWSER_CROSS_KEY, mode)
 }
 
 /** 跨站搜索用哪种浏览器，默认系统浏览器 */
@@ -178,6 +181,9 @@ export function installLinkInterceptor() {
     if (!anchor) return
     // 需要注入脚本或必须走系统浏览器的链接自己处理（TouchGal、APK 下载）
     if (anchor.hasAttribute('data-native')) return
+    // 跨站搜索的链接由 openCrossSearchSite 按「跨站搜索」自己的设置处理，
+    // 不能在这里用默认设置抢先打开，否则设置里切内置/系统会失效
+    if (anchor.hasAttribute('data-cross-search')) return
 
     const href = anchor.getAttribute('href')
     if (!href) return

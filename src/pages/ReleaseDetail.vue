@@ -297,13 +297,13 @@ watch(
           <div>
             <h1
               class="text-lg font-bold tracking-tight text-neutral-900 dark:text-neutral-100 leading-snug copyable-title"
-              @click="copyTitleText(release.title)"
-            >{{ release.title }}</h1>
+              @click="copyTitleText(release.alttitle || release.title)"
+            >{{ release.alttitle || release.title }}</h1>
             <p
-              v-if="release.alttitle"
+              v-if="release.alttitle && release.title && release.alttitle !== release.title"
               class="text-xs text-neutral-400 dark:text-neutral-500 font-medium mt-0.5 copyable-title"
-              @click="copyTitleText(release.alttitle)"
-            >{{ release.alttitle }}</p>
+              @click="copyTitleText(release.title)"
+            >{{ release.title }}</p>
           </div>
 
           <!-- 标签组 (模仿 VnDetail 里的那种信息) -->
@@ -346,7 +346,7 @@ watch(
             <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.languages') }}</span>
             <div class="flex flex-wrap gap-1">
               <span v-for="lang in release.languages" :key="lang.lang"
-                class="text-[10px] px-1 rounded bg-white border border-neutral-200 font-bold dark:bg-neutral-800 dark:border-neutral-700"
+                class="text-[11px] px-1.5 py-0.5 rounded-md bg-white border border-neutral-200 font-bold dark:bg-neutral-800 dark:border-neutral-700"
                 :class="{ '!bg-neutral-900 !text-white !border-neutral-900 dark:!bg-neutral-100 dark:!text-neutral-900 dark:!border-neutral-100': lang.main }">
                 {{ t(`metadata.lang.${lang.lang}`, lang.lang) }}
               </span>
@@ -355,7 +355,7 @@ watch(
             <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.platforms') }}</span>
             <div class="flex flex-wrap gap-1">
               <span v-for="p in (release.platforms || [])" :key="p"
-                class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-600 font-medium">
+                class="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-md bg-neutral-100 dark:bg-neutral-700/70 text-neutral-700 dark:text-neutral-300 font-medium">
                 <Icon :icon="getPlatformIcon(p)" class="h-3 w-3 shrink-0" />
                 {{ t(`metadata.platform.${p}`, p) }}
               </span>

@@ -176,7 +176,12 @@
       "check_failed": "Check Failed",
       "download_update": "Download Latest Version",
       "maintainer": "Maintainer",
-      "upstream": "Original Project"
+      "upstream": "Original Project",
+      "credits": "Third-party scripts",
+      "credits_note": "The in-app browser translation and cross-search site list come from these open-source userscripts. All rights belong to their authors.",
+      "credits_translator": "In-app browser translation script",
+      "credits_lib": "Translation dictionary",
+      "credits_cross": "Cross-search site list"
     },
     "theme": "Appearance",
     "theme_follow_system": "System",

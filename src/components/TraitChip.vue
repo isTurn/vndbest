@@ -43,12 +43,12 @@ function cleanDescription(desc) {
   <div class="relative inline-flex">
     <button
       @click="handleClick"
-      class="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-md border text-[11px] font-medium transition-all cursor-pointer hover:shadow-sm bg-violet-50 text-violet-600 border-violet-200 dark:bg-violet-900/30 dark:text-violet-400 dark:border-violet-800/50"
+      class="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-full border text-xs font-medium transition-all cursor-pointer hover:shadow-sm bg-violet-50 text-violet-600 border-violet-200 dark:bg-violet-900/30 dark:text-violet-400 dark:border-violet-800/50"
     >
-      <span class="max-w-[120px] truncate">{{ translateTraitName(trait.name) }}</span>
+      <span class="max-w-[140px] truncate leading-snug">{{ translateTraitName(trait.name) }}</span>
       <span
         @click="handleRemove"
-        class="ml-0.5 p-0.5 rounded-full hover:bg-black/10 transition-colors"
+        class="ml-0.5 grid h-4 w-4 place-items-center rounded-full hover:bg-black/10 dark:hover:bg-white/15 transition-colors"
       >
         <Icon icon="lucide:x" class="h-3 w-3" />
       </span>

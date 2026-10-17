@@ -372,10 +372,12 @@ function normalizeItem(type, it) {
     }
   }
   if (type === 'releases') {
+    // 版本：汉字/日文原名放主标题，罗马音/英文放副标题（与版本列表保持一致）
+    const latin = it.alttitle && it.title && it.alttitle !== it.title ? it.title : ''
     return {
       id: it.id,
-      title: it.title || it.alttitle || it.id,
-      subtitle: [it.released, it.alttitle && it.alttitle !== it.title ? it.alttitle : ''].filter(Boolean).join(' · '),
+      title: it.alttitle || it.title || it.id,
+      subtitle: [it.released, latin].filter(Boolean).join(' · '),
       image: it.images?.[0]?.thumbnail || it.images?.[0]?.url || '',
       to: `/release/${it.id}`
     }
