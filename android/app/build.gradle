@@ -2,8 +2,8 @@ apply plugin: 'com.android.application'
 
 // 发布签名：优先使用环境变量指定的正式 keystore，未配置时回退到 debug keystore，
 // 保证 CI 产出的 release APK 可以直接安装（未签名的 APK 无法安装）。
-def releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
-def hasReleaseKeystore = releaseKeystorePath != null && file(releaseKeystorePath).exists()
+def releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")?.trim()
+def hasReleaseKeystore = releaseKeystorePath != null && !releaseKeystorePath.isEmpty() && file(releaseKeystorePath).exists()
 
 android {
     namespace = "com.cyancat.vndbest"
