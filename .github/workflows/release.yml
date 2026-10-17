@@ -42,11 +42,16 @@ jobs:
       - name: Build web app
         run: npm run build
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK platform
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      # ubuntu-latest 自带 Android SDK；android-actions/setup-android@v3 会尝试安装
+      # 已被 SDK 移除的 "tools" 包而失败，因此直接用预装 SDK + sdkmanager 补包。
+      - name: Install Android SDK packages
+        run: |
+          set -e
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+          echo "$ANDROID_HOME/build-tools/36.0.0" >> "$GITHUB_PATH"
 
       # 必须用 cap sync：它会生成 capacitor.plugins.json 并注册原生插件
       # （CookieKeeper / InAppBrowser）。手工拷贝 dist/ 会导致插件未注册、功能失效。
