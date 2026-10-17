@@ -1,13 +1,15 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
 import BaseSelect from './BaseSelect.vue'
+import AgeRating from './AgeRating.vue'
 import { IonImg, IonSpinner } from '@ionic/vue'
 import { PLATFORM_ICON_NAMES, APP_ICON_NAMES } from '@/icons/icon-names'
 import { usePrivacy, getImageNsfwLevel } from '@/composables/usePrivacy'
 import { useImageLoader } from '@/composables/useImageLoader'
+import { prefetchFromItems } from '@/utils/imagePrefetch'
 
 const { getCardAction } = usePrivacy()
 const imageLoader = useImageLoader()
@@ -128,6 +130,23 @@ function getImage(item) {
   }
   return null
 }
+
+// 数据一到就预热封面，抵消 ion-img 的 IntersectionObserver 延迟
+watch(
+  () => props.items,
+  (list) => {
+    prefetchFromItems(
+      list,
+      (it) => {
+        const img = getImage(it)
+        return img ? (img.thumbnail || img.url) : null
+      },
+      20,
+      { priority: true }
+    )
+  },
+  { immediate: true }
+)
 
 function hasCover(item) {
   const img = getImage(item)
@@ -313,10 +332,11 @@ onUnmounted(() => {
                   <ion-img
                     v-if="hasCover(item)"
                     :key="`list-${item.id}-${imageLoader.getRetryCount('list-' + item.id)}`"
-                    :src="getImage(item).thumbnail || getImage(item).url"
+                    :src="imageLoader.resolveSrc('list-' + item.id, getImage(item).thumbnail || getImage(item).url)"
                     alt="cover"
                     class="h-full w-full object-cover transition-opacity duration-500"
                     :class="{ 'opacity-0': !imageLoader.isSuccess('list-' + item.id) }"
+                    @ionImgWillLoad="imageLoader.onWillLoad('list-' + item.id)"
                     @ionImgDidLoad="imageLoader.onLoad('list-' + item.id)"
                     @ionError="imageLoader.onError('list-' + item.id)"
                   />
@@ -403,11 +423,13 @@ onUnmounted(() => {
                     class="text-neutral-500 dark:text-neutral-400 font-medium truncate shrink-0"
                     :class="isCompact ? 'text-[9px]' : 'text-[10px]'"
                   >{{ item.released }}</span>
-                  <span
-                    v-if="item.minage === 0"
-                    class="px-1 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 font-bold shrink-0"
-                    :class="isCompact ? 'text-[8px] scale-90 origin-left' : 'text-[9px]'"
-                  >{{ t('release.all_ages') }}</span>
+                  <AgeRating
+                    v-if="item.minage !== null && item.minage !== undefined"
+                    :minage="item.minage"
+                    :uncensored="item.uncensored"
+                    :compact="isCompact"
+                    :show-text="!isCompact"
+                  />
                   <span
                     v-if="item.voiced && item.voiced > 0 && !isCompact"
                     class="text-[9px] text-neutral-400 dark:text-neutral-500 shrink-0"
@@ -457,10 +479,11 @@ onUnmounted(() => {
                     <ion-img
                       v-if="hasCover(item)"
                       :key="`card-${item.id}-${imageLoader.getRetryCount('card-' + item.id)}`"
-                      :src="getImage(item).thumbnail || getImage(item).url"
+                      :src="imageLoader.resolveSrc('card-' + item.id, getImage(item).thumbnail || getImage(item).url)"
                       alt="cover"
                       class="absolute inset-0 w-full h-full object-cover border-b border-neutral-100 dark:border-neutral-800 transition-opacity duration-500"
                       :class="{ 'opacity-0': !imageLoader.isSuccess('card-' + item.id) }"
+                      @ionImgWillLoad="imageLoader.onWillLoad('card-' + item.id)"
                       @ionImgDidLoad="imageLoader.onLoad('card-' + item.id)"
                       @ionError="imageLoader.onError('card-' + item.id)"
                     />
@@ -503,9 +526,13 @@ onUnmounted(() => {
               <div class="flex items-center justify-between text-[10px] text-neutral-400 dark:text-neutral-500">
                 <div class="flex items-center gap-1 min-w-0">
                   <span v-if="item.released" class="truncate">{{ item.released }}</span>
-                  <span v-if="item.minage === 0" class="px-1 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 scale-90 origin-left font-bold">
-                    {{ t('release.all_ages') }}
-                  </span>
+                  <AgeRating
+                    v-if="item.minage !== null && item.minage !== undefined"
+                    :minage="item.minage"
+                    :uncensored="item.uncensored"
+                    compact
+                    :show-text="false"
+                  />
                 </div>
                 <div class="flex gap-1 shrink-0">
                   <Icon
@@ -544,10 +571,11 @@ onUnmounted(() => {
                     <ion-img
                       v-if="hasCover(item)"
                       :key="`mag-${item.id}-${imageLoader.getRetryCount('mag-' + item.id)}`"
-                      :src="getImage(item).thumbnail || getImage(item).url"
+                      :src="imageLoader.resolveSrc('mag-' + item.id, getImage(item).thumbnail || getImage(item).url)"
                       alt="cover"
                       class="absolute inset-0 w-full h-full object-cover border-b border-neutral-100 dark:border-neutral-800 transition-opacity duration-500"
                       :class="{ 'opacity-0': !imageLoader.isSuccess('mag-' + item.id) }"
+                      @ionImgWillLoad="imageLoader.onWillLoad('mag-' + item.id)"
                       @ionImgDidLoad="imageLoader.onLoad('mag-' + item.id)"
                       @ionError="imageLoader.onError('mag-' + item.id)"
                     />
@@ -590,9 +618,13 @@ onUnmounted(() => {
               <div class="flex items-center justify-between text-[10px] text-neutral-400 dark:text-neutral-500">
                 <div class="flex items-center gap-1 min-w-0">
                   <span v-if="item.released" class="truncate">{{ item.released }}</span>
-                  <span v-if="item.minage === 0" class="px-1 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 scale-90 origin-left font-bold">
-                    {{ t('release.all_ages') }}
-                  </span>
+                  <AgeRating
+                    v-if="item.minage !== null && item.minage !== undefined"
+                    :minage="item.minage"
+                    :uncensored="item.uncensored"
+                    compact
+                    :show-text="false"
+                  />
                 </div>
                 <div class="flex gap-1 shrink-0">
                   <Icon
@@ -640,10 +672,12 @@ onUnmounted(() => {
                 v-if="item.released"
                 class="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium"
               >{{ item.released }}</span>
-              <span
-                v-if="item.minage === 0"
-                class="text-[9px] px-1 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 font-bold"
-              >{{ t('release.all_ages') }}</span>
+              <AgeRating
+                v-if="item.minage !== null && item.minage !== undefined"
+                :minage="item.minage"
+                :uncensored="item.uncensored"
+                compact
+              />
               <span v-if="item.patch" class="text-[9px] px-1 rounded bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/50">{{ t('release.patch') }}</span>
               <div class="flex gap-1">
                 <span v-for="lang in item.languages.slice(0, 3)" :key="lang.lang" class="text-[9px] text-neutral-400 dark:text-neutral-500">{{ t(`metadata.lang.${lang.lang}`, lang.lang) }}</span>

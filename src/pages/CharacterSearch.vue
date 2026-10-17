@@ -1,7 +1,7 @@
 <script setup>
 defineOptions({ name: 'CharacterSearch' })
 
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
@@ -25,6 +25,10 @@ const searchBaseRef = ref(null)
 const openSaveDialog = () => searchBaseRef.value?.openSaveDialog()
 
 const query = ref('')
+
+// 支持从 URL 带入搜索关键词（全局搜索「查看更多」跳转用）
+const routeQuery = computed(() => (typeof route.query.q === 'string' ? route.query.q : ''))
+if (routeQuery.value) query.value = routeQuery.value
 const results = ref([])
 const isLoading = ref(false)
 const hasMore = ref(false)
@@ -95,17 +99,11 @@ function resetBirthdayFilters() {
 }
 
 // 月份选项
-const monthOptions = [
-  { value: 0, label: '不限' },
-  { value: 1, label: '1月' }, { value: 2, label: '2月' }, { value: 3, label: '3月' },
-  { value: 4, label: '4月' }, { value: 5, label: '5月' }, { value: 6, label: '6月' },
-  { value: 7, label: '7月' }, { value: 8, label: '8月' }, { value: 9, label: '9月' },
-  { value: 10, label: '10月' }, { value: 11, label: '11月' }, { value: 12, label: '12月' }
-]
+const monthOptions = Array.from({ length: 13 }, (_, i) => ({ value: i }))
 
 // 杯型选项
 const cupOptions = [
-  { value: 'all', label: '不限' },
+  { value: 'all', label: 'common.unlimited' },
   { value: 'AA', label: 'AA' }, { value: 'A', label: 'A' }, { value: 'B', label: 'B' },
   { value: 'C', label: 'C' }, { value: 'D', label: 'D' }, { value: 'E', label: 'E' },
   { value: 'F', label: 'F' }, { value: 'G', label: 'G' }, { value: 'H', label: 'H' },
@@ -143,26 +141,26 @@ function parseRangeParam(param, min, max) {
 // 筛选选项
 const sexOptions = [
   { value: 'all', label: 'list.all' },
-  { value: 'm', label: '男' },
-  { value: 'f', label: '女' },
-  { value: 'b', label: '双性' },
-  { value: 'n', label: '无性' }
+  { value: 'm', label: 'metadata.gender.m' },
+  { value: 'f', label: 'metadata.gender.f' },
+  { value: 'b', label: 'metadata.gender.b' },
+  { value: 'n', label: 'metadata.gender.n' }
 ]
 
 const bloodTypeOptions = [
   { value: 'all', label: 'list.all' },
-  { value: 'a', label: 'A 型' },
-  { value: 'b', label: 'B 型' },
-  { value: 'ab', label: 'AB 型' },
-  { value: 'o', label: 'O 型' }
+  { value: 'a', label: 'metadata.blood_type.a' },
+  { value: 'b', label: 'metadata.blood_type.b' },
+  { value: 'ab', label: 'metadata.blood_type.ab' },
+  { value: 'o', label: 'metadata.blood_type.o' }
 ]
 
 const roleOptions = [
   { value: 'all', label: 'list.all' },
-  { value: 'main', label: '视点角色' },
-  { value: 'primary', label: '主要角色' },
-  { value: 'side', label: '配角' },
-  { value: 'appears', label: '客串/出场' }
+  { value: 'main', label: 'metadata.role.main' },
+  { value: 'primary', label: 'metadata.role.primary' },
+  { value: 'side', label: 'metadata.role.side' },
+  { value: 'appears', label: 'metadata.role.appears' }
 ]
 
 // 计算是否有激活的筛选条件
@@ -445,11 +443,20 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (observer) observer.disconnect()
+  if (filterDebounceTimer) clearTimeout(filterDebounceTimer)
 })
 
-// 筛选器变化时自动重新搜索
+// 筛选器变化时自动重新搜索（统一防抖，避免连点/多选时并发请求）
+let filterDebounceTimer = null
+const debouncedFetch = () => {
+  if (filterDebounceTimer) clearTimeout(filterDebounceTimer)
+  filterDebounceTimer = setTimeout(() => {
+    fetchData()
+  }, 300)
+}
+
 watch([selectedSex, selectedBloodType, selectedRole], () => {
-  fetchData()
+  debouncedFetch()
 })
 
 watch(selectedTraits, () => {
@@ -582,7 +589,7 @@ const getSexClass = (sex) => {
                 : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-100 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-700'"
             >
               <Icon icon="lucide:sliders-horizontal" class="h-3.5 w-3.5" />
-              <span>筛选</span>
+              <span>{{ t('search.filter') }}</span>
             </button>
 
             <!-- 保存筛选 -->
@@ -592,7 +599,7 @@ const getSexClass = (sex) => {
               class="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition cursor-pointer"
             >
               <Icon icon="lucide:bookmark" class="h-3 w-3" />
-              <span>保存</span>
+              <span>{{ t('search.save') }}</span>
             </button>
 
             <!-- 清除所有筛选 -->
@@ -602,7 +609,7 @@ const getSexClass = (sex) => {
               class="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border border-red-100 dark:border-red-800/50 hover:bg-red-100 dark:hover:bg-red-900/50 transition cursor-pointer"
             >
               <Icon icon="lucide:x" class="h-3 w-3" />
-              <span>清除</span>
+              <span>{{ t('search.clear') }}</span>
             </button>
           </div>
 
@@ -623,7 +630,7 @@ const getSexClass = (sex) => {
               class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-pink-50 dark:bg-pink-900/30 border border-pink-200 dark:border-pink-800/50 text-[11px] font-medium text-pink-700 dark:text-pink-400"
             >
               <Icon icon="lucide:cake" class="h-3 w-3" />
-              <span>{{ birthdayMonth }}月{{ birthdayDay > 0 ? birthdayDay + '日' : '' }}</span>
+              <span>{{ birthdayDay > 0 ? t('character.birthday_short', { month: birthdayMonth, day: birthdayDay }) : t('character.month', { n: birthdayMonth }) }}</span>
               <button @click="resetBirthdayFilters" class="ml-0.5 p-0.5 rounded-full hover:bg-pink-100 dark:hover:bg-pink-800/50 transition cursor-pointer">
                 <Icon icon="lucide:x" class="h-2.5 w-2.5" />
               </button>
@@ -687,7 +694,7 @@ const getSexClass = (sex) => {
                     : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-100 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-700'"
                 >
                   <Icon icon="lucide:scan-search" class="h-3.5 w-3.5" />
-                  <span>特征</span>
+                  <span>{{ t('filter.trait_title') }}</span>
                   <span
                     v-if="selectedTraits.length > 0"
                     class="inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full text-[9px] font-bold"
@@ -743,7 +750,7 @@ const getSexClass = (sex) => {
                     : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-100 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-700'"
                 >
                   <Icon icon="lucide:cake" class="h-3.5 w-3.5" />
-                  <span>生日</span>
+                  <span>{{ t('filter.birthday') }}</span>
                   <Icon v-if="!isBirthdayActive()" icon="lucide:chevron-down" class="h-3 w-3 text-neutral-400 dark:text-neutral-500" />
                   <Icon v-else icon="lucide:x" class="h-3 w-3" />
                 </button>
@@ -757,7 +764,7 @@ const getSexClass = (sex) => {
                     : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-100 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-700'"
                 >
                   <Icon icon="lucide:ruler" class="h-3.5 w-3.5" />
-                  <span>身体数据</span>
+                  <span>{{ t('filter.body_data') }}</span>
                   <span
                     v-if="isHeightActive() || isWeightActive() || isBustActive() || isCupActive()"
                     class="inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full text-[9px] font-bold bg-white/20 text-white"
@@ -774,7 +781,7 @@ const getSexClass = (sex) => {
                   class="flex w-full items-center justify-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border border-red-100 dark:border-red-800/50 hover:bg-red-100 dark:hover:bg-red-900/50 transition cursor-pointer"
                 >
                   <Icon icon="lucide:x" class="h-3 w-3" />
-                  <span>清除身体数据</span>
+                  <span>{{ t('filter.clear_body_data') }}</span>
                 </button>
               </div>
 
@@ -784,21 +791,21 @@ const getSexClass = (sex) => {
                   <div class="space-y-1.5">
                     <div class="flex items-center gap-1.5 text-[11px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                       <Icon icon="lucide:cake" class="h-3 w-3" />
-                      <span>生日</span>
+                      <span>{{ t('filter.birthday') }}</span>
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                       <select
                         v-model.number="birthdayMonth"
                         class="px-2 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-600 text-xs text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-1 focus:ring-neutral-300 dark:focus:ring-neutral-500"
                       >
-                        <option v-for="opt in monthOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                        <option v-for="opt in monthOptions" :key="opt.value" :value="opt.value">{{ opt.value === 0 ? t('common.unlimited') : t('character.month', { n: opt.value }) }}</option>
                       </select>
                       <input
                         v-model.number="birthdayDay"
                         type="number"
                         min="0"
                         max="31"
-                        placeholder="日"
+                        :placeholder="t('filter.day')"
                         :disabled="birthdayMonth <= 0"
                         class="px-2 py-1.5 rounded-lg bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-600 text-xs text-neutral-700 dark:text-neutral-300 focus:outline-none focus:ring-1 focus:ring-neutral-300 dark:focus:ring-neutral-500 disabled:opacity-40 disabled:cursor-not-allowed"
                       />
@@ -815,7 +822,7 @@ const getSexClass = (sex) => {
                     <div class="flex items-center justify-between">
                       <div class="flex items-center gap-1.5 text-[11px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                         <Icon icon="lucide:ruler" class="h-3 w-3" />
-                        <span>身高 (cm)</span>
+                        <span>{{ t('filter.height') }}</span>
                       </div>
                       <span class="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">{{ heightRange[0] }} - {{ heightRange[1] }}</span>
                     </div>
@@ -827,7 +834,7 @@ const getSexClass = (sex) => {
                     <div class="flex items-center justify-between">
                       <div class="flex items-center gap-1.5 text-[11px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                         <Icon icon="lucide:weight" class="h-3 w-3" />
-                        <span>体重 (kg)</span>
+                        <span>{{ t('filter.weight') }}</span>
                       </div>
                       <span class="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">{{ weightRange[0] }} - {{ weightRange[1] }}</span>
                     </div>
@@ -839,7 +846,7 @@ const getSexClass = (sex) => {
                     <div class="flex items-center justify-between">
                       <div class="flex items-center gap-1.5 text-[11px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                         <Icon icon="lucide:circle" class="h-3 w-3" />
-                        <span>胸围 (cm)</span>
+                        <span>{{ t('filter.bust') }}</span>
                       </div>
                       <span class="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">{{ bustRange[0] }} - {{ bustRange[1] }}</span>
                     </div>
@@ -850,7 +857,7 @@ const getSexClass = (sex) => {
                   <div class="space-y-1.5">
                     <div class="flex items-center gap-1.5 text-[11px] font-bold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
                       <Icon icon="lucide:heart" class="h-3 w-3" />
-                      <span>杯型</span>
+                      <span>{{ t('filter.cup') }}</span>
                     </div>
                     <div class="flex flex-wrap gap-1">
                       <button
@@ -887,8 +894,10 @@ const getSexClass = (sex) => {
               v-if="item.image?.url"
               :key="`char-img-${item.id}-${imageLoader.getRetryCount(`char-${item.id}`)}`"
               :src="item.image.url"
+              :alt="item.name || ''"
               class="w-full h-full object-cover transition-opacity duration-500"
               :class="{ 'opacity-0': !imageLoader.isSuccess(`char-${item.id}`) }"
+              @ionImgWillLoad="imageLoader.onWillLoad(`char-${item.id}`)"
               @ionImgDidLoad="imageLoader.onLoad(`char-${item.id}`)"
               @ionError="imageLoader.onError(`char-${item.id}`)"
             />
@@ -984,7 +993,7 @@ const getSexClass = (sex) => {
       <!-- 无搜索结果 -->
       <div v-if="results.length === 0 && !isLoading && query" class="flex flex-col items-center justify-center py-20 text-neutral-400 dark:text-neutral-500 space-y-3">
         <Icon icon="lucide:search-x" class="h-10 w-10 text-neutral-200 dark:text-neutral-600" />
-        <p class="text-sm">未找到相关角色</p>
+        <p class="text-sm">{{ t('character.no_results') }}</p>
       </div>
 
       <!-- 初始加载动画 -->

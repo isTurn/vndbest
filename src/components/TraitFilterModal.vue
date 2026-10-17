@@ -2,9 +2,11 @@
 import { ref, computed, watch } from 'vue'
 import { Icon } from '@iconify/vue'
 import { searchTraits, getTraitList } from '@/api/vndb'
+import { useI18n } from 'vue-i18n'
 import { useTranslation } from '@/composables/useTranslation'
 
 const { translateTraitName, reverseLookupTraitName, searchTraitsByZh } = useTranslation()
+const { t } = useI18n()
 
 const props = defineProps({
   show: {
@@ -193,7 +195,7 @@ async function fetchPopularTraits() {
         <div class="relative z-10 w-full sm:w-[420px] max-h-[80vh] bg-white dark:bg-neutral-900 sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200">
           <!-- 顶部栏 -->
           <div class="flex items-center justify-between px-4 pt-4 pb-2">
-            <h3 class="text-base font-bold text-neutral-900 dark:text-neutral-100">选择特征</h3>
+            <h3 class="text-base font-bold text-neutral-900 dark:text-neutral-100">{{ t('filter.trait_title') }}</h3>
             <button
               @click="handleClose"
               class="p-1.5 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
@@ -210,7 +212,7 @@ async function fetchPopularTraits() {
                 v-model="searchQuery"
                 @input="handleSearchInput"
                 type="text"
-                placeholder="搜索特征名称..."
+                :placeholder="t('filter.trait_search_placeholder')"
                 class="w-full rounded-lg border border-neutral-200 bg-neutral-50 pl-9 pr-4 py-2 text-sm outline-none transition focus:border-neutral-400 focus:bg-white placeholder-neutral-400 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:border-neutral-500 dark:focus:bg-neutral-900 dark:placeholder-neutral-500"
               />
               <button
@@ -244,7 +246,7 @@ async function fetchPopularTraits() {
           <div class="flex-1 overflow-y-auto px-4 pb-4 min-h-[200px] max-h-[50vh]">
             <!-- 热门特征 (无搜索时显示) -->
             <div v-if="!searchQuery && popularTraits.length > 0 && results.length === 0 && !isLoading">
-              <p class="text-[11px] text-neutral-400 font-bold uppercase tracking-wider mb-2">热门特征</p>
+              <p class="text-[11px] text-neutral-400 font-bold uppercase tracking-wider mb-2">{{ t('filter.popular_traits') }}</p>
               <div class="space-y-1">
                 <button
                   v-for="trait in popularTraits"
@@ -269,7 +271,7 @@ async function fetchPopularTraits() {
                     </div>
                   </div>
                   <div class="shrink-0 flex items-center gap-2">
-                    <span class="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">{{ trait.char_count }} Chars</span>
+                    <span class="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">{{ t('common.count_char', { count: trait.char_count }) }}</span>
                     <Icon
                       v-if="isSelected(trait)"
                       icon="lucide:check"
@@ -283,7 +285,7 @@ async function fetchPopularTraits() {
             <!-- 搜索结果 -->
             <div v-if="searchQuery || results.length > 0">
               <p v-if="searchQuery" class="text-[11px] text-neutral-400 font-bold uppercase tracking-wider mb-2">
-                搜索结果
+                {{ t('filter.search_results') }}
               </p>
               <div class="space-y-1">
                 <button
@@ -309,7 +311,7 @@ async function fetchPopularTraits() {
                     </div>
                   </div>
                   <div class="shrink-0 flex items-center gap-2">
-                    <span class="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">{{ trait.char_count }} Chars</span>
+                    <span class="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">{{ t('common.count_char', { count: trait.char_count }) }}</span>
                     <Icon
                       v-if="isSelected(trait)"
                       icon="lucide:check"
@@ -325,8 +327,8 @@ async function fetchPopularTraits() {
                   @click="loadMore"
                   class="text-xs text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-300 font-medium cursor-pointer"
                 >
-                  <span v-if="isLoading">加载中...</span>
-                  <span v-else>加载更多</span>
+                  <span v-if="isLoading">{{ t('common.loading') }}</span>
+                  <span v-else>{{ t('filter.load_more') }}</span>
                 </button>
               </div>
             </div>
@@ -335,7 +337,7 @@ async function fetchPopularTraits() {
             <div v-if="searchQuery && filteredI18nResults.length > 0" class="mt-3">
               <div class="flex items-center gap-2 mb-2 px-1">
                 <Icon icon="lucide:languages" class="h-3 w-3 text-violet-400" />
-                <span class="text-[10px] text-violet-400 font-bold uppercase tracking-widest">翻译匹配</span>
+                <span class="text-[10px] text-violet-400 font-bold uppercase tracking-widest">{{ t('filter.translation_match') }}</span>
               </div>
               <div class="space-y-1">
                 <button
@@ -351,7 +353,7 @@ async function fetchPopularTraits() {
                     <div class="flex items-center gap-2">
                       <span class="font-medium text-sm text-violet-800 dark:text-violet-300 truncate">{{ item.zh }}</span>
                       <span class="shrink-0 inline-flex items-center rounded-md px-1 py-0.5 text-[9px] font-bold bg-violet-100 dark:bg-violet-800/50 text-violet-500 dark:text-violet-400 border border-violet-200 dark:border-violet-700">
-                        翻译
+                        {{ t('tag.translation_badge') }}
                       </span>
                     </div>
                     <p class="text-[11px] text-violet-400 dark:text-violet-500 mt-0.5 truncate">{{ item.en }}</p>
@@ -379,20 +381,20 @@ async function fetchPopularTraits() {
             <!-- 空状态 -->
             <div v-if="!isLoading && searchQuery && results.length === 0 && filteredI18nResults.length === 0" class="py-8 text-center">
               <Icon icon="lucide:scan-search" class="h-8 w-8 text-neutral-300 dark:text-neutral-600 mx-auto mb-2" />
-              <p class="text-xs text-neutral-400 dark:text-neutral-500">没有找到匹配的特征</p>
+              <p class="text-xs text-neutral-400 dark:text-neutral-500">{{ t('filter.no_traits_found') }}</p>
             </div>
           </div>
 
           <!-- 底部确认栏 -->
           <div class="flex items-center justify-between px-4 py-3 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50/80 dark:bg-neutral-800/80">
             <span class="text-xs text-neutral-500 dark:text-neutral-400">
-              已选 <span class="font-bold text-neutral-900 dark:text-neutral-100">{{ localSelected.length }}</span> 个特征
+              {{ t('filter.selected') }} <span class="font-bold text-neutral-900 dark:text-neutral-100">{{ localSelected.length }}</span> {{ t('filter.traits_unit') }}
             </span>
             <button
               @click="handleConfirm"
               class="px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-medium hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white active:scale-95 transition-all cursor-pointer"
             >
-              确认
+              {{ t('common.confirm') }}
             </button>
           </div>
         </div>

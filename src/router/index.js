@@ -1,22 +1,26 @@
 import { createRouter } from '@ionic/vue-router'
 import { createWebHashHistory, START_LOCATION } from 'vue-router'
+// 首页保持同步导入（首屏立即可用，避免多一次网络往返）
 import Home from '@/pages/Home.vue'
-import Library from '@/pages/Library.vue'
-import List from '@/pages/List.vue'
-import Settings from '@/pages/Settings.vue'
-import Login from '@/pages/Login.vue'
-import VnDetail from '@/pages/VnDetail.vue'
-import CharacterDetail from '@/pages/CharacterDetail.vue'
-import ProducerDetail from '@/pages/ProducerDetail.vue'
-import VnSearch from '@/pages/VnSearch.vue'
-import ReleaseSearch from '@/pages/ReleaseSearch.vue'
-import ProducerSearch from '@/pages/ProducerSearch.vue'
-import StaffSearch from '@/pages/StaffSearch.vue'
-import StaffDetail from '@/pages/StaffDetail.vue'
-import CharacterSearch from '@/pages/CharacterSearch.vue'
-import TagSearch from '@/pages/TagSearch.vue'
-import TraitSearch from '@/pages/TraitSearch.vue'
-import ReleaseDetail from '@/pages/ReleaseDetail.vue'
+
+// 其余页面按路由懒加载：首屏只下载 Home 相关代码，
+// 其余页面在导航时才拉取对应 chunk（显著降低首屏 bundle 体积）
+const Library = () => import('@/pages/Library.vue')
+const List = () => import('@/pages/List.vue')
+const Settings = () => import('@/pages/Settings.vue')
+const Login = () => import('@/pages/Login.vue')
+const VnDetail = () => import('@/pages/VnDetail.vue')
+const CharacterDetail = () => import('@/pages/CharacterDetail.vue')
+const ProducerDetail = () => import('@/pages/ProducerDetail.vue')
+const VnSearch = () => import('@/pages/VnSearch.vue')
+const ReleaseSearch = () => import('@/pages/ReleaseSearch.vue')
+const ProducerSearch = () => import('@/pages/ProducerSearch.vue')
+const StaffSearch = () => import('@/pages/StaffSearch.vue')
+const StaffDetail = () => import('@/pages/StaffDetail.vue')
+const CharacterSearch = () => import('@/pages/CharacterSearch.vue')
+const TagSearch = () => import('@/pages/TagSearch.vue')
+const TraitSearch = () => import('@/pages/TraitSearch.vue')
+const ReleaseDetail = () => import('@/pages/ReleaseDetail.vue')
 
 const routes = [
   {
@@ -60,6 +64,12 @@ const routes = [
     name: 'SettingsFavorites',
     component: Settings,
     meta: { showTabBar: false, settingsSection: 'favorites' }
+  },
+  {
+    path: '/settings/navigation',
+    name: 'SettingsNavigation',
+    component: Settings,
+    meta: { showTabBar: false, settingsSection: 'navigation' }
   },
   {
     path: '/settings/storage',
@@ -150,6 +160,12 @@ const routes = [
     name: 'TraitSearch',
     component: TraitSearch,
     meta: { showTabBar: true }
+  },
+  // 兜底：未匹配的路径重定向回首页，避免白屏
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    redirect: '/'
   }
 ]
 

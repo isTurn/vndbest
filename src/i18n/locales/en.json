@@ -14,7 +14,17 @@
     "copied": "Copied",
     "copy_failed": "Copy failed",
     "favorite_added": "Added to local favorites",
-    "favorite_removed": "Removed from local favorites"
+    "favorite_removed": "Removed from local favorites",
+    "retry": "Retry",
+    "search": "Search",
+    "no_description": "No description",
+    "confirm": "Confirm",
+    "unlimited": "Any",
+    "more": "View more",
+    "count_vn": "{count} VNs",
+    "count_char": "{count} characters",
+    "count_vn_short": "{count} VNs",
+    "count_char_short": "{count} chars"
   },
   "settings": {
     "title": "Settings",
@@ -27,6 +37,8 @@
     "use_sandbox": "Use Sandbox Endpoint",
     "sandbox_desc": "Enable to request test API, avoiding pollution of production data",
     "language": "Language",
+    "link_browser_inapp": "In-app browser",
+    "link_browser_system": "System browser",
     "save_settings": "Save Settings",
     "settings_saved": "Settings saved!",
     "vn_title_priority": "VN Title Language Priority",
@@ -55,6 +67,10 @@
       "about": {
         "title": "About App",
         "description": "Version info, update checks, and project links"
+      },
+      "navigation": {
+        "title": "Navigation",
+        "description": "Which browser opens cross-search sites and release links"
       }
     },
     "favorites": {
@@ -158,15 +174,9 @@
       "checking": "Checking...",
       "up_to_date": "Up to Date",
       "check_failed": "Check Failed",
-      "download_update": "Download Latest Version"
-    },
-    "update": {
-      "new_version_available": "New Version Available",
-      "no_changelog": "No changelog provided",
-      "dont_remind_this_version": "Don't remind me for this version",
-      "later": "Later",
-      "update_now": "Update Now",
-      "manual_check_tip": "You can manually check for updates in Settings - About~"
+      "download_update": "Download Latest Version",
+      "maintainer": "Maintainer",
+      "upstream": "Original Project"
     },
     "theme": "Appearance",
     "theme_follow_system": "System",
@@ -183,11 +193,17 @@
       "hint": "Works on web and mobile. Pick from gallery/files. Always covers the screen.",
       "error_select": "Failed to select or process image. Please try again.",
       "error_quota": "Image is too large to save. Please choose a smaller one."
-    }
+    },
+    "cross_search_browser": "Cross-search link opening",
+    "cross_search_browser_desc": "In-app browser uses the built-in browser in the app; system browser opens links externally.",
+    "release_link_browser": "Release link opening",
+    "release_link_browser_desc": "Only affects official VNDB external links on release pages.",
+    "vndb_translator": "Translate VNDB pages",
+    "vndb_translator_desc": "Automatically inject the Chinese translation script when vndb.org opens in the in-app browser."
   },
   "nav": {
     "home": "Home",
-    "library": "Library",
+    "library": "Search",
     "search": "Search",
     "list": "List",
     "settings": "Settings"
@@ -217,11 +233,12 @@
     "birthday_today": "Today's Birthdays",
     "birthday_tomorrow": "Tomorrow's Birthdays",
     "no_birthday": "No characters have birthdays today",
-    "birthday_age": "Age {age}"
+    "birthday_age": "Age {age}",
+    "random_vn_tip": "Feeling lucky? Jump to a random visual novel"
   },
   "library": {
-    "title": "Library",
-    "description": "Explore the VNDB database",
+    "title": "Search",
+    "description": "Search visual novels, releases, producers, staff, characters, tags and traits",
     "view_list": "Browse {name}",
     "vn": "Visual Novels",
     "releases": "Releases",
@@ -229,7 +246,18 @@
     "staff": "People",
     "characters": "Characters",
     "tags": "Tags",
-    "traits": "Traits"
+    "traits": "Traits",
+    "categories": "Browse categories",
+    "search_placeholder": "Search VNs, producers, characters… (Chinese titles supported)",
+    "searching": "Searching…",
+    "search_empty": "No results found. Try another keyword.",
+    "tag_vn_count": "{count} visual novels",
+    "trait_char_count": "{count} characters",
+    "no_results": "No results found",
+    "vn_characters": "VN Characters",
+    "vn_tags": "VN Tags",
+    "vn_staff": "VN Staff",
+    "hours_short": "{hours}h"
   },
   "producer_type": {
     "co": "Company",
@@ -239,10 +267,20 @@
   "search": {
     "title": "Search",
     "description": "Find Visual Novels information",
-    "placeholder": "Enter title to search, press Enter...",
+    "placeholder": "Search {title}...",
     "no_results": "No matching Visual Novels found",
     "no_alttitle": "No alternative title",
-    "relevance": "Relevance"
+    "relevance": "Relevance",
+    "subtitle": "Search {title}",
+    "empty_hint": "Type a keyword to start searching",
+    "filter": "Filter",
+    "clear": "Clear",
+    "save": "Save",
+    "released_range": "Release date range",
+    "rating_range": "Rating range",
+    "from": "From",
+    "to": "To",
+    "today": "Today"
   },
   "list": {
     "title": "List",
@@ -275,7 +313,8 @@
       "title": "Title"
     },
     "expand_n": "Expand all {count} items",
-    "collapse": "Collapse"
+    "collapse": "Collapse",
+    "no_label": "Unnamed label"
   },
   "login": {
     "title": "VNDB Account",
@@ -293,7 +332,8 @@
     "logged_in_as": "Logged in (ID: {id})",
     "logout": "Logout",
     "logout_success": "Logged out",
-    "login_failed": "Login failed: {error}"
+    "login_failed": "Login failed: {error}",
+    "invalid_token": "Invalid token or network error"
   },
   "vn": {
     "details": "VN Details",
@@ -310,6 +350,7 @@
     "rating": "Rating",
     "votes": "{count} votes",
     "votes_count": "Vote Count",
+    "length_from_votes": "{category} ({duration} from {count} votes)",
     "description": "Description",
     "translation": {
       "title": "AI Translation",
@@ -337,7 +378,13 @@
     },
     "links": {
       "resource_sites": "Resource Sites",
-      "info_sites": "Info Sites"
+      "info_sites": "Info Sites",
+      "cross_search": "Cross-site Search",
+      "cross_guide": "Guides / Saves / Patches",
+      "cross_db": "Databases",
+      "cross_adult": "Community / 18+",
+      "cross_mode_title": "Title",
+      "cross_other_titles": "Search by another title"
     },
     "releases": {
       "loading": "Loading releases...",
@@ -366,7 +413,7 @@
       "birthday": "Birthday",
       "birthday_val": "{month}/{day}",
       "voiced_by": "Voiced by",
-      "trait_spoiler_filter": "Trait Spoiler Level",
+      "trait_spoiler_filter": "Spoilers",
       "trait_spoiler_0": "None",
       "trait_spoiler_1": "Minor",
       "trait_spoiler_2": "Major",
@@ -392,15 +439,15 @@
       "va_empty": "No voice actor information"
     },
     "tags": {
-      "spoiler_filter": "Max Spoiler Level",
+      "spoiler_filter": "Spoilers",
       "spoiler_0": "None",
       "spoiler_1": "Minor",
       "spoiler_2": "Major",
-      "category_filter": "Tag Category",
-      "category_cont": "Content",
+      "category_filter": "Category",
+      "category_cont": "General",
       "category_ero": "Sexual",
       "category_tech": "Technical",
-      "search_mode_filter": "Tag Scope",
+      "search_mode_filter": "Scope",
       "search_mode_summary": "Summary",
       "search_mode_all": "All",
       "empty": "No tags found for current filters. Try adjusting spoiler level or category."
@@ -460,8 +507,27 @@
       "no_permission": "No permission",
       "confirm": "Confirm",
       "manage_labels": "Manage Labels",
-      "labels_description": "Select multiple labels to assign"
-    }
+      "labels_description": "Select multiple labels to assign",
+      "voted": "Voted",
+      "voted_auto": "Maintained automatically by your vote",
+      "private": "Private",
+      "add_vote": "Rate",
+      "vote_hint": "Tap to edit your vote",
+      "vote_need_collect": "Add to collection first"
+    },
+    "notes_expand": "Show more",
+    "notes_collapse": "Show less",
+    "cover_main_visual": "Main Visual",
+    "cover_default": "Cover",
+    "cover_pkgfront": "Package Front",
+    "cover_pkgback": "Package Back",
+    "cover_pkgcontent": "Package Content",
+    "cover_pkgside": "Package Side",
+    "cover_pkgmed": "Package Media",
+    "cover_dig": "Digital Cover",
+    "release_unknown": "Release date unknown",
+    "tag_rating_title": "Rating: {rating} / Spoiler: {spoiler}",
+    "length_vote_hint": "Record your play time on the VNDB website"
   },
   "release": {
     "title": "Release Details",
@@ -501,7 +567,19 @@
       "mrt": "Memory Card",
       "in": "Digital",
       "otc": "Other"
-    }
+    },
+    "all_ages_short": "0 - All ages",
+    "is_patch": "Patch",
+    "not_patch": "Not a patch",
+    "official_yes": "Official",
+    "official_no": "Unofficial",
+    "free": "Free",
+    "paid": "Paid",
+    "voiced_none_short": "No voices",
+    "voiced_ero_only": "H-scenes only",
+    "voiced_partial_short": "Partial",
+    "voiced_full_short": "Fully voiced",
+    "extlinks": "External links"
   },
   "metadata": {
     "gender": {
@@ -527,7 +605,9 @@
       "character": "Character-related",
       "fan": "Fan Disc",
       "translated": "Translation",
-      "collab": "Collab"
+      "collab": "Collab",
+      "ser": "Same Series",
+      "set": "Same Staff"
     },
     "staff_role": {
       "scenario": "Scenario",
@@ -540,7 +620,16 @@
       "publisher": "Publisher",
       "developer": "Developer",
       "songs": "Songs",
-      "staff": "Staff"
+      "staff": "Staff",
+      "chardesign": "Character Design",
+      "va": "Voice Actor",
+      "qa": "QA",
+      "cooperation": "Cooperation",
+      "analyzing": "Engine Analysis",
+      "package": "Package Design",
+      "thanks": "Thanks",
+      "discuss": "Discussion",
+      "return": "Remake"
     },
     "length": {
       "1": "Very Short (< 2h)",
@@ -584,7 +673,17 @@
       "tl": "Filipino",
       "ro": "Romanian",
       "nl": "Dutch",
-      "pt": "Portuguese"
+      "pt": "Portuguese",
+      "ja_orig": "Japanese (original)",
+      "zh_orig": "Chinese (original)",
+      "en_orig": "English (original)",
+      "ko_orig": "Korean (original)",
+      "fr_orig": "French (original)",
+      "de_orig": "German (original)",
+      "ru_orig": "Russian (original)",
+      "es_orig": "Spanish (original)",
+      "it_orig": "Italian (original)",
+      "vi_orig": "Vietnamese (original)"
     },
     "trait_group": {
       "hair": "Hair",
@@ -611,7 +710,9 @@
       "species": "Species",
       "occupation": "Occupation",
       "title": "Title",
-      "other": "Other"
+      "other": "Other",
+      "subject_of": "Subject Of",
+      "items": "Items"
     },
     "platform": {
       "win": "Windows",
@@ -670,6 +771,26 @@
       "x1s": "Sharp X1",
       "mob": "Other(Mobile)",
       "oth": "Other"
+    },
+    "devstatus": {
+      "finished": "Finished",
+      "developing": "In development",
+      "cancelled": "Cancelled"
+    },
+    "screenshots": {
+      "yes": "Has screenshots",
+      "no": "No screenshots"
+    },
+    "blood_type": {
+      "a": "Type A",
+      "b": "Type B",
+      "ab": "Type AB",
+      "o": "Type O"
+    },
+    "producer_type": {
+      "co": "Company",
+      "in": "Individual",
+      "ng": "Doujin"
     }
   },
   "favorites": {
@@ -691,5 +812,89 @@
       "staff": "Staff",
       "producer": "Producer"
     }
+  },
+  "update": {
+    "new_version_available": "New Version Available",
+    "no_changelog": "No changelog provided",
+    "dont_remind_this_version": "Don't remind me for this version",
+    "later": "Later",
+    "update_now": "Update Now",
+    "manual_check_tip": "You can manually check for updates in Settings - About~"
+  },
+  "error": {
+    "timeout": "Request timed out. Check your network and retry.",
+    "rate_limit": "Too many requests. Please try again later.",
+    "network": "Network unavailable. Check your connection."
+  },
+  "save_search": {
+    "title": "Save Search",
+    "hint": "Enter a name, up to {max} characters",
+    "placeholder": "Enter search name",
+    "name_required": "Please enter a name",
+    "name_too_long": "Name must be at most {max} characters",
+    "name_exists": "Name already exists"
+  },
+  "filter": {
+    "tag_title": "Select Tags",
+    "tag_search_placeholder": "Search tag name...",
+    "popular_tags": "Popular Tags",
+    "trait_title": "Traits",
+    "trait_search_placeholder": "Search trait name...",
+    "popular_traits": "Popular Traits",
+    "search_results": "Search Results",
+    "load_more": "Load More",
+    "no_tags_found": "No matching tags found",
+    "no_traits_found": "No matching traits found",
+    "selected": "Selected",
+    "tags_unit": "tags",
+    "traits_unit": "traits",
+    "translation_match": "Translation match",
+    "birthday": "Birthday",
+    "body_data": "Body Data",
+    "clear_body_data": "Clear Body Data",
+    "height": "Height (cm)",
+    "weight": "Weight (kg)",
+    "bust": "Bust (cm)",
+    "cup": "Cup Size",
+    "day": "Day"
+  },
+  "tag": {
+    "view_related_vns": "View related VNs",
+    "no_results": "No tags found",
+    "translation_match": "Translation match",
+    "translation_badge": "Translated"
+  },
+  "trait": {
+    "view_related_chars": "View related characters",
+    "no_results": "No traits found"
+  },
+  "character": {
+    "no_results": "No characters found",
+    "birthday_short": "{month}/{day}",
+    "month": "Month {n}"
+  },
+  "staff": {
+    "no_results": "No staff found",
+    "other_names": "Other names",
+    "works": "Works",
+    "not_found": "No information found for this person"
+  },
+  "producer": {
+    "no_results": "No producers found",
+    "developed_works": "Developed Works"
+  },
+  "saved_search": {
+    "type_vn": "VN Search",
+    "type_releases": "Release Search",
+    "type_producers": "Producer Search",
+    "type_staff": "Staff Search",
+    "type_characters": "Character Search",
+    "type_tags": "Tag Search",
+    "type_traits": "Trait Search",
+    "latest_chinese": "Latest Chinese",
+    "latest_release": "Newest release",
+    "earliest_release": "Oldest release",
+    "before_today": "Before today",
+    "before_date": "Before {date}"
   }
 }

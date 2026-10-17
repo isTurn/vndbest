@@ -2,6 +2,7 @@
 import { ref, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { translateError } from '@/utils/errorMessage'
 import { Icon } from '@iconify/vue'
 import AppHeader from '@/components/AppHeader.vue'
 import { SEX_ICONS } from '@/icons/icon-names'
@@ -97,11 +98,12 @@ const translateCharRole = (role) => {
 // BBCode 渲染函数
 const parseBBCode = (text) => {
   if (!text) return ''
+  // 先转义再拼 HTML：VNDB 的描述是用户可编辑内容，不转义直接 v-html 等于 XSS
   let escaped = text
-    .replace(/&/g, '&')
-    .replace(/</g, '<')
-    .replace(/>/g, '>')
-    .replace(/"/g, '"')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;')
 
   // 1. [url=link]text[/url]
@@ -302,7 +304,7 @@ async function fetchCharacterInfo() {
     }
   } catch (err) {
     console.error('获取角色详情失败:', err)
-    error.value = err.message || t('common.error')
+    error.value = translateError(err, t, 'common.error')
   } finally {
     loading.value = false
   }
@@ -319,7 +321,7 @@ async function fetchQuotes() {
     }
   } catch (err) {
     console.error('获取角色台词失败:', err)
-    quotesError.value = err.message
+    quotesError.value = translateError(err, t, 'common.error')
   } finally {
     quotesLoading.value = false
   }
@@ -456,8 +458,10 @@ watch(
             v-if="character.image?.url"
             :key="`char-img-${imageLoader.getRetryCount('char-main')}`"
             :src="character.image.url"
+            :alt="character.name || ''"
             class="w-full h-full object-cover object-top transition-opacity duration-500"
             :class="{ 'opacity-0': !imageLoader.isSuccess('char-main') }"
+            @ionImgWillLoad="imageLoader.onWillLoad('char-main')"
             @ionImgDidLoad="imageLoader.onLoad('char-main')"
             @ionError="imageLoader.onError('char-main')"
           />
@@ -589,48 +593,52 @@ watch(
         </div>
 
         <!-- 特征筛选控件 -->
-        <div class="rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 p-3 space-y-3">
+        <div class="rounded-xl border border-neutral-200/80 dark:border-neutral-700 bg-neutral-50/60 dark:bg-neutral-800/40 p-2.5 space-y-1.5">
           <!-- 剧透等级筛选 -->
-          <span class="text-xs text-neutral-600 dark:text-neutral-400 font-medium flex items-center gap-1.5">
-            <Icon icon="lucide:shield-alert" class="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
-            {{ t('vn.characters.trait_spoiler_filter') }}
-          </span>
-          <div class="grid grid-cols-3 gap-1 rounded-lg bg-neutral-200 dark:bg-neutral-700 p-0.5 text-center">
-            <button
-              v-for="level in [
-                { val: 0, label: t('vn.characters.trait_spoiler_0') },
-                { val: 1, label: t('vn.characters.trait_spoiler_1') },
-                { val: 2, label: t('vn.characters.trait_spoiler_2') }
-              ]"
-              :key="level.val"
-              @click="handleSelectTraitSpoiler(level.val)"
-              class="rounded-md py-1.5 text-[11px] font-medium transition-all cursor-pointer"
-              :class="[ traitSpoilerLevel === level.val ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 shadow-xs font-semibold' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200' ]"
-            >
-              {{ level.label }}
-            </button>
+          <div class="flex items-center justify-between gap-2">
+            <span class="shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+              <Icon icon="lucide:shield-alert" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
+              {{ t('vn.characters.trait_spoiler_filter') }}
+            </span>
+            <div class="flex shrink-0 items-center gap-0.5 rounded-full bg-neutral-200/70 dark:bg-neutral-700/60 p-0.5">
+              <button
+                v-for="level in [
+                  { val: 0, label: t('vn.characters.trait_spoiler_0') },
+                  { val: 1, label: t('vn.characters.trait_spoiler_1') },
+                  { val: 2, label: t('vn.characters.trait_spoiler_2') }
+                ]"
+                :key="level.val"
+                @click="handleSelectTraitSpoiler(level.val)"
+                class="whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none transition-all cursor-pointer"
+                :class="[ traitSpoilerLevel === level.val ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
+              >
+                {{ level.label }}
+              </button>
+            </div>
           </div>
 
           <!-- 性内容过滤 -->
-          <span class="text-xs text-neutral-600 dark:text-neutral-400 font-medium flex items-center gap-1.5 mt-1">
-            <Icon icon="lucide:layers" class="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
-            {{ t('vn.characters.trait_sexual_filter') }}
-          </span>
-          <div class="grid grid-cols-2 gap-1 rounded-lg bg-neutral-200 dark:bg-neutral-700 p-0.5 text-center">
-            <button
-              @click="showTraitSexual = false"
-              class="rounded-md py-1.5 text-[11px] font-medium transition-all cursor-pointer"
-              :class="[ !showTraitSexual ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 shadow-xs font-semibold' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200' ]"
-            >
-              {{ t('vn.characters.trait_sexual_hide') }}
-            </button>
-            <button
-              @click="showTraitSexual = true"
-              class="rounded-md py-1.5 text-[11px] font-medium transition-all cursor-pointer"
-              :class="[ showTraitSexual ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 shadow-xs font-semibold' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200' ]"
-            >
-              {{ t('vn.characters.trait_sexual_show') }}
-            </button>
+          <div class="flex items-center justify-between gap-2">
+            <span class="shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+              <Icon icon="lucide:layers" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
+              {{ t('vn.characters.trait_sexual_filter') }}
+            </span>
+            <div class="flex shrink-0 items-center gap-0.5 rounded-full bg-neutral-200/70 dark:bg-neutral-700/60 p-0.5">
+              <button
+                @click="showTraitSexual = false"
+                class="whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none transition-all cursor-pointer"
+                :class="[ !showTraitSexual ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
+              >
+                {{ t('vn.characters.trait_sexual_hide') }}
+              </button>
+              <button
+                @click="showTraitSexual = true"
+                class="whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none transition-all cursor-pointer"
+                :class="[ showTraitSexual ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
+              >
+                {{ t('vn.characters.trait_sexual_show') }}
+              </button>
+            </div>
           </div>
         </div>
 

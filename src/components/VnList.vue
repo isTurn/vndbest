@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
@@ -7,9 +7,14 @@ import BaseSelect from './BaseSelect.vue'
 import { IonImg, IonSpinner } from '@ionic/vue'
 import { usePrivacy, getImageNsfwLevel } from '@/composables/usePrivacy'
 import { useImageLoader } from '@/composables/useImageLoader'
+import { prefetchFromItems } from '@/utils/imagePrefetch'
+import { getLabelName } from '@/utils/ulistLabels'
 
 const { getCardAction } = usePrivacy()
 const imageLoader = useImageLoader()
+
+// 收藏标签本地化（1~7 系统标签走 i18n，自定义标签原样）
+const labelText = (lbl) => getLabelName(lbl?.id, lbl?.label, t)
 
 const props = defineProps({
   items: {
@@ -227,6 +232,23 @@ function getAltTitle(item) {
 
 function getImage(item) { return item.vn?.image || item.image || null }
 function getReleased(item) { return item.vn?.released || item.released || '' }
+
+// 数据一到就预热当前这批封面，抵消 ion-img 的 IntersectionObserver 延迟
+watch(
+  () => props.items,
+  (list) => {
+    prefetchFromItems(
+      list,
+      (it) => {
+        const img = getImage(it)
+        return img ? (img.thumbnail || img.url) : null
+      },
+      24,
+      { priority: true }
+    )
+  },
+  { immediate: true }
+)
 function getOlang(item) { return item.vn?.olang || item.olang || '' }
 function getRating(item) { return item.vn?.rating || item.rating || null }
 function getUserVote(item) { return item.vote || null }
@@ -370,10 +392,11 @@ function toggleReverse() {
                 <ion-img
                   v-if="getImage(item)?.thumbnail || getImage(item)?.url"
                   :key="`list-${item.id}-${imageLoader.getRetryCount('list-' + item.id)}`"
-                  :src="getImage(item).thumbnail || getImage(item).url"
+                  :src="imageLoader.resolveSrc('list-' + item.id, getImage(item).thumbnail || getImage(item).url)"
                   alt="cover"
                   class="h-full w-full object-cover transition-opacity duration-500"
                   :class="{ 'opacity-0': !imageLoader.isSuccess('list-' + item.id) }"
+                  @ionImgWillLoad="imageLoader.onWillLoad('list-' + item.id)"
                   @ionImgDidLoad="imageLoader.onLoad('list-' + item.id)"
                   @ionError="imageLoader.onError('list-' + item.id)"
                 />
@@ -436,7 +459,7 @@ function toggleReverse() {
                   class="inline-flex items-center gap-1 text-[10px] text-neutral-600 dark:text-neutral-400 bg-neutral-100/80 dark:bg-neutral-800/80 px-2 py-0.5 rounded-md border border-neutral-200/50 dark:border-neutral-700/50"
                 >
                   <Icon icon="lucide:bookmark" class="h-3 w-3 text-neutral-400 shrink-0" />
-                  <span>{{ lbl.label }}</span>
+                  <span>{{ labelText(lbl) }}</span>
                 </div>
               </div>
             </div>
@@ -492,10 +515,11 @@ function toggleReverse() {
                   <ion-img
                     v-if="getImage(item)?.url"
                     :key="`card-left-${item.id}-${imageLoader.getRetryCount('card-left-' + item.id)}`"
-                    :src="getImage(item).url"
+                    :src="imageLoader.resolveSrc('card-left-' + item.id, getImage(item).thumbnail || getImage(item).url)"
                     alt="cover"
                     class="w-full h-auto object-cover max-h-72 border-b border-neutral-100 dark:border-neutral-800 transition-opacity duration-500"
                     :class="{ 'opacity-0': !imageLoader.isSuccess('card-left-' + item.id) }"
+                    @ionImgWillLoad="imageLoader.onWillLoad('card-left-' + item.id)"
                     @ionImgDidLoad="imageLoader.onLoad('card-left-' + item.id)"
                     @ionError="imageLoader.onError('card-left-' + item.id)"
                   />
@@ -560,10 +584,11 @@ function toggleReverse() {
                   <ion-img
                     v-if="getImage(item)?.url"
                     :key="`card-right-${item.id}-${imageLoader.getRetryCount('card-right-' + item.id)}`"
-                    :src="getImage(item).url"
+                    :src="imageLoader.resolveSrc('card-right-' + item.id, getImage(item).thumbnail || getImage(item).url)"
                     alt="cover"
                     class="w-full h-auto object-cover max-h-72 border-b border-neutral-100 dark:border-neutral-800 transition-opacity duration-500"
                     :class="{ 'opacity-0': !imageLoader.isSuccess('card-right-' + item.id) }"
+                    @ionImgWillLoad="imageLoader.onWillLoad('card-right-' + item.id)"
                     @ionImgDidLoad="imageLoader.onLoad('card-right-' + item.id)"
                     @ionError="imageLoader.onError('card-right-' + item.id)"
                   />

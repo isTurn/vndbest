@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { translateError } from '@/utils/errorMessage'
 import { Icon } from '@iconify/vue'
 import AppHeader from '@/components/AppHeader.vue'
 import { getAuthInfo } from '@/api/vndb'
@@ -87,7 +88,7 @@ async function handleLogin() {
       hardRefreshApp('/settings')
     }, 800)
   } catch (e) {
-    errorMsg.value = t('login.login_failed', { error: e.message || 'Token 无效或网络错误' })
+    errorMsg.value = t('login.login_failed', { error: translateError(e, t, 'login.invalid_token') })
     isLoading.value = false
   }
   // 成功路径不在 finally 里关 loading：即将整页刷新，避免闪一下可点按钮

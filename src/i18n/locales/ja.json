@@ -14,7 +14,17 @@
     "copied": "コピーしました",
     "copy_failed": "コピーに失敗しました",
     "favorite_added": "ローカルお気に入りに追加しました",
-    "favorite_removed": "ローカルお気に入りを解除しました"
+    "favorite_removed": "ローカルお気に入りを解除しました",
+    "retry": "再試行",
+    "search": "検索",
+    "no_description": "説明なし",
+    "confirm": "確認",
+    "unlimited": "指定なし",
+    "more": "もっと見る",
+    "count_vn": "{count} 作品",
+    "count_char": "{count} キャラ",
+    "count_vn_short": "{count} 作品",
+    "count_char_short": "{count} キャラ"
   },
   "settings": {
     "title": "設定",
@@ -27,6 +37,8 @@
     "use_sandbox": "Sandbox エンドポイントを使用",
     "sandbox_desc": "有効にするとテスト API を使用し、本番データの汚染を避けます",
     "language": "言語",
+    "link_browser_inapp": "アプリ内ブラウザ",
+    "link_browser_system": "システムブラウザ",
     "save_settings": "設定を保存",
     "settings_saved": "設定を保存しました！",
     "vn_title_priority": "VN タイトル言語の優先順位",
@@ -55,6 +67,10 @@
       "about": {
         "title": "アプリについて",
         "description": "バージョン情報、更新確認、プロジェクトリンク"
+      },
+      "navigation": {
+        "title": "リンクの開き方",
+        "description": "横断検索とリリース外部リンクをどちらのブラウザで開くか"
       }
     },
     "favorites": {
@@ -158,7 +174,9 @@
       "checking": "確認中...",
       "up_to_date": "最新です",
       "check_failed": "確認失敗",
-      "download_update": "最新版をダウンロード"
+      "download_update": "最新版をダウンロード",
+      "maintainer": "メンテナー",
+      "upstream": "オリジナルプロジェクト"
     },
     "theme": "外観",
     "theme_follow_system": "システムに従う",
@@ -175,11 +193,17 @@
       "hint": "Web / モバイル両対応。ギャラリーまたはファイルから選択。常に Cover で全画面表示します。",
       "error_select": "画像の選択または処理に失敗しました。再試行してください。",
       "error_quota": "画像が大きすぎて保存できません。より小さい画像を選んでください。"
-    }
+    },
+    "cross_search_browser": "横断検索のリンクの開き方",
+    "cross_search_browser_desc": "アプリ内ブラウザは APP 内蔵ブラウザで表示し、システムブラウザは外部ブラウザを呼び出します。",
+    "release_link_browser": "リリース外部リンクの開き方",
+    "release_link_browser_desc": "リリース詳細の VNDB 公式外部リンクのみに適用されます。",
+    "vndb_translator": "VNDB ページの中国語化",
+    "vndb_translator_desc": "アプリ内ブラウザで vndb.org を開いたときに中国語化スクリプトを自動注入します。"
   },
   "nav": {
     "home": "ホーム",
-    "library": "ライブラリ",
+    "library": "検索",
     "search": "検索",
     "list": "リスト",
     "settings": "設定"
@@ -209,11 +233,12 @@
     "birthday_today": "今日の誕生日",
     "birthday_tomorrow": "明日の誕生日",
     "no_birthday": "今日誕生日のキャラクターはいません",
-    "birthday_age": "{age}歳"
+    "birthday_age": "{age}歳",
+    "random_vn_tip": "ランダムに作品ページへ移動します"
   },
   "library": {
-    "title": "ライブラリ",
-    "description": "VNDB データベースを探索",
+    "title": "検索",
+    "description": "作品・リリース・ブランド・人物・キャラ・タグ・特性を横断検索",
     "view_list": "{name} の一覧を見る",
     "vn": "作品",
     "releases": "リリース",
@@ -221,7 +246,18 @@
     "staff": "人物",
     "characters": "キャラクター",
     "tags": "タグ",
-    "traits": "特徴"
+    "traits": "特徴",
+    "categories": "カテゴリから探す",
+    "search_placeholder": "作品・ブランド・キャラを検索…（中国語タイトル対応）",
+    "searching": "検索中…",
+    "search_empty": "該当するものが見つかりません。別のキーワードをお試しください",
+    "tag_vn_count": "{count} 作品",
+    "trait_char_count": "{count} キャラ",
+    "no_results": "該当なし",
+    "vn_characters": "作品のキャラ",
+    "vn_tags": "作品のタグ",
+    "vn_staff": "作品のスタッフ",
+    "hours_short": "{hours}h"
   },
   "producer_type": {
     "co": "会社",
@@ -231,10 +267,20 @@
   "search": {
     "title": "検索",
     "description": "ビジュアルノベル情報を検索",
-    "placeholder": "タイトルを入力して検索し、Enter を押してください...",
+    "placeholder": "{title}を検索...",
     "no_results": "一致するビジュアルノベルが見つかりません",
     "no_alttitle": "別タイトルなし",
-    "relevance": "関連度"
+    "relevance": "関連度",
+    "subtitle": "{title}を検索",
+    "empty_hint": "キーワードを入力して検索を開始",
+    "filter": "フィルター",
+    "clear": "クリア",
+    "save": "保存",
+    "released_range": "発売日範囲",
+    "rating_range": "評価範囲",
+    "from": "から",
+    "to": "まで",
+    "today": "今日"
   },
   "list": {
     "title": "リスト",
@@ -267,7 +313,8 @@
       "title": "タイトル"
     },
     "expand_n": "{count} 件をすべて展開",
-    "collapse": "折りたたむ"
+    "collapse": "折りたたむ",
+    "no_label": "名前のないラベル"
   },
   "login": {
     "title": "VNDB アカウント",
@@ -285,7 +332,8 @@
     "logged_in_as": "ログイン中 (ID: {id})",
     "logout": "ログアウト",
     "logout_success": "ログアウトしました",
-    "login_failed": "ログイン失敗: {error}"
+    "login_failed": "ログイン失敗: {error}",
+    "invalid_token": "トークンが無効か、ネットワークエラーです"
   },
   "vn": {
     "details": "作品詳細",
@@ -302,6 +350,7 @@
     "rating": "評価",
     "votes": "{count} 票",
     "votes_count": "投票数",
+    "length_from_votes": "{category} ({duration}、{count}票)",
     "description": "説明",
     "translation": {
       "title": "AI 翻訳",
@@ -329,7 +378,13 @@
     },
     "links": {
       "resource_sites": "リソースサイト",
-      "info_sites": "情報サイト"
+      "info_sites": "情報サイト",
+      "cross_search": "横断検索",
+      "cross_guide": "攻略 / セーブ / パッチ",
+      "cross_db": "データベース",
+      "cross_adult": "コミュニティ / 18+",
+      "cross_mode_title": "タイトル",
+      "cross_other_titles": "別のタイトルで検索"
     },
     "releases": {
       "loading": "リリースを読み込み中...",
@@ -358,7 +413,7 @@
       "birthday": "誕生日",
       "birthday_val": "{month}/{day}",
       "voiced_by": "CV",
-      "trait_spoiler_filter": "特徴のネタバレレベル",
+      "trait_spoiler_filter": "ネタバレ",
       "trait_spoiler_0": "なし",
       "trait_spoiler_1": "軽度",
       "trait_spoiler_2": "重大",
@@ -384,15 +439,15 @@
       "va_empty": "声優情報がありません"
     },
     "tags": {
-      "spoiler_filter": "最大ネタバレレベル",
+      "spoiler_filter": "ネタバレ",
       "spoiler_0": "なし",
       "spoiler_1": "軽度",
       "spoiler_2": "重大",
-      "category_filter": "タグ分類",
-      "category_cont": "内容",
+      "category_filter": "分類",
+      "category_cont": "一般内容",
       "category_ero": "性的内容",
-      "category_tech": "技術",
-      "search_mode_filter": "タグ範囲",
+      "category_tech": "技術的特徴",
+      "search_mode_filter": "範囲",
       "search_mode_summary": "概要",
       "search_mode_all": "すべて",
       "empty": "現在のフィルターでタグが見つかりません。ネタバレレベルや分類を調整してください。"
@@ -452,8 +507,27 @@
       "no_permission": "権限がありません",
       "confirm": "確定",
       "manage_labels": "ラベル管理",
-      "labels_description": "複数のラベルを選択して割り当てることができます"
-    }
+      "labels_description": "複数のラベルを選択して割り当てることができます",
+      "voted": "投票済み",
+      "voted_auto": "評価によって自動的に維持されます",
+      "private": "非公開",
+      "add_vote": "評価する",
+      "vote_hint": "タップして評価を編集",
+      "vote_need_collect": "コレクションに追加してから評価"
+    },
+    "notes_expand": "全文を表示",
+    "notes_collapse": "折りたたむ",
+    "cover_main_visual": "メインビジュアル",
+    "cover_default": "表紙",
+    "cover_pkgfront": "パッケージ前面",
+    "cover_pkgback": "パッケージ背面",
+    "cover_pkgcontent": "パッケージ内容",
+    "cover_pkgside": "パッケージ側面",
+    "cover_pkgmed": "パッケージメディア",
+    "cover_dig": "デジタル表紙",
+    "release_unknown": "発売日不明",
+    "tag_rating_title": "評価: {rating} / ネタバレ: {spoiler}",
+    "length_vote_hint": "VNDB のサイトでプレイ時間を記録します"
   },
   "release": {
     "title": "リリース詳細",
@@ -491,8 +565,21 @@
       "msc": "カセット",
       "mrt": "メモリーカード",
       "in": "デジタル",
-      "otc": "その他"
-    }
+      "otc": "その他",
+      "crt": "カートリッジ"
+    },
+    "all_ages_short": "0 - 全年齢",
+    "is_patch": "パッチ",
+    "not_patch": "パッチ以外",
+    "official_yes": "公式",
+    "official_no": "非公式",
+    "free": "無料",
+    "paid": "有料",
+    "voiced_none_short": "声なし",
+    "voiced_ero_only": "Hシーンのみ",
+    "voiced_partial_short": "一部",
+    "voiced_full_short": "フルボイス",
+    "extlinks": "外部リンク"
   },
   "metadata": {
     "gender": {
@@ -515,7 +602,12 @@
       "character": "キャラクター関連",
       "fan": "ファンディスク",
       "translated": "翻訳版",
-      "collab": "コラボ"
+      "collab": "コラボ",
+      "shares-char": "キャラ共有",
+      "side": "サイドストーリー",
+      "parent": "本編",
+      "ser": "同シリーズ",
+      "set": "同スタッフ"
     },
     "staff_role": {
       "scenario": "シナリオ",
@@ -528,7 +620,16 @@
       "publisher": "販売",
       "developer": "開発",
       "songs": "歌曲",
-      "staff": "スタッフ"
+      "staff": "スタッフ",
+      "chardesign": "キャラクターデザイン",
+      "va": "声優",
+      "qa": "QA",
+      "cooperation": "協力",
+      "analyzing": "エンジン解析",
+      "package": "パッケージデザイン",
+      "thanks": "感謝",
+      "discuss": "議論",
+      "return": "リメイク"
     },
     "length": {
       "1": "非常に短い (< 2時間)",
@@ -572,7 +673,17 @@
       "tl": "タガログ語",
       "ro": "ルーマニア語",
       "nl": "オランダ語",
-      "pt": "ポルトガル語"
+      "pt": "ポルトガル語",
+      "ja_orig": "日本語（オリジナル）",
+      "zh_orig": "中国語（オリジナル）",
+      "en_orig": "英語（オリジナル）",
+      "ko_orig": "韓国語（オリジナル）",
+      "fr_orig": "フランス語（オリジナル）",
+      "de_orig": "ドイツ語（オリジナル）",
+      "ru_orig": "ロシア語（オリジナル）",
+      "es_orig": "スペイン語（オリジナル）",
+      "it_orig": "イタリア語（オリジナル）",
+      "vi_orig": "ベトナム語（オリジナル）"
     },
     "trait_group": {
       "hair": "髪",
@@ -599,7 +710,9 @@
       "species": "種族",
       "occupation": "職業",
       "title": "肩書き",
-      "other": "その他"
+      "other": "その他",
+      "subject_of": "対象",
+      "items": "関連アイテム"
     },
     "platform": {
       "win": "Windows",
@@ -655,13 +768,30 @@
       "smd": "Sega Mega Drive",
       "x1s": "Sharp X1",
       "mob": "その他(モバイル)",
-      "oth": "その他"
+      "oth": "その他",
+      "xb1": "Xbox One",
+      "xb3": "Xbox Series"
+    },
+    "devstatus": {
+      "finished": "完結",
+      "developing": "開発中",
+      "cancelled": "中止"
+    },
+    "screenshots": {
+      "yes": "スクリーンショットあり",
+      "no": "スクリーンショットなし"
+    },
+    "blood_type": {
+      "a": "A 型",
+      "b": "B 型",
+      "ab": "AB 型",
+      "o": "O 型"
+    },
+    "producer_type": {
+      "co": "会社",
+      "in": "個人",
+      "ng": "同人"
     }
-  },
-  "producer_type": {
-    "co": "会社",
-    "in": "個人",
-    "ng": "同人サークル"
   },
   "favorites": {
     "title": "ローカルお気に入り",
@@ -682,5 +812,89 @@
       "staff": "人物",
       "producer": "会社"
     }
+  },
+  "update": {
+    "new_version_available": "新しいバージョンがあります",
+    "no_changelog": "更新内容はありません",
+    "dont_remind_this_version": "このバージョンでは通知しない",
+    "later": "後で",
+    "update_now": "今すぐ更新",
+    "manual_check_tip": "設定 - 概要ページから手動で確認できます"
+  },
+  "error": {
+    "timeout": "リクエストがタイムアウトしました。ネットワークを確認してください。",
+    "rate_limit": "リクエストが多すぎます。しばらくしてから再試行してください。",
+    "network": "ネットワークに接続できません。"
+  },
+  "save_search": {
+    "title": "検索を保存",
+    "hint": "名前を入力してください（最大{max}文字）",
+    "placeholder": "検索名を入力",
+    "name_required": "名前を入力してください",
+    "name_too_long": "名前は最大{max}文字です",
+    "name_exists": "名前は既に存在します"
+  },
+  "filter": {
+    "tag_title": "タグを選択",
+    "tag_search_placeholder": "タグ名を検索...",
+    "popular_tags": "人気タグ",
+    "trait_title": "特徴",
+    "trait_search_placeholder": "特徴名を検索...",
+    "popular_traits": "人気の特徴",
+    "search_results": "検索結果",
+    "load_more": "さらに読み込む",
+    "no_tags_found": "一致するタグがありません",
+    "no_traits_found": "一致する特徴がありません",
+    "selected": "選択済み",
+    "tags_unit": "タグ",
+    "traits_unit": "特徴",
+    "translation_match": "翻訳一致",
+    "birthday": "誕生日",
+    "body_data": "身体データ",
+    "clear_body_data": "身体データをクリア",
+    "height": "身長 (cm)",
+    "weight": "体重 (kg)",
+    "bust": "バスト (cm)",
+    "cup": "カップ数",
+    "day": "日"
+  },
+  "tag": {
+    "view_related_vns": "関連作品を見る",
+    "no_results": "タグが見つかりません",
+    "translation_match": "翻訳一致",
+    "translation_badge": "翻訳"
+  },
+  "trait": {
+    "view_related_chars": "関連キャラを見る",
+    "no_results": "特徴が見つかりません"
+  },
+  "character": {
+    "no_results": "キャラクターが見つかりません",
+    "birthday_short": "{month}月{day}日",
+    "month": "{n}月"
+  },
+  "staff": {
+    "no_results": "スタッフが見つかりません",
+    "other_names": "別名",
+    "works": "参加作品",
+    "not_found": "この人物の情報が見つかりません"
+  },
+  "producer": {
+    "no_results": "ブランドが見つかりません",
+    "developed_works": "開発作品"
+  },
+  "saved_search": {
+    "type_vn": "VN 検索",
+    "type_releases": "リリース検索",
+    "type_producers": "ブランド検索",
+    "type_staff": "スタッフ検索",
+    "type_characters": "キャラ検索",
+    "type_tags": "タグ検索",
+    "type_traits": "特徴検索",
+    "latest_chinese": "最新中国語版",
+    "latest_release": "最新リリース",
+    "earliest_release": "最古リリース",
+    "before_today": "今日以前",
+    "before_date": "{date}以前"
   }
 }

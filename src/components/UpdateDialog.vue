@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
+import { openWithSystemBrowser } from '@/utils/linkOpener'
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -24,7 +25,8 @@ watch(() => props.show, (val) => {
 
 function handleConfirm() {
   if (props.downloadUrl) {
-    window.open(props.downloadUrl, '_blank')
+    // APK 下载必须交给系统浏览器：内置 WebView 不会触发系统下载器
+    openWithSystemBrowser(props.downloadUrl)
   }
   emit('confirm', { ignore: ignoreThisVersion.value })
 }

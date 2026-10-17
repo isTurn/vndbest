@@ -151,7 +151,7 @@ async function translateDescription() {
           <!-- VN Count -->
           <div class="px-4 pb-2">
             <span class="text-[11px] text-neutral-400 dark:text-neutral-500 font-medium">
-              {{ tag.vn_count }} VNs
+              {{ t('common.count_vn_short', { count: tag.vn_count }) }}
             </span>
           </div>
 
@@ -192,7 +192,7 @@ async function translateDescription() {
             </div>
           </div>
           <div v-else class="px-4 pb-3">
-            <p class="text-xs text-neutral-400 dark:text-neutral-500 italic">暂无描述</p>
+            <p class="text-xs text-neutral-400 dark:text-neutral-500 italic">{{ t('common.no_description') }}</p>
           </div>
 
           <!-- Footer -->
@@ -201,7 +201,7 @@ async function translateDescription() {
               @click="handleDetail"
               class="w-full py-2 rounded-lg bg-neutral-900 text-white text-xs font-medium hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white transition-colors cursor-pointer"
             >
-              查看相关作品
+              {{ t('tag.view_related_vns') }}
             </button>
           </div>
         </div>

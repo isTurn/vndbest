@@ -140,7 +140,9 @@ function generateCacheKey(path, method, body) {
  */
 export async function request(path, options = {}) {
   const url = `${getEndpoint()}${path}`
-  const { timeout, cache: cacheOption, forceReload, ...fetchOptions } = options
+  // 默认 20s 超时：避免弱网/丢包时请求永久挂起（调用方可显式覆盖）
+  const DEFAULT_TIMEOUT = 20000
+  const { timeout = DEFAULT_TIMEOUT, cache: cacheOption, forceReload, ...fetchOptions } = options
 
   const method = fetchOptions.method || 'GET'
   const requestBody = typeof fetchOptions.body === 'string' ? fetchOptions.body : null
@@ -246,10 +248,23 @@ export async function request(path, options = {}) {
             }
           } catch (_) {}
 
+          // 429：VNDB 限流，附上 Retry-After 便于 UI 提示
+          if (response.status === 429) {
+            const retryAfter = Number(response.headers.get('Retry-After'))
+            errorMsg = Number.isFinite(retryAfter) && retryAfter > 0
+              ? `Rate limited, retry after ${retryAfter}s`
+              : 'Rate limited'
+          }
+
           const error = new Error(errorMsg)
           error.name = 'VndbRequestError'
           error.status = response.status
           error.statusText = response.statusText
+          if (response.status === 429) {
+            error.name = 'VndbRateLimitError'
+            const ra = Number(response.headers.get('Retry-After'))
+            error.retryAfter = Number.isFinite(ra) && ra > 0 ? ra : null
+          }
           error.url = url
           error.method = method
           error.requestBody = requestBody
@@ -281,8 +296,10 @@ export async function request(path, options = {}) {
     } catch (err) {
       const isTimeoutError = err.name === 'AbortError' || err?.message?.toLowerCase?.().includes('timeout')
       if (isTimeoutError) {
-        const timeoutError = new Error('请求超时，请检查网络后重试')
+        // 用 i18n 键占位，UI 层通过 translateError() 翻译（API 层不直接依赖 i18n 实例）
+        const timeoutError = new Error('error.timeout')
         timeoutError.name = 'VndbTimeoutError'
+        timeoutError.i18nKey = 'error.timeout'
         timeoutError.url = url
         timeoutError.method = method
         timeoutError.requestBody = requestBody
@@ -406,7 +423,7 @@ export async function getVnDetail(id) {
     method: 'POST',
     body: JSON.stringify({
       filters: ['id', '=', id],
-      fields: 'id, title, alttitle, titles{lang,title,latin}, image{url,dims,sexual,violence,thumbnail,thumbnail_dims}, released, olang, description, relations{id,title,alttitle,relation,relation_official,image{url,dims,thumbnail,sexual},rating,released,olang}, languages, platforms, developers{id,name}, rating, votecount, length, length_minutes, tags{id,name,rating,spoiler,category,searchable}, staff{id,role,name,original}, va{note,staff{id,name,original},character{id,name,original,image{url,sexual}}}, screenshots{url,dims,thumbnail,thumbnail_dims,sexual}',
+      fields: 'id, title, alttitle, titles{lang,title,latin}, image{url,dims,sexual,violence,thumbnail,thumbnail_dims}, released, olang, description, relations{id,title,alttitle,relation,relation_official,image{url,dims,thumbnail,sexual},rating,released,olang}, languages, platforms, developers{id,name}, rating, votecount, length, length_minutes, length_votes, tags{id,name,rating,spoiler,category,searchable}, staff{id,role,name,original}, va{note,staff{id,name,original},character{id,name,original,image{url,sexual}}}, screenshots{url,dims,thumbnail,thumbnail_dims,sexual}',
     })
   })
 }
@@ -420,7 +437,7 @@ export async function getVnReleases(vnId) {
     method: 'POST',
     body: JSON.stringify({
       filters: ['vn', '=', ['id', '=', vnId]],
-      fields: 'id, title, alttitle, released, languages{lang}, platforms, official, patch, freeware, notes, uncensored, minage, images{url,dims,type,languages,sexual}',
+      fields: 'id, title, alttitle, released, languages{lang}, platforms, official, patch, freeware, notes, uncensored, minage, extlinks{url,label,name}, images{url,dims,type,languages,sexual,thumbnail,thumbnail_dims}',
       sort: 'released',
       results: 50
     })
@@ -433,7 +450,7 @@ export async function getVnReleases(vnId) {
  */
 export async function getReleaseList(filters = [], params = {}) {
   const payload = {
-    fields: 'id, title, alttitle, released, languages{lang}, platforms, official, patch, freeware, notes, uncensored, minage, images{url,dims,type,languages,sexual}',
+    fields: 'id, title, alttitle, released, languages{lang}, platforms, official, patch, freeware, notes, uncensored, minage, extlinks{url,label,name}, images{url,dims,type,languages,sexual,thumbnail,thumbnail_dims}',
     results: 20,
     ...params
   }
@@ -455,7 +472,7 @@ export async function getReleaseDetail(id) {
     method: 'POST',
     body: JSON.stringify({
       filters: ['id', '=', id],
-      fields: 'id, title, alttitle, released, languages{lang,title,latin,main}, platforms, official, patch, freeware, notes, uncensored, minage, gtin, catalog, resolution, voiced, engine, media{medium,qty}, images{url,dims,type,languages,sexual}, vns{id,title,alttitle,titles{lang,title,latin},image{url,thumbnail,sexual},released,olang,rating}, producers{id,name,original,developer,publisher}',
+      fields: 'id, title, alttitle, released, languages{lang,title,latin,main}, platforms, official, patch, freeware, notes, uncensored, minage, gtin, catalog, resolution, voiced, engine, media{medium,qty}, images{url,dims,type,languages,sexual,thumbnail,thumbnail_dims}, vns{id,title,alttitle,titles{lang,title,latin},image{url,thumbnail,sexual},released,olang,rating}, producers{id,name,original,developer,publisher}, extlinks{url,label,name}',
     })
   })
 }

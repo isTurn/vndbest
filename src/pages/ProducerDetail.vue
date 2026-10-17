@@ -212,7 +212,7 @@ const getProducerTypeLabel = (type) => {
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
           <div class="h-4 w-1 rounded-full bg-neutral-900 dark:bg-neutral-100"></div>
-          <h3 class="text-sm font-bold text-neutral-900 dark:text-neutral-100 uppercase tracking-wider">开发作品</h3>
+          <h3 class="text-sm font-bold text-neutral-900 dark:text-neutral-100 uppercase tracking-wider">{{ t('producer.developed_works') }}</h3>
         </div>
         <span class="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded-full">
           {{ items.length }}{{ hasMore ? '+' : '' }}

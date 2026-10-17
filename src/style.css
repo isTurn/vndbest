@@ -191,11 +191,17 @@ body {
   min-height: 100vh;
 }
 
-button,
-input,
-textarea,
-select {
-  font: inherit;
+/* 注意：表单元素继承字体这条规则必须放在 @layer base 里。
+   Tailwind v4 的 preflight 已在 base 层做过同样的重置；如果这里不加层，
+   无层样式会压过所有 utilities 层（text-xs / text-[10px] 等全部失效，
+   <button> 字号一律变成继承来的 16px）。 */
+@layer base {
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
 }
 
 #app {

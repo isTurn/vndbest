@@ -97,7 +97,7 @@ defineExpose({
 
 <template>
   <div class="space-y-6">
-    <AppHeader mode="back" :title="title" :subtitle="`搜索 ${title} 相关信息`" />
+    <AppHeader mode="back" :title="title" :subtitle="t('search.subtitle', { title })" />
 
     <!-- Search Input -->
     <div class="relative">
@@ -116,7 +116,7 @@ defineExpose({
         @input="handleInput"
         @keydown.enter="handleSearch"
         type="text"
-        :placeholder="`搜索${title}...`"
+        :placeholder="t('search.placeholder', { title })"
         class="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 pl-9 pr-16 py-2.5 text-sm text-neutral-900 dark:text-neutral-100 outline-none transition focus:border-neutral-400 focus:ring-2 focus:ring-neutral-900/5 placeholder-neutral-400 dark:placeholder-neutral-500"
       />
       <!-- 清除按钮 -->
@@ -131,7 +131,7 @@ defineExpose({
       <button
         @click="handleSearch"
         class="absolute right-1.5 top-1/2 -translate-y-1/2 grid h-7 w-7 place-items-center rounded-md bg-white text-neutral-900 hover:bg-neutral-100 border border-neutral-200 dark:!bg-neutral-800 dark:!text-neutral-100 dark:hover:!bg-neutral-700 dark:!border-neutral-700 active:scale-95 transition-all cursor-pointer shrink-0"
-        title="搜索"
+        :title="t('common.search')"
       >
         <Icon icon="lucide:search" class="h-3.5 w-3.5" />
       </button>
@@ -151,7 +151,7 @@ defineExpose({
         <div class="p-4 rounded-full bg-neutral-50 dark:bg-neutral-800">
           <Icon :icon="icon" class="h-8 w-8" />
         </div>
-        <p class="text-sm">输入关键词开始搜索</p>
+        <p class="text-sm">{{ t('search.empty_hint') }}</p>
       </div>
     </div>
 

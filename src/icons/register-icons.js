@@ -16,6 +16,8 @@ import chevronsDown from '@iconify-icons/lucide/chevrons-down'
 import plus from '@iconify-icons/lucide/plus'
 import bookmark from '@iconify-icons/lucide/bookmark'
 import externalLink from '@iconify-icons/lucide/external-link'
+import appWindow from '@iconify-icons/lucide/app-window'
+import compass from '@iconify-icons/lucide/compass'
 import refreshCw from '@iconify-icons/lucide/refresh-cw'
 import settings from '@iconify-icons/lucide/settings'
 import info from '@iconify-icons/lucide/info'
@@ -95,7 +97,15 @@ import siApple from '@iconify-icons/simple-icons/apple'
 import siLinux from '@iconify-icons/simple-icons/linux'
 import siAndroid from '@iconify-icons/simple-icons/android'
 import siNintendo from '@iconify-icons/simple-icons/nintendo'
+import siNintendoSwitch from '@iconify-icons/simple-icons/nintendoswitch'
+import siNintendo3ds from '@iconify-icons/simple-icons/nintendo3ds'
+import siNintendoGamecube from '@iconify-icons/simple-icons/nintendogamecube'
 import siPlaystation from '@iconify-icons/simple-icons/playstation'
+import siPlaystation2 from '@iconify-icons/simple-icons/playstation2'
+import siPlaystation3 from '@iconify-icons/simple-icons/playstation3'
+import siPlaystation4 from '@iconify-icons/simple-icons/playstation4'
+import siPlaystation5 from '@iconify-icons/simple-icons/playstation5'
+import siPlaystationVita from '@iconify-icons/simple-icons/playstationvita'
 import siSega from '@iconify-icons/simple-icons/sega'
 import siXbox from '@iconify-icons/simple-icons/xbox'
 import siGoogleChrome from '@iconify-icons/simple-icons/googlechrome'
@@ -116,6 +126,8 @@ const ICON_DATA = {
   [APP_ICON_NAMES.common.plus]: plus,
   [APP_ICON_NAMES.common.bookmark]: bookmark,
   [APP_ICON_NAMES.common.externalLink]: externalLink,
+  [APP_ICON_NAMES.common.appWindow]: appWindow,
+  [APP_ICON_NAMES.common.compass]: compass,
   [APP_ICON_NAMES.common.refresh]: refreshCw,
   [APP_ICON_NAMES.common.settings]: settings,
   [APP_ICON_NAMES.common.info]: info,
@@ -197,7 +209,15 @@ const ICON_DATA = {
   'simple-icons:linux': siLinux,
   'simple-icons:android': siAndroid,
   'simple-icons:playstation': siPlaystation,
+  'simple-icons:playstation2': siPlaystation2,
+  'simple-icons:playstation3': siPlaystation3,
+  'simple-icons:playstation4': siPlaystation4,
+  'simple-icons:playstation5': siPlaystation5,
+  'simple-icons:playstationvita': siPlaystationVita,
   'simple-icons:nintendo': siNintendo,
+  'simple-icons:nintendoswitch': siNintendoSwitch,
+  'simple-icons:nintendo3ds': siNintendo3ds,
+  'simple-icons:nintendogamecube': siNintendoGamecube,
   'simple-icons:sega': siSega,
   'simple-icons:xbox': siXbox,
   'simple-icons:googlechrome': siGoogleChrome

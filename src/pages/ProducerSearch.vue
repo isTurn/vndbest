@@ -1,7 +1,7 @@
 <script setup>
 defineOptions({ name: 'ProducerSearch' })
 
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
@@ -19,6 +19,10 @@ const searchBaseRef = ref(null)
 const openSaveDialog = () => searchBaseRef.value?.openSaveDialog()
 
 const query = ref('')
+
+// 支持从 URL 带入搜索关键词（全局搜索「查看更多」跳转用）
+const routeQuery = computed(() => (typeof route.query.q === 'string' ? route.query.q : ''))
+if (routeQuery.value) query.value = routeQuery.value
 const results = ref([])
 const isLoading = ref(false)
 const hasMore = ref(false)
@@ -46,9 +50,9 @@ const langOptions = [
 
 const typeOptions = [
   { value: 'all', label: 'list.all' },
-  { value: 'co', label: '会社' },
-  { value: 'in', label: '个人' },
-  { value: 'ng', label: '同人' }
+  { value: 'co', label: 'metadata.producer_type.co' },
+  { value: 'in', label: 'metadata.producer_type.in' },
+  { value: 'ng', label: 'metadata.producer_type.ng' }
 ]
 
 // 计算是否有激活的筛选条件
@@ -197,11 +201,20 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (observer) observer.disconnect()
+  if (filterDebounceTimer) clearTimeout(filterDebounceTimer)
 })
 
-// 筛选器变化时自动重新搜索
+// 筛选器变化时自动重新搜索（统一防抖，避免连点/多选时并发请求）
+let filterDebounceTimer = null
+const debouncedFetch = () => {
+  if (filterDebounceTimer) clearTimeout(filterDebounceTimer)
+  filterDebounceTimer = setTimeout(() => {
+    fetchData()
+  }, 300)
+}
+
 watch([selectedLang, selectedType], () => {
-  fetchData()
+  debouncedFetch()
 })
 
 // 监听 sentinel，确保 DOM 稳定
@@ -241,7 +254,7 @@ watch(sentinel, (el) => {
                 : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-100 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-700'"
             >
               <Icon icon="lucide:sliders-horizontal" class="h-3.5 w-3.5" />
-              <span>筛选</span>
+              <span>{{ t('search.filter') }}</span>
             </button>
 
             <!-- 保存筛选 -->
@@ -251,7 +264,7 @@ watch(sentinel, (el) => {
               class="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition cursor-pointer"
             >
               <Icon icon="lucide:bookmark" class="h-3 w-3" />
-              <span>保存</span>
+              <span>{{ t('search.save') }}</span>
             </button>
 
             <!-- 清除所有筛选 -->
@@ -261,7 +274,7 @@ watch(sentinel, (el) => {
               class="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-red-500 dark:text-red-400 bg-red-50 dark:bg-red-900/30 border border-red-100 dark:border-red-800/50 hover:bg-red-100 dark:hover:bg-red-900/50 transition cursor-pointer"
             >
               <Icon icon="lucide:x" class="h-3 w-3" />
-              <span>清除</span>
+              <span>{{ t('search.clear') }}</span>
             </button>
           </div>
 
@@ -354,7 +367,7 @@ watch(sentinel, (el) => {
       <!-- 无搜索结果 -->
       <div v-if="results.length === 0 && !isLoading && query" class="flex flex-col items-center justify-center py-20 text-neutral-400 dark:text-neutral-500 space-y-3">
         <Icon icon="lucide:search-x" class="h-10 w-10 text-neutral-200 dark:text-neutral-700" />
-        <p class="text-sm">未找到相关会社</p>
+        <p class="text-sm">{{ t('producer.no_results') }}</p>
       </div>
 
       <!-- 初始加载动画 -->

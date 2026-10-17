@@ -2,9 +2,11 @@
 import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { Icon } from '@iconify/vue'
 import { searchTags, getTagList } from '@/api/vndb'
+import { useI18n } from 'vue-i18n'
 import { useTranslation } from '@/composables/useTranslation'
 
 const { translateTagName } = useTranslation()
+const { t } = useI18n()
 
 const props = defineProps({
   show: {
@@ -157,7 +159,7 @@ async function fetchPopularTags() {
         <div class="relative z-10 w-full sm:w-[420px] max-h-[80vh] bg-white dark:bg-neutral-900 sm:rounded-2xl rounded-t-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200">
           <!-- 顶部栏 -->
           <div class="flex items-center justify-between px-4 pt-4 pb-2">
-            <h3 class="text-base font-bold text-neutral-900 dark:text-neutral-100">选择标签</h3>
+            <h3 class="text-base font-bold text-neutral-900 dark:text-neutral-100">{{ t('filter.tag_title') }}</h3>
             <button
               @click="handleClose"
               class="p-1.5 rounded-full hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer"
@@ -174,7 +176,7 @@ async function fetchPopularTags() {
                 v-model="searchQuery"
                 @input="handleSearchInput"
                 type="text"
-                placeholder="搜索标签名称..."
+                :placeholder="t('filter.tag_search_placeholder')"
                 class="w-full rounded-lg border border-neutral-200 bg-neutral-50 pl-9 pr-4 py-2 text-sm outline-none transition focus:border-neutral-400 focus:bg-white placeholder-neutral-400 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-100 dark:focus:border-neutral-500 dark:focus:bg-neutral-900 dark:placeholder-neutral-500"
               />
               <button
@@ -209,7 +211,7 @@ async function fetchPopularTags() {
           <div class="flex-1 overflow-y-auto px-4 pb-4 min-h-[200px] max-h-[50vh]">
             <!-- 热门标签 (无搜索时显示) -->
             <div v-if="!searchQuery && popularTags.length > 0 && results.length === 0 && !isLoading">
-              <p class="text-[11px] text-neutral-400 font-bold uppercase tracking-wider mb-2">热门标签</p>
+              <p class="text-[11px] text-neutral-400 font-bold uppercase tracking-wider mb-2">{{ t('filter.popular_tags') }}</p>
               <div class="space-y-1">
                 <button
                   v-for="tag in popularTags"
@@ -238,7 +240,7 @@ async function fetchPopularTags() {
                     </div>
                   </div>
                   <div class="shrink-0 flex items-center gap-2">
-                    <span class="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">{{ tag.vn_count }} VNs</span>
+                    <span class="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">{{ t('common.count_vn', { count: tag.vn_count }) }}</span>
                     <Icon
                       v-if="isSelected(tag)"
                       icon="lucide:check"
@@ -252,7 +254,7 @@ async function fetchPopularTags() {
             <!-- 搜索结果 -->
             <div v-if="searchQuery || results.length > 0">
               <p v-if="searchQuery" class="text-[11px] text-neutral-400 font-bold uppercase tracking-wider mb-2">
-                搜索结果
+                {{ t('filter.search_results') }}
               </p>
               <div class="space-y-1">
                 <button
@@ -282,7 +284,7 @@ async function fetchPopularTags() {
                     </div>
                   </div>
                   <div class="shrink-0 flex items-center gap-2">
-                    <span class="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">{{ tag.vn_count }} VNs</span>
+                    <span class="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">{{ t('common.count_vn', { count: tag.vn_count }) }}</span>
                     <Icon
                       v-if="isSelected(tag)"
                       icon="lucide:check"
@@ -298,8 +300,8 @@ async function fetchPopularTags() {
                   @click="loadMore"
                   class="text-xs text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-300 font-medium cursor-pointer"
                 >
-                  <span v-if="isLoading">加载中...</span>
-                  <span v-else>加载更多</span>
+                  <span v-if="isLoading">{{ t('common.loading') }}</span>
+                  <span v-else>{{ t('filter.load_more') }}</span>
                 </button>
               </div>
             </div>
@@ -312,20 +314,20 @@ async function fetchPopularTags() {
             <!-- 空状态 -->
             <div v-if="!isLoading && searchQuery && results.length === 0" class="py-8 text-center">
               <Icon icon="lucide:tags" class="h-8 w-8 text-neutral-300 dark:text-neutral-600 mx-auto mb-2" />
-              <p class="text-xs text-neutral-400 dark:text-neutral-500">没有找到匹配的标签</p>
+              <p class="text-xs text-neutral-400 dark:text-neutral-500">{{ t('filter.no_tags_found') }}</p>
             </div>
           </div>
 
           <!-- 底部确认栏 -->
           <div class="flex items-center justify-between px-4 py-3 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50/80 dark:bg-neutral-800/80">
             <span class="text-xs text-neutral-500 dark:text-neutral-400">
-              已选 <span class="font-bold text-neutral-900 dark:text-neutral-100">{{ localSelected.length }}</span> 个标签
+              {{ t('filter.selected') }} <span class="font-bold text-neutral-900 dark:text-neutral-100">{{ localSelected.length }}</span> {{ t('filter.tags_unit') }}
             </span>
             <button
               @click="handleConfirm"
               class="px-4 py-2 rounded-lg bg-neutral-900 text-white text-sm font-medium hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white active:scale-95 transition-all cursor-pointer"
             >
-              确认
+              {{ t('common.confirm') }}
             </button>
           </div>
         </div>

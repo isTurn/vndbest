@@ -2,14 +2,20 @@
 import { ref, watch, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { translateError } from '@/utils/errorMessage'
 import { Icon } from '@iconify/vue'
 import AppHeader from '@/components/AppHeader.vue'
 import { getVnDetail, getVnReleases, getVnCharacters, getVnQuotes, getVnListItem, patchVnListItem, deleteVnListItem, getUserListLabels } from '@/api/vndb'
 import VnList from '@/components/VnList.vue'
 import ActionSheet from '@/components/ActionSheet.vue'
+import AgeRating from '@/components/AgeRating.vue'
 import { usePrivacy, getImageNsfwLevel } from '@/composables/usePrivacy'
 import { useTranslation } from '@/composables/useTranslation'
 import { useImageLoader } from '@/composables/useImageLoader'
+import { getLabelName, isVotedLabel, SYSTEM_LABEL_MAX_ID } from '@/utils/ulistLabels'
+import { PLATFORM_ICON_NAMES, APP_ICON_NAMES } from '@/icons/icon-names'
+import { buildCrossSearchLinks, buildCrossSearchTitles, pickDefaultTitle, openCrossSearchSite } from '@/utils/crossSearch'
+import { openExternalUrl, getReleaseLinkBrowserMode } from '@/utils/linkOpener'
 import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
 import { useFavorites } from '@/composables/useFavorites'
@@ -69,7 +75,7 @@ const spoilerLevel = ref(0)
 const tempSpoilerLevel = ref(0) // 用于弹窗确认过程中的临时变量
 
 // 标签分类筛选（多选）：'cont'=内容, 'ero'=性内容, 'tech'=技术
-const activeTagCategories = ref(['cont', 'tech'])
+const activeTagCategories = ref(['cont', 'ero', 'tech'])
 
 // 标签搜索模式（单选）：'summary'=摘要, 'all'=全部
 const tagSearchMode = ref('summary')
@@ -163,24 +169,14 @@ const LABEL_NAMES = {
   2: 'Finished',
   3: 'Stalled',
   4: 'Dropped',
-  5: 'Wishlisted',
-  6: 'Blacklist'
+  5: 'Wishlist',
+  6: 'Blacklist',
+  7: 'Voted'
 }
 
 // 预定义标签的多语言 i18n 映射
 const getLabelI18n = (id, fallback) => {
-  const map = {
-    1: 'vn.status.playing',
-    2: 'vn.status.finished',
-    3: 'vn.status.stalled',
-    4: 'vn.status.dropped',
-    5: 'vn.status.wishlisted',
-    6: 'vn.status.blacklist'
-  }
-  if (map[id]) {
-    return t(map[id])
-  }
-  return fallback || LABEL_NAMES[id] || `Label ${id}`
+  return getLabelName(id, fallback, t)
 }
 
 // 用户所有的标签列表（包括系统预定义与自定义）
@@ -219,10 +215,9 @@ const currentSelectedLabels = computed(() => {
   return currentLabelIds.value.map(id => {
     const userLbl = userLabels.value.find(l => l.id === id)
     const entryLbl = collectionEntry.value?.labels?.find(l => l.id === id)
-    const rawName = userLbl?.label || entryLbl?.label || entryLbl?.name || LABEL_NAMES[id] || `Label ${id}`
-    const name = id <= 6 ? getLabelI18n(id, rawName) : rawName
-    const isSystem = id <= 6
-    return { id, name, isSystem }
+    const rawName = userLbl?.label || entryLbl?.label || entryLbl?.name || LABEL_NAMES[id] || ''
+    const name = getLabelI18n(id, rawName)
+    return { id, name, isSystem: id <= SYSTEM_LABEL_MAX_ID }
   })
 })
 
@@ -269,14 +264,17 @@ const statusOptions = computed(() => {
   // 如果成功拉取到了用户的全部标签（包含自定义标签）
   if (userLabels.value && userLabels.value.length > 0) {
     for (const lbl of userLabels.value) {
-      const isSystem = lbl.id >= 1 && lbl.id <= 6
-      const labelText = isSystem ? getLabelI18n(lbl.id, lbl.label) : lbl.label
+      // Voted（id=7）由服务端按是否打过分自动维护，不能手动 set，
+      // 放进选项里会导致 PATCH 被拒 → 用户看到「状态更新失败」
+      if (isVotedLabel(lbl.id)) continue
+      const isSystem = lbl.id >= 1 && lbl.id <= SYSTEM_LABEL_MAX_ID
+      const labelText = getLabelI18n(lbl.id, lbl.label)
       options.push({
         value: lbl.id,
         label: labelText,
         count: lbl.count,
         icon: isSystem ? 'solar:bookmark-bold' : 'lucide:tag',
-        description: lbl.private ? 'Private' : ''
+        description: lbl.private ? t('vn.status.private') : ''
       })
     }
     return options
@@ -286,8 +284,9 @@ const statusOptions = computed(() => {
   const existingSet = new Set()
   if (collectionEntry.value?.labels) {
     for (const l of collectionEntry.value.labels) {
-      const isSystem = l.id >= 1 && l.id <= 6
-      const labelText = isSystem ? getLabelI18n(l.id, l.label || l.name) : (l.label || l.name || `Label ${l.id}`)
+      if (isVotedLabel(l.id)) continue
+      const isSystem = l.id >= 1 && l.id <= SYSTEM_LABEL_MAX_ID
+      const labelText = getLabelI18n(l.id, l.label || l.name)
       options.push({
         value: l.id,
         label: labelText,
@@ -299,6 +298,7 @@ const statusOptions = computed(() => {
 
   for (const [idStr, defaultName] of Object.entries(LABEL_NAMES)) {
     const id = Number(idStr)
+    if (isVotedLabel(id)) continue
     if (!existingSet.has(id)) {
       options.push({
         value: id,
@@ -355,7 +355,8 @@ const handleMultipleLabelsChange = async (selectedLabelIds) => {
 
   try {
     let updated = false
-    const validSelectedIds = (selectedLabelIds || []).filter(id => id && id > 0)
+    // id=7（Voted）是服务端自动维护的，绝不能出现在 labels_set/labels_unset 里
+    const validSelectedIds = (selectedLabelIds || []).filter(id => id && id > 0 && !isVotedLabel(id))
 
     if (validSelectedIds.length === 0) {
       // 没有任何选中的标签 → 从收藏列表移除
@@ -368,7 +369,7 @@ const handleMultipleLabelsChange = async (selectedLabelIds) => {
       }
     } else if (collectionEntry.value) {
       // 已在列表中：全量覆写标签或根据差集更新
-      const oldLabelIds = currentLabelIds.value
+      const oldLabelIds = currentLabelIds.value.filter(id => !isVotedLabel(id))
       const toUnset = oldLabelIds.filter(id => !validSelectedIds.includes(id))
       const toSet = validSelectedIds.filter(id => !oldLabelIds.includes(id))
 
@@ -738,8 +739,9 @@ const allCovers = computed(() => {
   if (vn.value?.image?.url) {
     list.push({
       url: vn.value.image.url,
+      thumbnail: vn.value.image.thumbnail,
       dims: vn.value.image.dims,
-      title: '主视觉图 (Main Visual)',
+      title: t('vn.cover_main_visual'),
       desc: vn.value.title,
       image: vn.value.image
     })
@@ -751,16 +753,20 @@ const allCovers = computed(() => {
       rel.images.forEach(img => {
         // 主要是 pkgfront (包装正面) 或 dig (数字封面)
         if (img.url && !list.some(item => item.url === img.url)) {
-          let label = '封面图'
-          if (img.type === 'pkgfront') label = '包装封面 (Front)'
-          if (img.type === 'pkgback') label = '包装封底 (Back)'
-          if (img.type === 'dig') label = '数字封面 (Digital)'
+          let label = t('vn.cover_default')
+          if (img.type === 'pkgfront') label = t('vn.cover_pkgfront')
+          if (img.type === 'pkgback') label = t('vn.cover_pkgback')
+          if (img.type === 'pkgcontent') label = t('vn.cover_pkgcontent')
+          if (img.type === 'pkgside') label = t('vn.cover_pkgside')
+          if (img.type === 'pkgmed') label = t('vn.cover_pkgmed')
+          if (img.type === 'dig') label = t('vn.cover_dig')
           
           list.push({
             url: img.url,
+            thumbnail: img.thumbnail,
             dims: img.dims,
             title: `${label} - ${rel.title}`,
-            desc: rel.released || '发售日未知',
+            desc: rel.released || t('vn.release_unknown'),
             image: img
           })
         }
@@ -1052,11 +1058,12 @@ const handleTouchEnd = (e) => {
 // BBCode 渲染函数
 const parseBBCode = (text) => {
   if (!text) return ''
+  // 先转义再拼 HTML：VNDB 的描述是用户可编辑内容，不转义直接 v-html 等于 XSS
   let escaped = text
-    .replace(/&/g, '&')
-    .replace(/</g, '<')
-    .replace(/>/g, '>')
-    .replace(/"/g, '"')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;')
 
   // 1. [url=link]text[/url]
@@ -1072,17 +1079,33 @@ const parseBBCode = (text) => {
   return escaped
 }
 
-// 格式化时长
+// 格式化时长（对齐 VNDB 官网风格：Medium (11h from 4 votes)）
 const formatLength = (vnData) => {
-  if (vnData.length_minutes) {
+  const hasCategory = !!vnData.length
+  const hasMinutes = !!vnData.length_minutes
+  const votes = vnData.length_votes || 0
+
+  if (!hasCategory && !hasMinutes) return t('metadata.length.unknown')
+
+  // 平均时长文案：>= 1h 用 "11h 30m"，不足 1h 用 "45m"
+  let duration = ''
+  if (hasMinutes) {
     const hours = Math.floor(vnData.length_minutes / 60)
     const mins = vnData.length_minutes % 60
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`
+    if (hours > 0) duration = mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
+    else duration = `${mins}m`
   }
-  if (vnData.length) {
-    return t(`metadata.length.${vnData.length}`) || t('metadata.length.unknown')
+
+  const category = hasCategory ? (t(`metadata.length.${vnData.length}`) || t('metadata.length.unknown')) : ''
+
+  // 分类 + 平均时长 + 票数 → "中等 (11h from 4 votes)"
+  if (category && duration && votes > 0) {
+    return t('vn.length_from_votes', { category, duration, count: votes })
   }
-  return t('metadata.length.unknown')
+  // 分类 + 平均时长（无票数）
+  if (category && duration) return `${category} (${duration})`
+  // 只有分类，或只有平均时长
+  return category || duration
 }
 
 // 翻译关系说明
@@ -1271,7 +1294,7 @@ const loadVnDetail = async (id) => {
       // 默认激活版本发行
       activeTab.value = 'releases'
       spoilerLevel.value = 0
-      activeTagCategories.value = ['cont', 'tech']
+      activeTagCategories.value = ['cont', 'ero', 'tech']
       resetDescriptionTranslation()
       tagSearchMode.value = 'summary'
       collectionEntry.value = null
@@ -1291,10 +1314,16 @@ const loadVnDetail = async (id) => {
     }
   } catch (err) {
     console.error('获取VN详情失败:', err)
-    error.value = err.message || t('vn.not_found')
+    error.value = translateError(err, t, 'vn.not_found')
   } finally {
     loading.value = false
   }
+}
+
+// 错误态「重试」：重新拉取当前 VN 详情
+const retryLoad = () => {
+  const id = route.params.id
+  if (id) loadVnDetail(id)
 }
 
 // 加载 Releases 发行列表
@@ -1370,6 +1399,11 @@ const copyTitleText = async (text) => {
   showGlobalToast(ok ? t('common.copied') : t('common.copy_failed'), ok ? 'success' : 'error')
 }
 
+// 平台图标（与 ReleaseList 保持一致：simple-icons 品牌 logo，缺失时回退显示器图标）
+function getPlatformIcon(platform) {
+  return PLATFORM_ICON_NAMES[platform] || APP_ICON_NAMES.common.monitor
+}
+
 // 统一标题处理逻辑 (与 VnList.vue 保持一致)
 function getTitle(v) {
   if (!v) return ''
@@ -1397,74 +1431,67 @@ const isLoggedIn = computed(() => {
   return !!(token && token.trim())
 })
 
-// 外链跳转：域名使用 base64 编码，避免完整域名出现在打包产物中触发静态扫描
-const _decode = (s) => atob(s)
-const _domains = {
-  d: _decode('d3d3LnNoaW5ua3UuY29t'),
-  e: _decode('d3d3LnR0bG9saS5jb20='),
-  f: _decode('d3d3LnZpa2FjZy5jb20='),
-  g: _decode('d3d3LnltZ2FsLmdhbWVz'),
-  h: _decode('YmdtLnR2'),
-  i: _decode('MmRmYW4uY29t'),
-  j: _decode('dm5kYi5vcmc='),
-}
+// 外链跳转：跨站搜索（移植自 VNDB 跨站搜索脚本 v2.5.11）
+// 候选标题：原名 / 各语言标题 / 拉丁转写，主标题排第一
+const crossSearchTitles = computed(() => buildCrossSearchTitles(vn.value))
+const crossSearchDefaultTitle = computed(() => pickDefaultTitle(crossSearchTitles.value))
+// 模式：'title' 用游戏名搜（默认）/ 'vn' 用 v{id} 搜
+const crossSearchMode = ref('title')
+// 用户手动挑的标题；空字符串表示用默认标题
+const crossSearchPickedTitle = ref('')
 
-// 外链跳转：获取原名（alttitle）用于搜索，兜底使用 title
-const _getTitle = () => {
+const crossSearchKeyword = computed(() => {
   const v = vn.value
   if (!v) return ''
-  return v.alttitle || v.title || ''
+  // VNDB API 返回的 vn.id 本身就带 "v" 前缀（如 "v17"），这里不能再拼一个
+  if (crossSearchMode.value === 'vn') return v.id
+  return (crossSearchPickedTitle.value || crossSearchDefaultTitle.value || '').trim()
+})
+
+const crossSearchGroups = computed(() => buildCrossSearchLinks(crossSearchKeyword.value))
+
+// 面板里最多再列 8 个候选标题（与脚本一致）
+const crossSearchChips = computed(() => {
+  const all = crossSearchTitles.value
+  if (!all.length) return []
+  const def = crossSearchDefaultTitle.value
+  const rest = all.filter((t) => t.text !== def).slice(0, 8)
+  return [{ text: def, lang: all.find((t) => t.text === def)?.lang || 'main' }, ...rest]
+})
+
+function pickCrossSearchTitle(title) {
+  crossSearchMode.value = 'title'
+  crossSearchPickedTitle.value = title === crossSearchDefaultTitle.value ? '' : title
 }
 
-// 外链跳转：资源站链接列表
-const resourceLinks = computed(() => {
-  const s = encodeURIComponent(_getTitle())
-  return [
-    {
-      name: '真红小站',
-      url: 'https://' + _domains.d + '/search?q=' + s,
-      icon: 'lucide:globe'
-    },
-    {
-      name: '忧郁的弟弟',
-      url: 'https://' + _domains.e + '/?s=' + s + '&submit=',
-      icon: 'lucide:globe'
-    },
-    {
-      name: 'vikacg',
-      url: 'https://' + _domains.f + '/search?s=' + s,
-      icon: 'lucide:globe'
-    }
-  ]
-})
+function setCrossSearchMode(mode) {
+  crossSearchMode.value = mode
+  crossSearchPickedTitle.value = ''
+}
 
-// 外链跳转：资料站链接列表
-const infoLinks = computed(() => {
-  const s = encodeURIComponent(_getTitle())
-  const vnId = vn.value?.id || ''
-  return [
-    {
-      name: 'Bangumi',
-      url: 'https://' + _domains.h + '/subject_search/' + s + '?cat=4',
-      icon: 'lucide:book-open'
-    },
-    {
-      name: '2dfan',
-      url: 'https://' + _domains.i + '/subjects/search?keyword=' + s,
-      icon: 'lucide:book-open'
-    },
-    {
-      name: 'vndb',
-      url: 'https://' + _domains.j + '/' + vnId,
-      icon: 'lucide:book-open'
-    },
-    {
-      name: '月幕',
-      url: 'https://' + _domains.g + '/search?type=article&keyword=' + s,
-      icon: 'lucide:book-open'
-    }
-  ]
-})
+// TouchGal 需要在内嵌 WebView 里注入脚本才能自动搜索，其余站点走普通外链
+const handleCrossSearchClick = (e, site) => {
+  if (!site?.native) return
+  e.preventDefault()
+  openCrossSearchSite(site, crossSearchKeyword.value)
+}
+
+// VNDB 的「填写游戏时长」只能在他们网页上做（Kana API 没有写入时长的端点），
+// 这里按用户的跳转方式设置打开 v{id}/lengthvote 页面。
+const openLengthVote = () => {
+  const id = vn.value?.id
+  if (!id) return
+  openExternalUrl(`https://vndb.org/${id}/lengthvote`)
+}
+
+// 版本卡片里的 VNDB 外链：走「版本外链」独立设置
+const openReleaseExtLink = (link) => {
+  if (!link?.url) return
+  openExternalUrl(link.url, { mode: getReleaseLinkBrowserMode() })
+}
+
+// 跨站搜索内联在顶部信息卡里，默认折叠成一行按钮，点击展开
+const showCrossSearch = ref(false)
 
 // 当前已加载的 VN ID，用于避免从子页面返回时重复加载
 const currentLoadedId = ref(null)
@@ -1520,6 +1547,11 @@ watch(
     <!-- 错误处理 -->
     <div v-else-if="error || !vn" class="text-center py-12 text-sm text-neutral-400 dark:text-neutral-500">
       {{ error || t('vn.not_found') }}
+      <div class="mt-4">
+        <button @click="retryLoad" class="rounded-lg bg-neutral-900 px-4 py-2 text-white text-xs font-bold dark:bg-neutral-100 dark:text-neutral-900 active:scale-95 transition">
+          {{ t('common.retry') }}
+        </button>
+      </div>
     </div>
 
     <!-- 详情内容 (Notion Style Layout) -->
@@ -1534,10 +1566,11 @@ watch(
           <ion-img
             v-if="vn.image?.url && !(coverAction === 'hide' && !revealedItems.has('cover'))"
             :key="`vn-cover-${imageLoader.getRetryCount('vn-cover')}`"
-            :src="vn.image.url"
+            :src="imageLoader.resolveSrc('vn-cover', vn.image.thumbnail || vn.image.url)"
             :alt="vn.title"
             class="h-full w-full object-cover transition-opacity duration-500"
             :class="{ 'opacity-0': !imageLoader.isSuccess('vn-cover') }"
+            @ionImgWillLoad="imageLoader.onWillLoad('vn-cover')"
             @ionImgDidLoad="imageLoader.onLoad('vn-cover')"
             @ionError="imageLoader.onError('vn-cover')"
           />
@@ -1586,6 +1619,81 @@ watch(
             >{{ getAltTitle(vn) }}</p>
           </div>
 
+          <!-- 跨站搜索（显眼入口：内联在信息卡里，点击展开全部站点） -->
+          <div v-if="crossSearchGroups.length">
+            <button
+              type="button"
+              @click="showCrossSearch = !showCrossSearch"
+              class="flex w-full items-center gap-2 px-3 py-2 rounded-lg border border-neutral-200 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-800 text-left hover:bg-neutral-100 dark:hover:bg-neutral-700 active:scale-[0.99] transition"
+            >
+              <Icon icon="lucide:compass" class="h-4 w-4 text-indigo-500 dark:text-indigo-400 shrink-0" />
+              <span class="text-xs font-bold text-neutral-800 dark:text-neutral-200">{{ t('vn.links.cross_search') }}</span>
+              <span class="text-[10px] text-neutral-400 dark:text-neutral-500 truncate flex-1">{{ crossSearchKeyword }}</span>
+              <Icon :icon="showCrossSearch ? 'lucide:chevron-up' : 'lucide:chevron-down'" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500 shrink-0" />
+            </button>
+            <div v-if="showCrossSearch" class="mt-2 space-y-2">
+              <!-- 搜索方式：游戏名 / v{id} -->
+              <div class="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  @click="setCrossSearchMode('title')"
+                  class="px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors"
+                  :class="crossSearchMode === 'title'
+                    ? 'bg-indigo-500 border-indigo-500 text-white'
+                    : 'border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400'"
+                >{{ t('vn.links.cross_mode_title') }}</button>
+                <button
+                  type="button"
+                  @click="setCrossSearchMode('vn')"
+                  class="px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors"
+                  :class="crossSearchMode === 'vn'
+                    ? 'bg-indigo-500 border-indigo-500 text-white'
+                    : 'border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400'"
+                >{{ vn.id }}</button>
+                <span class="text-[10px] text-neutral-400 dark:text-neutral-500 ml-1 truncate">{{ crossSearchKeyword }}</span>
+              </div>
+
+              <div v-for="group in crossSearchGroups" :key="'inline-' + group.key">
+                <div class="text-[9px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-1">{{ t(group.labelKey) }}</div>
+                <div class="flex flex-wrap gap-1.5">
+                  <a
+                    v-for="site in group.sites"
+                    :key="'inline-' + group.key + '-' + site.name"
+                    :href="site.url"
+                    :data-native="site.native || undefined"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    @click="handleCrossSearchClick($event, site)"
+                    class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] border border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 active:bg-neutral-200 dark:active:bg-neutral-700 transition-colors"
+                  >
+                    {{ site.name }}
+                  </a>
+                </div>
+              </div>
+
+              <!-- 换个标题搜 -->
+              <div v-if="crossSearchChips.length > 1" class="pt-1 border-t border-neutral-100 dark:border-neutral-700/60">
+                <div class="text-[9px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-1">{{ t('vn.links.cross_other_titles') }}</div>
+                <div class="flex flex-wrap gap-1">
+                  <button
+                    v-for="chip in crossSearchChips"
+                    :key="'chip-' + chip.text"
+                    type="button"
+                    :title="chip.text"
+                    @click="pickCrossSearchTitle(chip.text)"
+                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] border transition-colors max-w-full"
+                    :class="crossSearchMode === 'title' && crossSearchKeyword === chip.text
+                      ? 'bg-indigo-50 dark:bg-indigo-500/20 border-indigo-300 dark:border-indigo-500/50 text-indigo-700 dark:text-indigo-300'
+                      : 'border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'"
+                  >
+                    <span class="text-[8px] uppercase opacity-60 shrink-0">{{ chip.lang }}</span>
+                    <span class="truncate">{{ chip.text }}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="grid grid-cols-[80px_1fr] items-start gap-y-1.5 text-xs text-neutral-600 dark:text-neutral-400">
             <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.id') }}</span>
             <span class="font-mono text-neutral-800 dark:text-neutral-200">{{ vn.id }}</span>
@@ -1628,14 +1736,23 @@ watch(
             <span class="text-neutral-400 dark:text-neutral-500 pt-0.5">{{ t('vn.platforms') }}</span>
             <div class="flex flex-wrap gap-1">
               <span v-for="p in (vn.platforms || [])" :key="p"
-                class="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-600 font-medium">
+                class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-600 font-medium">
+                <Icon :icon="getPlatformIcon(p)" class="h-3 w-3 shrink-0" />
                 {{ t(`metadata.platform.${p}`, p) }}
               </span>
               <span v-if="!vn.platforms?.length" class="text-neutral-800 dark:text-neutral-300">{{ t('metadata.gender.unknown') }}</span>
             </div>
 
             <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.length') }}</span>
-            <span class="text-neutral-800 dark:text-neutral-200">{{ formatLength(vn) }}</span>
+            <button
+              type="button"
+              @click="openLengthVote"
+              class="inline-flex w-fit items-center gap-1 rounded-md px-1.5 py-0.5 -ml-1.5 text-left text-neutral-800 dark:text-neutral-200 transition hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+              :title="t('vn.length_vote_hint')"
+            >
+              <span>{{ formatLength(vn) }}</span>
+              <Icon icon="lucide:pencil-line" class="h-3 w-3 shrink-0 text-neutral-400 dark:text-neutral-500" />
+            </button>
 
             <template v-if="vn.rating">
               <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.rating') }}</span>
@@ -1706,11 +1823,33 @@ watch(
                   </div>
                 </div>
 
-                <!-- 我的评分 -->
+                <!-- 我的评分：未收藏时先提示加入收藏，避免点了没反应 -->
                 <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.my_vote') }}</span>
-                <span class="text-neutral-800 dark:text-neutral-200" :class="{ 'text-neutral-400 dark:text-neutral-500': !formattedVote }">
-                  {{ formattedVote != null ? `${formattedVote.toFixed(1)} / 10` : '—' }}
-                </span>
+                <button
+                  v-if="collectionEntry"
+                  type="button"
+                  @click="openEditModal"
+                  class="inline-flex items-center gap-1.5 w-fit rounded-md px-1.5 py-0.5 -ml-1.5 text-left transition hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+                  :title="t('vn.status.vote_hint')"
+                >
+                  <Icon
+                    icon="lucide:star"
+                    class="h-3.5 w-3.5 shrink-0"
+                    :class="formattedVote != null ? 'text-amber-500 fill-amber-500' : 'text-neutral-300 dark:text-neutral-600'"
+                  />
+                  <span class="text-neutral-800 dark:text-neutral-200" :class="{ 'text-neutral-400 dark:text-neutral-500': !formattedVote }">
+                    {{ formattedVote != null ? `${formattedVote.toFixed(1)} / 10` : t('vn.status.add_vote') }}
+                  </span>
+                </button>
+                <button
+                  v-else
+                  type="button"
+                  @click="showStatusActionSheet = true"
+                  class="inline-flex items-center gap-1.5 w-fit rounded-md px-1.5 py-0.5 -ml-1.5 text-left transition hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+                >
+                  <Icon icon="lucide:star" class="h-3.5 w-3.5 shrink-0 text-neutral-300 dark:text-neutral-600" />
+                  <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.vote_need_collect') }}</span>
+                </button>
 
                 <!-- 笔记 -->
                 <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.notes') }}</span>
@@ -1728,7 +1867,7 @@ watch(
                       class="mt-1 flex items-center gap-1 text-[10px] text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 transition cursor-pointer"
                     >
                       <Icon :icon="notesExpanded ? 'lucide:chevron-up' : 'lucide:chevron-down'" class="h-3 w-3" />
-                      {{ notesExpanded ? '收起' : '展开全文' }}
+                      {{ notesExpanded ? t('vn.notes_collapse') : t('vn.notes_expand') }}
                     </button>
                   </div>
                 </template>
@@ -1850,6 +1989,8 @@ watch(
         />
       </div>
 
+      <!-- 4. 跨站搜索已内联到上方信息卡，不再单独占区块 -->
+
       <!-- 选项卡导航 (Notion Tab Style) -->
       <div class="border-b border-neutral-200 dark:border-neutral-700 pt-2">
         <nav class="flex space-x-5 -mb-px overflow-x-auto no-scrollbar" aria-label="Tabs">
@@ -1862,7 +2003,6 @@ watch(
               { id: 'covers', name: t('vn.tabs.covers') },
               { id: 'screenshots', name: t('vn.tabs.screenshots') },
               { id: 'quotes', name: t('vn.tabs.quotes') },
-              { id: 'links', name: t('vn.tabs.links') },
             ]"
             :key="tab.id"
             @click="activeTab = tab.id"
@@ -1908,10 +2048,32 @@ watch(
               <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[10px] text-neutral-500 dark:text-neutral-400 pt-1 border-t border-neutral-100 dark:border-neutral-800">
                 <div>{{ t('vn.releases.date') }}: <span class="text-neutral-700 dark:text-neutral-300">{{ rel.released || t('metadata.gender.unknown') }}</span></div>
                 <div>{{ t('vn.releases.lang') }}: <span class="text-neutral-700 dark:text-neutral-300">{{ rel.languages?.map(l => t(`metadata.lang.${l.lang}`, l.lang)).join(', ') || t('metadata.gender.unknown') }}</span></div>
-                <div>{{ t('vn.releases.platform') }}: <span class="text-neutral-700 dark:text-neutral-300">{{ rel.platforms?.map(p => t(`metadata.platform.${p}`, p)).join(', ') || t('metadata.gender.unknown') }}</span></div>
-                <div v-if="rel.minage !== null">{{ t('vn.releases.age') }}: <span class="text-red-500 font-semibold">{{ rel.minage === 0 ? t('release.all_ages') : rel.minage + '+' }}</span></div>
+                <div class="flex flex-wrap items-center gap-1">{{ t('vn.releases.platform') }}:
+                  <template v-if="rel.platforms?.length">
+                    <span v-for="p in rel.platforms" :key="p" class="inline-flex items-center gap-0.5 text-neutral-700 dark:text-neutral-300">
+                      <Icon :icon="getPlatformIcon(p)" class="h-3 w-3 shrink-0" />{{ t(`metadata.platform.${p}`, p) }}
+                    </span>
+                  </template>
+                  <span v-else class="text-neutral-700 dark:text-neutral-300">{{ t('metadata.gender.unknown') }}</span>
+                </div>
+                <div v-if="rel.minage !== null" class="flex items-center gap-1">{{ t('vn.releases.age') }}: <AgeRating :minage="rel.minage" :uncensored="rel.uncensored" class="font-semibold" /></div>
               </div>
               
+              <!-- 外部链接（VNDB 提供，走「版本外链」独立设置） -->
+              <div v-if="rel.extlinks?.length" class="flex flex-wrap items-center gap-1 pt-1" @click.stop>
+                <span class="text-[10px] text-neutral-500 dark:text-neutral-400 shrink-0">{{ t('release.extlinks') }}:</span>
+                <button
+                  v-for="link in rel.extlinks"
+                  :key="link.url"
+                  type="button"
+                  @click.stop="openReleaseExtLink(link)"
+                  class="inline-flex items-center gap-1 rounded-full bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 text-[10px] font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 transition active:scale-[0.98] cursor-pointer"
+                >
+                  {{ link.label }}
+                  <Icon icon="lucide:external-link" class="h-2.5 w-2.5 shrink-0 opacity-60" />
+                </button>
+              </div>
+
               <div v-if="rel.notes" class="text-[10px] text-neutral-400 dark:text-neutral-500 bg-neutral-50 dark:bg-neutral-800 p-1.5 rounded whitespace-pre-wrap leading-normal" v-html="parseBBCode(rel.notes)"></div>
             </div>
           </div>
@@ -1936,9 +2098,11 @@ watch(
               <div class="h-40 w-full overflow-hidden rounded border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 flex items-center justify-center relative">
                 <ion-img
                   :key="`cover-${idx}-${imageLoader.getRetryCount('cover-' + idx)}`"
-                  :src="cover.url"
+                  :src="imageLoader.resolveSrc(`cover-${idx}`, cover.thumbnail || cover.url)"
+                  :alt="cover.title || 'cover'"
                   class="max-h-full max-w-full object-contain transition-opacity duration-500"
                   :class="{ 'blur-md': shouldBlurCover(cover), 'opacity-0': !imageLoader.isSuccess('cover-' + idx) }"
+                  @ionImgWillLoad="imageLoader.onWillLoad('cover-' + idx)"
                   @ionImgDidLoad="imageLoader.onLoad('cover-' + idx)"
                   @ionError="imageLoader.onError('cover-' + idx)"
                 />
@@ -1975,48 +2139,52 @@ watch(
           </div>
 
           <!-- 角色特征筛选面板 -->
-          <div v-else-if="characters.length > 0" class="flex flex-col gap-2 p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800">
+          <div v-else-if="characters.length > 0" class="flex flex-col gap-1.5 p-2.5 rounded-lg border border-neutral-200/80 dark:border-neutral-700 bg-neutral-50/60 dark:bg-neutral-800/40">
             <!-- 剧透等级过滤 -->
-            <span class="text-xs text-neutral-600 dark:text-neutral-400 font-medium flex items-center gap-1.5">
-              <Icon icon="lucide:info" class="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
-              {{ t('vn.characters.trait_spoiler_filter') }}
-            </span>
-            <div class="grid grid-cols-3 gap-1 rounded-lg bg-neutral-200 dark:bg-neutral-700 p-0.5 text-center">
-              <button
-                v-for="level in [
-                  { val: 0, label: t('vn.characters.trait_spoiler_0') },
-                  { val: 1, label: t('vn.characters.trait_spoiler_1') },
-                  { val: 2, label: t('vn.characters.trait_spoiler_2') }
-                ]"
-                :key="level.val"
-                @click="handleSelectTraitSpoiler(level.val)"
-                class="rounded-md py-1.5 text-[11px] font-medium transition-all cursor-pointer"
-                :class="[ traitSpoilerLevel === level.val ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 shadow-xs font-semibold' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200' ]"
-              >
-                {{ level.label }}
-              </button>
+            <div class="flex items-center justify-between gap-2">
+              <span class="shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+                <Icon icon="lucide:info" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
+                {{ t('vn.characters.trait_spoiler_filter') }}
+              </span>
+              <div class="flex shrink-0 items-center gap-0.5 rounded-full bg-neutral-200/70 dark:bg-neutral-700/60 p-0.5">
+                <button
+                  v-for="level in [
+                    { val: 0, label: t('vn.characters.trait_spoiler_0') },
+                    { val: 1, label: t('vn.characters.trait_spoiler_1') },
+                    { val: 2, label: t('vn.characters.trait_spoiler_2') }
+                  ]"
+                  :key="level.val"
+                  @click="handleSelectTraitSpoiler(level.val)"
+                  class="whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none transition-all cursor-pointer"
+                  :class="[ traitSpoilerLevel === level.val ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
+                >
+                  {{ level.label }}
+                </button>
+              </div>
             </div>
 
             <!-- 性内容过滤 -->
-            <span class="text-xs text-neutral-600 dark:text-neutral-400 font-medium flex items-center gap-1.5 mt-1">
-              <Icon icon="lucide:layers" class="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
-              {{ t('vn.characters.trait_sexual_filter') }}
-            </span>
-            <div class="grid grid-cols-2 gap-1 rounded-lg bg-neutral-200 dark:bg-neutral-700 p-0.5 text-center">
-              <button
-                @click="showTraitSexual = false"
-                class="rounded-md py-1.5 text-[11px] font-medium transition-all cursor-pointer"
-                :class="[ !showTraitSexual ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 shadow-xs font-semibold' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200' ]"
-              >
-                {{ t('vn.characters.trait_sexual_hide') }}
-              </button>
-              <button
-                @click="showTraitSexual = true"
-                class="rounded-md py-1.5 text-[11px] font-medium transition-all cursor-pointer"
-                :class="[ showTraitSexual ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 shadow-xs font-semibold' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200' ]"
-              >
-                {{ t('vn.characters.trait_sexual_show') }}
-              </button>
+            <div class="flex items-center justify-between gap-2">
+              <span class="shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+                <Icon icon="lucide:layers" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
+                {{ t('vn.characters.trait_sexual_filter') }}
+              </span>
+              <div class="flex shrink-0 items-center gap-0.5 rounded-full bg-neutral-200/70 dark:bg-neutral-700/60 p-0.5">
+                <button
+                  @click="showTraitSexual = false"
+                  class="whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none transition-all cursor-pointer"
+                  :class="[ !showTraitSexual ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
+                >
+                  {{ t('vn.characters.trait_sexual_hide') }}
+                </button>
+                <button
+                  @click="showTraitSexual = true"
+                  class="whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none transition-all cursor-pointer"
+                  :class="[ showTraitSexual ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
+                >
+                  {{ t('vn.characters.trait_sexual_show') }}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -2041,8 +2209,10 @@ watch(
                   v-if="char.image?.url"
                   :key="`char-${char.id}-${imageLoader.getRetryCount('char-' + char.id)}`"
                   :src="char.image.url"
+                  :alt="char.name || ''"
                   class="w-full h-full object-cover object-top transition-opacity duration-500"
                   :class="{ 'opacity-0': !imageLoader.isSuccess('char-' + char.id) }"
+                  @ionImgWillLoad="imageLoader.onWillLoad('char-' + char.id)"
                   @ionImgDidLoad="imageLoader.onLoad('char-' + char.id)"
                   @ionError="imageLoader.onError('char-' + char.id)"
                 />
@@ -2205,8 +2375,10 @@ watch(
                     v-if="actor.character?.image?.url"
                     :key="`va-char-${idx}-${imageLoader.getRetryCount('va-char-' + idx)}`"
                     :src="actor.character.image.url"
+                    :alt="actor.character.name || ''"
                     class="h-full w-full object-cover object-top transition-opacity duration-500"
                     :class="{ 'opacity-0': !imageLoader.isSuccess('va-char-' + idx) }"
+                    @ionImgWillLoad="imageLoader.onWillLoad('va-char-' + idx)"
                     @ionImgDidLoad="imageLoader.onLoad('va-char-' + idx)"
                     @ionError="imageLoader.onError('va-char-' + idx)"
                   />
@@ -2255,80 +2427,87 @@ watch(
         <!-- 5. 标签 Tab -->
         <div v-else-if="activeTab === 'tags'" class="space-y-4">
           <!-- 标签筛选面板（合并） -->
-          <div class="flex flex-col gap-2 p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800">
+          <div class="flex flex-col gap-1.5 p-2.5 rounded-lg border border-neutral-200/80 dark:border-neutral-700 bg-neutral-50/60 dark:bg-neutral-800/40">
             <!-- 剧透等级过滤 -->
-            <span class="text-xs text-neutral-600 dark:text-neutral-400 font-medium flex items-center gap-1.5">
-              <Icon icon="lucide:info" class="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
-              {{ t('vn.tags.spoiler_filter') }}
-            </span>
-            <div class="grid grid-cols-3 gap-1 rounded-lg bg-neutral-200 dark:bg-neutral-700 p-0.5 text-center">
-              <button
-                v-for="level in [
-                  { val: 0, label: t('vn.tags.spoiler_0') },
-                  { val: 1, label: t('vn.tags.spoiler_1') },
-                  { val: 2, label: t('vn.tags.spoiler_2') }
-                ]"
-                :key="level.val"
-                @click="handleSelectSpoiler(level.val)"
-                class="rounded-md py-1.5 text-[11px] font-medium transition-all cursor-pointer"
-                :class="[ spoilerLevel === level.val ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 shadow-xs font-semibold' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200' ]"
-              >
-                {{ level.label }}
-              </button>
+            <div class="flex items-center justify-between gap-2">
+              <span class="shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+                <Icon icon="lucide:info" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
+                {{ t('vn.tags.spoiler_filter') }}
+              </span>
+              <div class="flex shrink-0 items-center gap-0.5 rounded-full bg-neutral-200/70 dark:bg-neutral-700/60 p-0.5">
+                <button
+                  v-for="level in [
+                    { val: 0, label: t('vn.tags.spoiler_0') },
+                    { val: 1, label: t('vn.tags.spoiler_1') },
+                    { val: 2, label: t('vn.tags.spoiler_2') }
+                  ]"
+                  :key="level.val"
+                  @click="handleSelectSpoiler(level.val)"
+                  class="whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none transition-all cursor-pointer"
+                  :class="[ spoilerLevel === level.val ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
+                >
+                  {{ level.label }}
+                </button>
+              </div>
             </div>
 
-            <!-- 标签分类过滤（多选） -->
-            <span class="text-xs text-neutral-600 dark:text-neutral-400 font-medium flex items-center gap-1.5 mt-1">
-              <Icon icon="lucide:layers" class="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
-              {{ t('vn.tags.category_filter') }}
-            </span>
-            <div class="grid grid-cols-2 gap-1 rounded-lg bg-neutral-200 dark:bg-neutral-700 p-0.5 text-center">
-              <button
-                v-for="cat in [
-                  { val: 'cont', label: t('vn.tags.category_cont') },
-                  { val: 'tech', label: t('vn.tags.category_tech') }
-                ]"
-                :key="cat.val"
-                @click="toggleTagCategory(cat.val)"
-                class="rounded-md py-1.5 text-[11px] font-medium transition-all cursor-pointer"
-                :class="[ activeTagCategories.includes(cat.val) ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 shadow-xs font-semibold' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200' ]"
-              >
-                {{ cat.label }}
-              </button>
+            <!-- 标签分类过滤（多选，三分类与 VNDB 官网一致） -->
+            <div class="flex items-center justify-between gap-2">
+              <span class="shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+                <Icon icon="lucide:layers" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
+                {{ t('vn.tags.category_filter') }}
+              </span>
+              <div class="flex shrink-0 items-center gap-0.5 rounded-full bg-neutral-200/70 dark:bg-neutral-700/60 p-0.5">
+                <button
+                  v-for="cat in [
+                    { val: 'cont', label: t('vn.tags.category_cont') },
+                    { val: 'ero', label: t('vn.tags.category_ero') },
+                    { val: 'tech', label: t('vn.tags.category_tech') }
+                  ]"
+                  :key="cat.val"
+                  @click="toggleTagCategory(cat.val)"
+                  class="whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none transition-all cursor-pointer"
+                  :class="[ activeTagCategories.includes(cat.val) ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
+                >
+                  {{ cat.label }}
+                </button>
+              </div>
             </div>
 
             <!-- 标签范围过滤（单选） -->
-            <span class="text-xs text-neutral-600 dark:text-neutral-400 font-medium flex items-center gap-1.5 mt-1">
-              <Icon icon="lucide:filter" class="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
-              {{ t('vn.tags.search_mode_filter') }}
-            </span>
-            <div class="grid grid-cols-2 gap-1 rounded-lg bg-neutral-200 dark:bg-neutral-700 p-0.5 text-center">
-              <button
-                v-for="mode in [
-                  { val: 'summary', label: t('vn.tags.search_mode_summary') },
-                  { val: 'all', label: t('vn.tags.search_mode_all') }
-                ]"
-                :key="mode.val"
-                @click="tagSearchMode = mode.val"
-                class="rounded-md py-1.5 text-[11px] font-medium transition-all cursor-pointer"
-                :class="[ tagSearchMode === mode.val ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 shadow-xs font-semibold' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200' ]"
-              >
-                {{ mode.label }}
-              </button>
+            <div class="flex items-center justify-between gap-2">
+              <span class="shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+                <Icon icon="lucide:filter" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
+                {{ t('vn.tags.search_mode_filter') }}
+              </span>
+              <div class="flex shrink-0 items-center gap-0.5 rounded-full bg-neutral-200/70 dark:bg-neutral-700/60 p-0.5">
+                <button
+                  v-for="mode in [
+                    { val: 'summary', label: t('vn.tags.search_mode_summary') },
+                    { val: 'all', label: t('vn.tags.search_mode_all') }
+                  ]"
+                  :key="mode.val"
+                  @click="tagSearchMode = mode.val"
+                  class="whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-medium leading-none transition-all cursor-pointer"
+                  :class="[ tagSearchMode === mode.val ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
+                >
+                  {{ mode.label }}
+                </button>
+              </div>
             </div>
           </div>
 
           <div v-if="filteredTags.length === 0" class="text-xs text-neutral-400 dark:text-neutral-500 py-6 text-center">
             {{ t('vn.tags.empty') }}
           </div>
-          <div v-else class="flex flex-wrap gap-2">
+          <div v-else class="flex flex-wrap gap-1.5">
             <div
               v-for="tag in filteredTags"
               :key="tag.id"
               @click="router.push(`/browse/vn?tag=${tag.id}`)"
-              class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs border cursor-pointer active:scale-[0.98] transition hover:border-neutral-400 dark:hover:border-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-[13px] border cursor-pointer active:scale-[0.98] transition hover:border-neutral-400 dark:hover:border-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
               :class="[ tag.spoiler === 2 ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800/50' : tag.spoiler === 1 ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/50' : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700' ]"
-              :title="`评分: ${tag.rating.toFixed(1)} / 剧透: ${tag.spoiler}`"
+              :title="t('vn.tag_rating_title', { rating: tag.rating.toFixed(1), spoiler: tag.spoiler })"
             >
               <span>{{ translateTagName(tag.name) }}</span>
               <span class="text-[9px] opacity-60 font-mono">
@@ -2360,9 +2539,11 @@ watch(
               <template v-else-if="getScreenshotAction(getImageNsfwLevel(scr)) === 'blur'">
                 <ion-img
                   :key="`scr-${idx}-${imageLoader.getRetryCount('scr-' + idx)}`"
-                  :src="scr.thumbnail || scr.url"
+                  :src="imageLoader.resolveSrc(`scr-${idx}`, scr.thumbnail || scr.url)"
+                  :alt="vn.title + ' screenshot'"
                   class="h-full w-full object-cover blur-xl transition-opacity duration-500"
                   :class="{ 'opacity-0': !imageLoader.isSuccess('scr-' + idx) }"
+                  @ionImgWillLoad="imageLoader.onWillLoad('scr-' + idx)"
                   @ionImgDidLoad="imageLoader.onLoad('scr-' + idx)"
                   @ionError="imageLoader.onError('scr-' + idx)"
                 />
@@ -2387,7 +2568,8 @@ watch(
               <template v-else>
                 <ion-img
                   :key="`scr-${idx}-${imageLoader.getRetryCount('scr-' + idx)}`"
-                  :src="scr.thumbnail || scr.url"
+                  :src="imageLoader.resolveSrc(`scr-${idx}`, scr.thumbnail || scr.url)"
+                  :alt="vn.title + ' screenshot'"
                   class="h-full w-full object-cover transition duration-300 group-hover:scale-105 transition-opacity duration-500"
                   :class="{ 'opacity-0': !imageLoader.isSuccess('scr-' + idx) }"
                   @ionImgDidLoad="imageLoader.onLoad('scr-' + idx)"
@@ -2484,46 +2666,7 @@ watch(
           </div>
         </div>
 
-        <!-- 8. 外链跳转 Tab (Links) -->
-        <div v-else-if="activeTab === 'links'" class="space-y-4" v-if="vn">
-          <!-- 资源站 -->
-          <div>
-            <h4 class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-2 px-1">{{ t('vn.links.resource_sites') }}</h4>
-            <div class="space-y-1.5">
-              <a
-                v-for="link in resourceLinks"
-                :key="link.name"
-                :href="link.url"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="flex items-center gap-3 p-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 hover:bg-neutral-100 dark:hover:bg-neutral-800 active:bg-neutral-200 dark:active:bg-neutral-700 transition-colors"
-              >
-                <Icon :icon="link.icon" class="h-4 w-4 text-neutral-500 dark:text-neutral-400 shrink-0" />
-                <span class="text-xs font-medium text-neutral-700 dark:text-neutral-300">{{ link.name }}</span>
-                <Icon icon="lucide:external-link" class="h-3 w-3 text-neutral-300 dark:text-neutral-600 ml-auto shrink-0" />
-              </a>
-            </div>
-          </div>
-
-          <!-- 资料站 -->
-          <div>
-            <h4 class="text-[10px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500 mb-2 px-1">{{ t('vn.links.info_sites') }}</h4>
-            <div class="space-y-1.5">
-              <a
-                v-for="link in infoLinks"
-                :key="link.name"
-                :href="link.url"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="flex items-center gap-3 p-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-900 hover:bg-neutral-100 dark:hover:bg-neutral-800 active:bg-neutral-200 dark:active:bg-neutral-700 transition-colors"
-              >
-                <Icon :icon="link.icon" class="h-4 w-4 text-neutral-500 dark:text-neutral-400 shrink-0" />
-                <span class="text-xs font-medium text-neutral-700 dark:text-neutral-300">{{ link.name }}</span>
-                <Icon icon="lucide:external-link" class="h-3 w-3 text-neutral-300 dark:text-neutral-600 ml-auto shrink-0" />
-              </a>
-            </div>
-          </div>
-        </div>
+        <!-- 8. 外链跳转 Tab 已移除：资源站/资料站与跨站搜索重复，统一到页面顶部「跨站搜索」区块 -->
 
       </div>
     </div>
@@ -2661,8 +2804,10 @@ watch(
               <ion-img
                 :key="`lb-${idx}-${imageLoader.getRetryCount('lb-' + idx)}`"
                 :src="img.url"
+                :alt="img.title || vn.title || 'cover'"
                 class="max-w-full max-h-[72vh] object-contain pointer-events-none transition-all duration-300 transition-opacity duration-500"
                 :class="{ 'blur-xl': getScreenshotAction(getImageNsfwLevel(img)) === 'blur' && !revealedItems.has(`lb-${idx}`), 'opacity-0': !imageLoader.isSuccess('lb-' + idx) }"
+                @ionImgWillLoad="imageLoader.onWillLoad('lb-' + idx)"
                 @ionImgDidLoad="imageLoader.onLoad('lb-' + idx)"
                 @ionError="imageLoader.onError('lb-' + idx)"
               />

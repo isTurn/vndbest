@@ -1,7 +1,7 @@
 <script setup>
 defineOptions({ name: 'ReleaseSearch' })
 
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import SearchBase from '@/components/SearchBase.vue'
@@ -20,6 +20,10 @@ const searchBaseRef = ref(null)
 const openSaveDialog = () => searchBaseRef.value?.openSaveDialog()
 
 const query = ref('')
+
+// 支持从 URL 带入搜索关键词（全局搜索「查看更多」跳转用）
+const routeQuery = computed(() => (typeof route.query.q === 'string' ? route.query.q : ''))
+if (routeQuery.value) query.value = routeQuery.value
 const items = ref([])
 const isLoading = ref(false)
 const hasMore = ref(false)
@@ -101,7 +105,7 @@ const platformOptions = [
 
 const minAgeOptions = [
   { value: 'all', label: 'list.all' },
-  { value: '0', label: '0 - 全年龄' },
+  { value: '0', label: 'release.all_ages_short' },
   { value: '6', label: '6+' },
   { value: '12', label: '12+' },
   { value: '15', label: '15+' },
@@ -110,28 +114,28 @@ const minAgeOptions = [
 
 const patchOptions = [
   { value: 'all', label: 'list.all' },
-  { value: 'yes', label: '是补丁' },
-  { value: 'no', label: '非补丁' }
+  { value: 'yes', label: 'release.is_patch' },
+  { value: 'no', label: 'release.not_patch' }
 ]
 
 const officialOptions = [
   { value: 'all', label: 'list.all' },
-  { value: 'yes', label: '官方' },
-  { value: 'no', label: '非官方' }
+  { value: 'yes', label: 'release.official_yes' },
+  { value: 'no', label: 'release.official_no' }
 ]
 
 const freewareOptions = [
   { value: 'all', label: 'list.all' },
-  { value: 'yes', label: '免费' },
-  { value: 'no', label: '收费' }
+  { value: 'yes', label: 'release.free' },
+  { value: 'no', label: 'release.paid' }
 ]
 
 const voicedOptions = [
   { value: 'all', label: 'list.all' },
-  { value: '1', label: '无配音' },
-  { value: '2', label: '仅H场景配音' },
-  { value: '3', label: '部分配音' },
-  { value: '4', label: '全配音' }
+  { value: '1', label: 'release.voiced_none_short' },
+  { value: '2', label: 'release.voiced_ero_only' },
+  { value: '3', label: 'release.voiced_partial_short' },
+  { value: '4', label: 'release.voiced_full_short' }
 ]
 
 const engineOptions = [
@@ -294,8 +298,17 @@ function handleClear() {
 }
 
 // 监听所有筛选变化
+// 筛选器统一防抖，避免连点/多选时并发请求
+let filterDebounceTimer = null
+const debouncedFetch = () => {
+  if (filterDebounceTimer) clearTimeout(filterDebounceTimer)
+  filterDebounceTimer = setTimeout(() => {
+    fetchData()
+  }, 300)
+}
+
 watch([selectedLang, selectedPlatform, selectedMinAge, selectedPatch, selectedOfficial, selectedFreeware, selectedVoiced, selectedEngine], () => {
-  fetchData()
+  debouncedFetch()
 })
 
 // 发布日期使用防抖
@@ -369,6 +382,10 @@ onMounted(() => {
 
   fetchData()
 })
+
+onUnmounted(() => {
+  if (filterDebounceTimer) clearTimeout(filterDebounceTimer)
+})
 </script>
 
 <template>
@@ -400,7 +417,7 @@ onMounted(() => {
               : 'bg-neutral-50 text-neutral-600 border border-neutral-100 hover:bg-neutral-100 dark:bg-neutral-800 dark:text-neutral-400 dark:border-neutral-700 dark:hover:bg-neutral-700'"
           >
             <Icon icon="lucide:sliders-horizontal" class="h-3.5 w-3.5" />
-            <span>筛选</span>
+            <span>{{ t('search.filter') }}</span>
           </button>
 
           <!-- 保存筛选 -->
@@ -410,7 +427,7 @@ onMounted(() => {
             class="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-blue-600 bg-blue-50 border border-blue-100 hover:bg-blue-100 dark:text-blue-400 dark:bg-blue-900/30 dark:border-blue-800/50 dark:hover:bg-blue-900/50 transition cursor-pointer"
           >
             <Icon icon="lucide:bookmark" class="h-3 w-3" />
-            <span>保存</span>
+            <span>{{ t('search.save') }}</span>
           </button>
 
           <!-- 清除所有筛选 -->
@@ -420,7 +437,7 @@ onMounted(() => {
             class="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-red-500 bg-red-50 border border-red-100 hover:bg-red-100 dark:text-red-400 dark:bg-red-900/30 dark:border-red-800/50 dark:hover:bg-red-900/50 transition cursor-pointer"
           >
             <Icon icon="lucide:x" class="h-3 w-3" />
-            <span>清除</span>
+            <span>{{ t('search.clear') }}</span>
           </button>
         </div>
 
@@ -527,14 +544,14 @@ onMounted(() => {
             <div class="flex flex-col gap-1 px-2 py-1.5 rounded-lg border border-neutral-100 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-800 col-span-2 sm:col-span-3">
               <div class="flex items-center gap-1.5 mb-1">
                 <Icon icon="lucide:calendar" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
-                <span class="text-xs font-medium text-neutral-600 dark:text-neutral-400">发布日期范围</span>
+                <span class="text-xs font-medium text-neutral-600 dark:text-neutral-400">{{ t('search.released_range') }}</span>
                 <span v-if="selectedDateFrom || selectedDateTo" class="text-[10px] font-bold text-neutral-900 dark:text-neutral-100">
-                  {{ selectedDateFrom === 'today' ? '今天' : (selectedDateFrom || '不限') }} ~ {{ selectedDateTo === 'today' ? '今天' : (selectedDateTo || '不限') }}
+                  {{ selectedDateFrom === 'today' ? t('search.today') : (selectedDateFrom || t('common.unlimited')) }} ~ {{ selectedDateTo === 'today' ? t('search.today') : (selectedDateTo || t('common.unlimited')) }}
                 </span>
               </div>
               <!-- 开始日期 -->
               <div class="flex items-center gap-2">
-                <span class="text-[10px] text-neutral-400 dark:text-neutral-500 w-6 shrink-0">从</span>
+                <span class="text-[10px] text-neutral-400 dark:text-neutral-500 w-6 shrink-0">{{ t('search.from') }}</span>
                 <input
                   v-if="selectedDateFrom !== 'today'"
                   v-model="selectedDateFrom"
@@ -547,11 +564,11 @@ onMounted(() => {
                   :class="selectedDateFrom === 'today'
                     ? 'flex-1 border-neutral-800 bg-neutral-800 text-white dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900'
                     : 'border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-100 active:bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-700'"
-                >{{ selectedDateFrom === 'today' ? '今天 ✓' : '今天' }}</button>
+                >{{ selectedDateFrom === 'today' ? t('search.today') + ' ✓' : t('search.today') }}</button>
               </div>
               <!-- 结束日期 -->
               <div class="flex items-center gap-2">
-                <span class="text-[10px] text-neutral-400 dark:text-neutral-500 w-6 shrink-0">到</span>
+                <span class="text-[10px] text-neutral-400 dark:text-neutral-500 w-6 shrink-0">{{ t('search.to') }}</span>
                 <input
                   v-if="selectedDateTo !== 'today'"
                   v-model="selectedDateTo"
@@ -564,7 +581,7 @@ onMounted(() => {
                   :class="selectedDateTo === 'today'
                     ? 'flex-1 border-neutral-800 bg-neutral-800 text-white dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900'
                     : 'border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-100 active:bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-700'"
-                >{{ selectedDateTo === 'today' ? '今天 ✓' : '今天' }}</button>
+                >{{ selectedDateTo === 'today' ? t('search.today') + ' ✓' : t('search.today') }}</button>
               </div>
             </div>
           </div>

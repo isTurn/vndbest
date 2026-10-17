@@ -4,14 +4,19 @@ defineOptions({ name: 'List' })
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { translateError } from '@/utils/errorMessage'
 import { Icon } from '@iconify/vue'
 import AppHeader from '@/components/AppHeader.vue'
 import { getUserList, getUserListLabels } from '@/api/vndb'
+import { getLabelName, isVotedLabel } from '@/utils/ulistLabels'
 import VnList from '@/components/VnList.vue'
 import { IonPage, IonContent } from '@ionic/vue'
 
 const router = useRouter()
 const { t } = useI18n()
+
+// 标签显示名本地化：1~7 系统标签走 i18n，自定义标签原样显示，空名兜底
+const labelText = (lbl) => getLabelName(lbl?.id, lbl?.label, t)
 
 // 登录状态
 const isLoggedIn = ref(false)
@@ -115,7 +120,7 @@ async function fetchList(reset = false) {
     }
   } catch (e) {
     console.error('获取收藏列表失败:', e)
-    errorMsg.value = e.message || t('list.error_fetching')
+    errorMsg.value = translateError(e, t, 'list.error_fetching')
   } finally {
     isLoading.value = false
   }
@@ -205,7 +210,12 @@ function goToLogin() {
             class="whitespace-nowrap pb-3 text-sm font-medium transition-all duration-200 border-b-2 shrink-0 flex items-center gap-1.5 focus:outline-none cursor-pointer"
             :class="activeLabelId === lbl.id ? 'border-neutral-900 dark:border-neutral-100 text-neutral-900 dark:text-neutral-100 font-semibold' : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-300'"
           >
-            <span>{{ lbl.label }}</span>
+            <span>{{ labelText(lbl) }}</span>
+            <span
+              v-if="isVotedLabel(lbl.id)"
+              class="text-[9px] opacity-50"
+              :title="t('vn.status.voted_auto')"
+            >·</span>
             <span
               v-if="lbl.count !== undefined && lbl.count !== null && lbl.count !== '' && lbl.count !== 0"
               class="text-[10px] rounded-full px-1.5 py-0.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border border-neutral-200/50 dark:border-neutral-700/50"

@@ -12,13 +12,13 @@ const STORAGE_KEY = 'vndb_saved_searches'
  * 搜索类型 → 路由路径映射
  */
 export const SEARCH_TYPE_MAP = {
-  vn: { path: '/browse/vn', label: 'VN 搜索', icon: SEARCH_TYPE_ICONS.vn },
-  releases: { path: '/browse/releases', label: '版本搜索', icon: SEARCH_TYPE_ICONS.releases },
-  producers: { path: '/browse/producers', label: '制作商搜索', icon: SEARCH_TYPE_ICONS.producers },
-  staff: { path: '/browse/staff', label: '制作人员搜索', icon: SEARCH_TYPE_ICONS.staff },
-  characters: { path: '/browse/characters', label: '角色搜索', icon: SEARCH_TYPE_ICONS.characters },
-  tags: { path: '/browse/tags', label: '标签搜索', icon: SEARCH_TYPE_ICONS.tags },
-  traits: { path: '/browse/traits', label: '特征搜索', icon: SEARCH_TYPE_ICONS.traits }
+  vn: { path: '/browse/vn', labelKey: 'saved_search.type_vn', icon: SEARCH_TYPE_ICONS.vn },
+  releases: { path: '/browse/releases', labelKey: 'saved_search.type_releases', icon: SEARCH_TYPE_ICONS.releases },
+  producers: { path: '/browse/producers', labelKey: 'saved_search.type_producers', icon: SEARCH_TYPE_ICONS.producers },
+  staff: { path: '/browse/staff', labelKey: 'saved_search.type_staff', icon: SEARCH_TYPE_ICONS.staff },
+  characters: { path: '/browse/characters', labelKey: 'saved_search.type_characters', icon: SEARCH_TYPE_ICONS.characters },
+  tags: { path: '/browse/tags', labelKey: 'saved_search.type_tags', icon: SEARCH_TYPE_ICONS.tags },
+  traits: { path: '/browse/traits', labelKey: 'saved_search.type_traits', icon: SEARCH_TYPE_ICONS.traits }
 }
 
 /**
@@ -27,7 +27,7 @@ export const SEARCH_TYPE_MAP = {
 const DEFAULT_SAVED_SEARCHES = [
   {
     id: 'default_latest_chinese',
-    name: '最新汉化',
+    nameKey: 'saved_search.latest_chinese',
     type: 'releases',
     filters: {
       selectedLang: 'zh-Hans',

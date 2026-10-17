@@ -5,6 +5,11 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="viewport-fit=cover, width=device-width, initial-scale=1.0" />
     <title>vndbest</title>
+    <!-- 提前与 VNDB 建立 TLS 连接，减少首屏图片/接口的握手延迟（图片域与 API 域同属 vndb.org） -->
+    <link rel="preconnect" href="https://t.vndb.org" crossorigin />
+    <link rel="dns-prefetch" href="https://t.vndb.org" />
+    <link rel="preconnect" href="https://api.vndb.org" crossorigin />
+    <link rel="dns-prefetch" href="https://api.vndb.org" />
   </head>
   <body>
     <div id="app"></div>

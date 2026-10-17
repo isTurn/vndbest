@@ -23,6 +23,10 @@ const searchBaseRef = ref(null)
 const openSaveDialog = () => searchBaseRef.value?.openSaveDialog()
 
 const query = ref('')
+
+// 支持从 URL 带入搜索关键词（全局搜索「查看更多」跳转用）
+const routeQuery = computed(() => (typeof route.query.q === 'string' ? route.query.q : ''))
+if (routeQuery.value) query.value = routeQuery.value
 const items = ref([])
 const isLoading = ref(false)
 const hasMore = ref(false)
@@ -104,46 +108,46 @@ const platformOptions = [
 // 原始语言
 const origLangOptions = [
   { value: 'all', label: 'list.all' },
-  { value: 'ja', label: '日语 (原始)' },
-  { value: 'zh', label: '中文 (原始)' },
-  { value: 'en', label: '英语 (原始)' },
-  { value: 'ko', label: '韩语 (原始)' },
-  { value: 'fr', label: '法语 (原始)' },
-  { value: 'de', label: '德语 (原始)' },
-  { value: 'ru', label: '俄语 (原始)' },
-  { value: 'es', label: '西班牙语 (原始)' },
-  { value: 'it', label: '意大利语 (原始)' },
-  { value: 'vi', label: '越南语 (原始)' }
+  { value: 'ja', label: 'metadata.lang.ja_orig' },
+  { value: 'zh', label: 'metadata.lang.zh_orig' },
+  { value: 'en', label: 'metadata.lang.en_orig' },
+  { value: 'ko', label: 'metadata.lang.ko_orig' },
+  { value: 'fr', label: 'metadata.lang.fr_orig' },
+  { value: 'de', label: 'metadata.lang.de_orig' },
+  { value: 'ru', label: 'metadata.lang.ru_orig' },
+  { value: 'es', label: 'metadata.lang.es_orig' },
+  { value: 'it', label: 'metadata.lang.it_orig' },
+  { value: 'vi', label: 'metadata.lang.vi_orig' }
 ]
 
 // 游戏时长
 const lengthOptions = [
   { value: 'all', label: 'list.all' },
-  { value: '1', label: '非常短 (< 2小时)' },
-  { value: '2', label: '短 (2 - 10小时)' },
-  { value: '3', label: '中等 (10 - 30小时)' },
-  { value: '4', label: '长 (30 - 50小时)' },
-  { value: '5', label: '非常长 (> 50小时)' }
+  { value: '1', label: 'metadata.length.1' },
+  { value: '2', label: 'metadata.length.2' },
+  { value: '3', label: 'metadata.length.3' },
+  { value: '4', label: 'metadata.length.4' },
+  { value: '5', label: 'metadata.length.5' }
 ]
 
 // 开发状态
 const devStatusOptions = [
   { value: 'all', label: 'list.all' },
-  { value: '0', label: '已完结' },
-  { value: '1', label: '开发中' },
-  { value: '2', label: '已取消' }
+  { value: '0', label: 'metadata.devstatus.finished' },
+  { value: '1', label: 'metadata.devstatus.developing' },
+  { value: '2', label: 'metadata.devstatus.cancelled' }
 ]
 
 // 有截图
 const hasScreenshotOptions = [
   { value: 'all', label: 'list.all' },
-  { value: 'yes', label: '有截图' },
-  { value: 'no', label: '无截图' }
+  { value: 'yes', label: 'metadata.screenshots.yes' },
+  { value: 'no', label: 'metadata.screenshots.no' }
 ]
 
 // 评分滑动条标签
 function getRatingLabel(val) {
-  if (val === 0) return '不限'
+  if (val === 0) return t('common.unlimited')
   return (val / 10).toFixed(1)
 }
 
@@ -152,7 +156,7 @@ function getRatingRangeText() {
   const [min, max] = selectedRatingRange.value
   const minLabel = getRatingLabel(min)
   const maxLabel = getRatingLabel(max)
-  if (min === 0 && max === 100) return '不限'
+  if (min === 0 && max === 100) return t('common.unlimited')
   if (min === 0) return `≤ ${maxLabel}`
   if (max === 100) return `≥ ${minLabel}`
   return `${minLabel} - ${maxLabel}`
@@ -335,9 +339,17 @@ function handleTagModalConfirm(tags) {
   selectedTags.value = tags
 }
 
-// 筛选器变化时自动重新搜索
+// 筛选器变化时自动重新搜索（统一防抖，避免连点/多选时并发打爆 API）
+let filterDebounceTimer = null
+const debouncedFetch = () => {
+  if (filterDebounceTimer) clearTimeout(filterDebounceTimer)
+  filterDebounceTimer = setTimeout(() => {
+    fetchData()
+  }, 300)
+}
+
 watch([selectedLang, selectedPlatform, selectedOrigLang, selectedLength, selectedDevStatus, selectedHasScreenshot], () => {
-  fetchData()
+  debouncedFetch()
 })
 
 // 评分范围使用防抖，避免拖动过程中频繁请求
@@ -361,10 +373,11 @@ watch([selectedDateFrom, selectedDateTo], () => {
 onUnmounted(() => {
   if (ratingDebounceTimer) clearTimeout(ratingDebounceTimer)
   if (dateDebounceTimer) clearTimeout(dateDebounceTimer)
+  if (filterDebounceTimer) clearTimeout(filterDebounceTimer)
 })
 
 watch(selectedTags, () => {
-  fetchData()
+  debouncedFetch()
 }, { deep: true })
 
 watch(query, (newVal) => {
@@ -485,7 +498,7 @@ onMounted(async () => {
               : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-100 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-700'"
           >
             <Icon icon="lucide:sliders-horizontal" class="h-3.5 w-3.5" />
-            <span>筛选</span>
+            <span>{{ t('search.filter') }}</span>
           </button>
 
           <!-- 保存筛选 -->
@@ -495,7 +508,7 @@ onMounted(async () => {
             class="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-blue-600 bg-blue-50 border border-blue-100 hover:bg-blue-100 dark:text-blue-400 dark:bg-blue-900/30 dark:border-blue-800/50 dark:hover:bg-blue-900/50 transition cursor-pointer"
           >
             <Icon icon="lucide:bookmark" class="h-3 w-3" />
-            <span>保存</span>
+            <span>{{ t('search.save') }}</span>
           </button>
 
           <!-- 清除所有筛选 -->
@@ -505,7 +518,7 @@ onMounted(async () => {
             class="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-red-500 bg-red-50 border border-red-100 hover:bg-red-100 dark:text-red-400 dark:bg-red-900/30 dark:border-red-800/50 dark:hover:bg-red-900/50 transition cursor-pointer"
           >
             <Icon icon="lucide:x" class="h-3 w-3" />
-            <span>清除</span>
+            <span>{{ t('search.clear') }}</span>
           </button>
         </div>
 
@@ -556,7 +569,7 @@ onMounted(async () => {
                 : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 border border-neutral-100 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-700'"
             >
               <Icon icon="lucide:tags" class="h-3.5 w-3.5" />
-              <span>标签</span>
+              <span>{{ t('filter.tag_title') }}</span>
               <span
                 v-if="selectedTags.length > 0"
                 class="inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full text-[9px] font-bold"
@@ -619,14 +632,14 @@ onMounted(async () => {
             <div class="flex flex-col gap-1 px-2 py-1.5 rounded-lg border border-neutral-100 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 col-span-2 sm:col-span-3">
               <div class="flex items-center gap-1.5 mb-1">
                 <Icon icon="lucide:calendar" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
-                <span class="text-xs font-medium text-neutral-600 dark:text-neutral-400">发布日期范围</span>
+                <span class="text-xs font-medium text-neutral-600 dark:text-neutral-400">{{ t('search.released_range') }}</span>
                 <span v-if="selectedDateFrom || selectedDateTo" class="text-[10px] font-bold text-neutral-900 dark:text-neutral-100">
-                  {{ selectedDateFrom === 'today' ? '今天' : (selectedDateFrom || '不限') }} ~ {{ selectedDateTo === 'today' ? '今天' : (selectedDateTo || '不限') }}
+                  {{ selectedDateFrom === 'today' ? t('search.today') : (selectedDateFrom || t('common.unlimited')) }} ~ {{ selectedDateTo === 'today' ? t('search.today') : (selectedDateTo || t('common.unlimited')) }}
                 </span>
               </div>
               <!-- 开始日期 -->
               <div class="flex items-center gap-2">
-                <span class="text-[10px] text-neutral-400 dark:text-neutral-500 w-6 shrink-0">从</span>
+                <span class="text-[10px] text-neutral-400 dark:text-neutral-500 w-6 shrink-0">{{ t('search.from') }}</span>
                 <input
                   v-if="selectedDateFrom !== 'today'"
                   v-model="selectedDateFrom"
@@ -639,11 +652,11 @@ onMounted(async () => {
                   :class="selectedDateFrom === 'today'
                     ? 'flex-1 border-neutral-800 bg-neutral-800 text-white dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900'
                     : 'border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-100 active:bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-700'"
-                >{{ selectedDateFrom === 'today' ? '今天 ✓' : '今天' }}</button>
+                >{{ selectedDateFrom === 'today' ? t('search.today') + ' ✓' : t('search.today') }}</button>
               </div>
               <!-- 结束日期 -->
               <div class="flex items-center gap-2">
-                <span class="text-[10px] text-neutral-400 dark:text-neutral-500 w-6 shrink-0">到</span>
+                <span class="text-[10px] text-neutral-400 dark:text-neutral-500 w-6 shrink-0">{{ t('search.to') }}</span>
                 <input
                   v-if="selectedDateTo !== 'today'"
                   v-model="selectedDateTo"
@@ -656,7 +669,7 @@ onMounted(async () => {
                   :class="selectedDateTo === 'today'
                     ? 'flex-1 border-neutral-800 bg-neutral-800 text-white dark:border-neutral-100 dark:bg-neutral-100 dark:text-neutral-900'
                     : 'border-neutral-200 bg-white text-neutral-500 hover:bg-neutral-100 active:bg-neutral-200 dark:border-neutral-700 dark:bg-neutral-800 dark:text-neutral-400 dark:hover:bg-neutral-700'"
-                >{{ selectedDateTo === 'today' ? '今天 ✓' : '今天' }}</button>
+                >{{ selectedDateTo === 'today' ? t('search.today') + ' ✓' : t('search.today') }}</button>
               </div>
             </div>
 
@@ -665,7 +678,7 @@ onMounted(async () => {
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-1.5">
                   <Icon icon="lucide:star" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
-                  <span class="text-xs font-medium text-neutral-600 dark:text-neutral-400">评分范围</span>
+                  <span class="text-xs font-medium text-neutral-600 dark:text-neutral-400">{{ t('search.rating_range') }}</span>
                 </div>
                 <span class="text-xs font-bold text-neutral-900 dark:text-neutral-400">{{ getRatingRangeText() }}</span>
               </div>
@@ -676,7 +689,7 @@ onMounted(async () => {
                 :step="1"
               />
               <div class="flex justify-between text-[9px] text-neutral-400 dark:text-neutral-500 font-medium px-1">
-                <span>不限</span>
+                <span>{{ t('common.unlimited') }}</span>
                 <span>5.0</span>
                 <span>6.0</span>
                 <span>7.0</span>

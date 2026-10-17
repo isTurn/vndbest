@@ -14,6 +14,7 @@ import { usePrivacy, getImageNsfwLevel } from '@/composables/usePrivacy'
 import { useSavedSearches, SEARCH_TYPE_MAP } from '@/composables/useSavedSearches'
 import { IonPage, IonContent, IonImg, IonSpinner } from '@ionic/vue'
 import { useImageLoader } from '@/composables/useImageLoader'
+import { prefetchFromItems } from '@/utils/imagePrefetch'
 import { useToast } from '@/composables/useToast'
 import { useAppUpdate } from '@/composables/useAppUpdate'
 import UpdateDialog from '@/components/UpdateDialog.vue'
@@ -288,7 +289,7 @@ function getResultDisplay(search, item) {
   const type = search.type
   if (type === 'releases') {
     return {
-      image: item.images?.[0]?.url || null,
+      image: item.images?.[0]?.thumbnail || item.images?.[0]?.url || null,
       title: item.alttitle || item.title,
       subtitle: item.released || '',
       badges: (item.languages || []).slice(0, 2).map(l => typeof l === 'string' ? l : l.lang),
@@ -300,7 +301,7 @@ function getResultDisplay(search, item) {
     const nsfwLevel = item?.image?.sexual?.[0] || 0
     const action = getCardAction('vn', nsfwLevel)
     return {
-      image: item.image?.url || null,
+      image: item.image?.thumbnail || item.image?.url || null,
       title: item.alttitle || item.title,
       subtitle: item.released || '',
       badges: (item.languages || []).slice(0, 2).map(l => typeof l === 'string' ? l : l.lang),
@@ -394,6 +395,7 @@ onMounted(async () => {
   getReleaseList(['released', '<=', today], { sort: 'released', reverse: true, results: 5 })
     .then(res => {
       justReleased.value = res.results
+      prefetchFromItems(res.results, it => it.images?.[0]?.thumbnail || it.images?.[0]?.url, 5, { priority: true })
       loadingSections.value.releases = false
     }).catch(err => {
       console.error('获取刚刚发布失败:', err)
@@ -404,6 +406,7 @@ onMounted(async () => {
   getReleaseList(['released', '>', today], { sort: 'released', reverse: false, results: 5 })
     .then(res => {
       upcomingReleases.value = res.results
+      prefetchFromItems(res.results, it => it.images?.[0]?.thumbnail || it.images?.[0]?.url, 5)
     }).catch(err => {
       console.error('获取即将发布失败:', err)
     })
@@ -418,6 +421,8 @@ onMounted(async () => {
   ]).then(([todayRes, tomorrowRes]) => {
     todayBirthdays.value = deduplicateCharacters(todayRes.results || [])
     tomorrowBirthdays.value = deduplicateCharacters(tomorrowRes.results || [])
+    prefetchFromItems(todayBirthdays.value, it => it.image?.url, 12, { priority: true })
+    prefetchFromItems(tomorrowBirthdays.value, it => it.image?.url, 8)
   }).catch(err => {
     console.error('获取生日角色失败:', err)
   }).finally(() => {
@@ -616,15 +621,15 @@ function getFilterSummary(item) {
   const f = item.filters || {}
   if (f.query) parts.push(f.query)
   if (f.selectedLang) {
-    const langMap = { 'ja': '日文', 'en': '英文', 'zh-Hans': '简体中文', 'zh-Hant': '繁体中文', 'ko': '韩文' }
+    const langMap = { 'ja': t('metadata.lang.ja'), 'en': t('metadata.lang.en'), 'zh-Hans': t('metadata.lang.zh-Hans'), 'zh-Hant': t('metadata.lang.zh-Hant'), 'ko': t('metadata.lang.ko') }
     parts.push(langMap[f.selectedLang] || f.selectedLang)
   }
-  if (f.sortBy === 'released') parts.push('最新发布')
-  if (f.reverse === false) parts.push('最早发布')
-  if (f.selectedDateTo === 'today') parts.push('今天之前')
-  else if (f.selectedDateTo) parts.push(f.selectedDateTo + '之前')
-  if (f.selectedOfficial === 'no') parts.push('非官方')
-  if (f.selectedOfficial === 'yes') parts.push('官方')
+  if (f.sortBy === 'released') parts.push(t('saved_search.latest_release'))
+  if (f.reverse === false) parts.push(t('saved_search.earliest_release'))
+  if (f.selectedDateTo === 'today') parts.push(t('saved_search.before_today'))
+  else if (f.selectedDateTo) parts.push(t('saved_search.before_date', { date: f.selectedDateTo }))
+  if (f.selectedOfficial === 'no') parts.push(t('release.official_no'))
+  if (f.selectedOfficial === 'yes') parts.push(t('release.official_yes'))
   return parts.join(' · ')
 }
 </script>
@@ -717,8 +722,10 @@ function getFilterSummary(item) {
                   v-if="char.image?.url"
                   :key="`bt-${char.id}-${imageLoader.getRetryCount('bt-' + char.id)}`"
                   :src="char.image.url"
+                  :alt="char.name || ''"
                   class="h-full w-full object-cover transition-opacity duration-500"
                   :class="{ 'opacity-0': !imageLoader.isSuccess('bt-' + char.id) }"
+                  @ionImgWillLoad="imageLoader.onWillLoad('bt-' + char.id)"
                   @ionImgDidLoad="imageLoader.onLoad('bt-' + char.id)"
                   @ionError="imageLoader.onError('bt-' + char.id)"
                 />
@@ -740,7 +747,7 @@ function getFilterSummary(item) {
                 </div>
               </div>
               <div class="text-[10px] font-medium text-neutral-700 dark:text-neutral-300 truncate group-hover:text-neutral-950 dark:group-hover:text-neutral-100">{{ char.original || char.name }}</div>
-              <div v-if="char.birthday" class="text-[9px] text-neutral-400 dark:text-neutral-500">{{ char.birthday[0] }}月{{ char.birthday[1] }}日</div>
+              <div v-if="char.birthday" class="text-[9px] text-neutral-400 dark:text-neutral-500">{{ t('character.birthday_short', { month: char.birthday[0], day: char.birthday[1] }) }}</div>
             </div>
           </div>
         </div>
@@ -777,8 +784,10 @@ function getFilterSummary(item) {
                   v-if="char.image?.url"
                   :key="`btt-${char.id}-${imageLoader.getRetryCount('btt-' + char.id)}`"
                   :src="char.image.url"
+                  :alt="char.name || ''"
                   class="h-full w-full object-cover transition-opacity duration-500"
                   :class="{ 'opacity-0': !imageLoader.isSuccess('btt-' + char.id) }"
+                  @ionImgWillLoad="imageLoader.onWillLoad('btt-' + char.id)"
                   @ionImgDidLoad="imageLoader.onLoad('btt-' + char.id)"
                   @ionError="imageLoader.onError('btt-' + char.id)"
                 />
@@ -800,7 +809,7 @@ function getFilterSummary(item) {
                 </div>
               </div>
               <div class="text-[10px] font-medium text-neutral-700 dark:text-neutral-300 truncate group-hover:text-neutral-950 dark:group-hover:text-neutral-100">{{ char.original || char.name }}</div>
-              <div v-if="char.birthday" class="text-[9px] text-neutral-400 dark:text-neutral-500">{{ char.birthday[0] }}月{{ char.birthday[1] }}日</div>
+              <div v-if="char.birthday" class="text-[9px] text-neutral-400 dark:text-neutral-500">{{ t('character.birthday_short', { month: char.birthday[0], day: char.birthday[1] }) }}</div>
             </div>
           </div>
         </div>
@@ -835,9 +844,11 @@ function getFilterSummary(item) {
               <ion-img
                 v-if="item.images?.[0]?.url"
                 :key="`jr-${item.id}-${imageLoader.getRetryCount(`jr-${item.id}`)}`"
-                :src="item.images[0].url"
+                :src="imageLoader.resolveSrc(`jr-${item.id}`, item.images[0].thumbnail || item.images[0].url)"
+                :alt="item.title || 'cover'"
                 class="h-full w-full object-cover transition-opacity duration-500"
                 :class="{ 'blur-md': shouldBlurReleaseCover(item), 'opacity-0': !imageLoader.isSuccess(`jr-${item.id}`) }"
+                @ionImgWillLoad="imageLoader.onWillLoad(`jr-${item.id}`)"
                 @ionImgDidLoad="imageLoader.onLoad(`jr-${item.id}`)"
                 @ionError="imageLoader.onError(`jr-${item.id}`)"
               />
@@ -896,9 +907,11 @@ function getFilterSummary(item) {
               <ion-img
                 v-if="item.images?.[0]?.url"
                 :key="`ur-${item.id}-${imageLoader.getRetryCount(`ur-${item.id}`)}`"
-                :src="item.images[0].url"
+                :src="imageLoader.resolveSrc(`ur-${item.id}`, item.images[0].thumbnail || item.images[0].url)"
+                :alt="item.title || 'cover'"
                 class="h-full w-full object-cover transition-opacity duration-500"
                 :class="{ 'blur-md': shouldBlurReleaseCover(item), 'opacity-0': !imageLoader.isSuccess(`ur-${item.id}`) }"
+                @ionImgWillLoad="imageLoader.onWillLoad(`ur-${item.id}`)"
                 @ionImgDidLoad="imageLoader.onLoad(`ur-${item.id}`)"
                 @ionError="imageLoader.onError(`ur-${item.id}`)"
               />
@@ -947,7 +960,7 @@ function getFilterSummary(item) {
         </div>
         <div>
           <span class="text-sm font-semibold text-neutral-800 dark:text-neutral-200 block">{{ t('home.random_vn') }}</span>
-          <span class="text-[10px] text-neutral-400 dark:text-neutral-500">试试手气，随机跳转到一个作品页面</span>
+          <span class="text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('home.random_vn_tip') }}</span>
         </div>
       </div>
       <Icon icon="lucide:chevron-right" class="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
@@ -959,9 +972,9 @@ function getFilterSummary(item) {
         <div class="flex items-center justify-between mb-3">
           <h2 class="text-sm font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
             <Icon :icon="SEARCH_TYPE_MAP[search.type]?.icon || 'lucide:search'" class="h-4 w-4 text-amber-500" />
-            {{ search.name }}
+            {{ search.nameKey ? t(search.nameKey) : search.name }}
             <span class="text-[8px] px-1.5 py-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 font-normal">
-              {{ SEARCH_TYPE_MAP[search.type]?.label || search.type }}
+              {{ SEARCH_TYPE_MAP[search.type]?.labelKey ? t(SEARCH_TYPE_MAP[search.type].labelKey) : search.type }}
             </span>
           </h2>
           <div class="flex items-center gap-1">
@@ -1003,9 +1016,11 @@ function getFilterSummary(item) {
               <ion-img
                 v-if="getResultDisplay(search, item).image"
                 :key="`sv-${search.id}-${item.id}-${imageLoader.getRetryCount(`sv-${search.id}-${item.id}`)}`"
-                :src="getResultDisplay(search, item).image"
+                :src="imageLoader.resolveSrc(`sv-${search.id}-${item.id}`, getResultDisplay(search, item).image)"
+                :alt="getResultDisplay(search, item).title || 'cover'"
                 class="h-full w-full object-cover transition-opacity duration-500"
                 :class="{ 'blur-md': getResultDisplay(search, item).blur, 'opacity-0': !imageLoader.isSuccess(`sv-${search.id}-${item.id}`) }"
+                @ionImgWillLoad="imageLoader.onWillLoad(`sv-${search.id}-${item.id}`)"
                 @ionImgDidLoad="imageLoader.onLoad(`sv-${search.id}-${item.id}`)"
                 @ionError="imageLoader.onError(`sv-${search.id}-${item.id}`)"
               />

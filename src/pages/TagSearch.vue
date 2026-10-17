@@ -18,13 +18,17 @@ const route = useRoute()
 const { getById } = useSavedSearches()
 
 const query = ref('')
+
+// 支持从 URL 带入搜索关键词（全局搜索「查看更多」跳转用）
+const routeQuery = computed(() => (typeof route.query.q === 'string' ? route.query.q : ''))
+if (routeQuery.value) query.value = routeQuery.value
 const results = ref([])
 const isLoading = ref(false)
 const hasMore = ref(false)
 const page = ref(1)
 const resultsPerPage = 25
 
-// i18n 本地翻译匹配结果
+// i18n 本地{{ t('tag.translation_match') }}结果
 const i18nResults = ref([])
 const isLoadingI18n = ref(false)
 const loadingI18nKey = ref(null) // 当前正在加载的 i18n 项的 key
@@ -253,7 +257,7 @@ const getCategoryClass = (category) => {
             
             <div class="flex items-center gap-2 shrink-0">
               <span class="inline-flex items-center rounded-full bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 text-[9px] font-bold text-neutral-500 dark:text-neutral-400">
-                {{ item.vn_count }} VNs
+                {{ t('common.count_vn', { count: item.vn_count }) }}
               </span>
               <Icon icon="lucide:chevron-right" class="h-3.5 w-3.5 text-neutral-300 dark:text-neutral-600 group-hover:text-neutral-500 dark:group-hover:text-neutral-400 transition-colors" />
             </div>
@@ -267,11 +271,11 @@ const getCategoryClass = (category) => {
         </div>
       </div>
 
-      <!-- i18n 翻译匹配结果 -->
+      <!-- i18n {{ t('tag.translation_match') }}结果 -->
       <div v-if="filteredI18nResults.length > 0" class="mt-3">
         <div class="flex items-center gap-2 mb-2 px-1">
           <Icon icon="lucide:languages" class="h-3.5 w-3.5 text-violet-400" />
-          <span class="text-[10px] text-violet-400 font-bold uppercase tracking-widest">翻译匹配</span>
+          <span class="text-[10px] text-violet-400 font-bold uppercase tracking-widest">{{ t('tag.translation_match') }}</span>
         </div>
         <div class="grid grid-cols-1 gap-2">
           <div 
@@ -292,7 +296,7 @@ const getCategoryClass = (category) => {
                       {{ item.zh }}
                   </h3>
                   <span class="shrink-0 inline-flex items-center rounded-md px-1.5 py-0.5 text-[9px] font-bold bg-violet-100 dark:bg-violet-800/50 text-violet-500 dark:text-violet-400 border border-violet-200 dark:border-violet-700">
-                    翻译
+                    {{ t('tag.translation_badge') }}
                   </span>
                 </div>
                 <p class="text-[11px] text-violet-400 dark:text-violet-500 mt-0.5">
@@ -332,7 +336,7 @@ const getCategoryClass = (category) => {
       <!-- 无搜索结果 -->
       <div v-if="results.length === 0 && filteredI18nResults.length === 0 && !isLoading && query" class="flex flex-col items-center justify-center py-20 text-neutral-400 dark:text-neutral-500 space-y-3">
         <Icon icon="lucide:search-x" class="h-10 w-10 text-neutral-200 dark:text-neutral-700" />
-        <p class="text-sm">未找到相关标签</p>
+        <p class="text-sm">{{ t('tag.no_results') }}</p>
       </div>
 
       <!-- 初始加载动画 -->

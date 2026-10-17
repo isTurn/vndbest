@@ -14,7 +14,17 @@
     "copied": "已复制",
     "copy_failed": "复制失败",
     "favorite_added": "已添加到本地收藏",
-    "favorite_removed": "已取消本地收藏"
+    "favorite_removed": "已取消本地收藏",
+    "retry": "重试",
+    "search": "搜索",
+    "no_description": "暂无描述",
+    "confirm": "确认",
+    "unlimited": "不限",
+    "more": "查看更多",
+    "count_vn": "{count} 部作品",
+    "count_char": "{count} 位角色",
+    "count_vn_short": "{count} 作品",
+    "count_char_short": "{count} 角色"
   },
   "settings": {
     "title": "设置",
@@ -27,6 +37,8 @@
     "use_sandbox": "使用 Sandbox 沙盒端点",
     "sandbox_desc": "启用后将请求测试 API，避免污染正式环境数据",
     "language": "语言",
+    "link_browser_inapp": "内置浏览器",
+    "link_browser_system": "系统浏览器",
     "save_settings": "保存设置",
     "settings_saved": "设置已保存！",
     "vn_title_priority": "VN 标题语言优先级",
@@ -55,6 +67,10 @@
       "about": {
         "title": "关于应用",
         "description": "版本信息、更新检查与项目链接"
+      },
+      "navigation": {
+        "title": "跳转设置",
+        "description": "跨站搜索与版本外链用哪种浏览器打开"
       }
     },
     "favorites": {
@@ -158,15 +174,9 @@
       "checking": "检查中...",
       "up_to_date": "已是最新",
       "check_failed": "检查失败",
-      "download_update": "下载最新版本"
-    },
-    "update": {
-      "new_version_available": "发现新版本",
-      "no_changelog": "暂无更新说明",
-      "dont_remind_this_version": "本版本不再提示",
-      "later": "暂不更新",
-      "update_now": "立即更新",
-      "manual_check_tip": "可在设置-关于页面手动检查哦~"
+      "download_update": "下载最新版本",
+      "maintainer": "完善者",
+      "upstream": "上游原项目"
     },
     "theme": "外观主题",
     "theme_follow_system": "跟随系统",
@@ -183,11 +193,17 @@
       "hint": "网页端与手机端均可从相册/文件选择图片，始终以 Cover 模式铺满全屏。",
       "error_select": "选择或处理图片失败，请重试",
       "error_quota": "图片过大，无法保存。请换一张更小的图片"
-    }
+    },
+    "cross_search_browser": "跨站搜索打开方式",
+    "cross_search_browser_desc": "内置浏览器会启用 APP 内置浏览器显示，系统浏览器则调用外部浏览器。",
+    "release_link_browser": "版本外链打开方式",
+    "release_link_browser_desc": "只影响版本详情里的 VNDB 官方外链。",
+    "vndb_translator": "VNDB 页面中文化",
+    "vndb_translator_desc": "在内置浏览器里打开 vndb.org 时自动注入中文化脚本（内置「VNDB优先原文和中文化」）"
   },
   "nav": {
     "home": "主页",
-    "library": "库",
+    "library": "搜索",
     "list": "列表",
     "settings": "设置"
   },
@@ -216,11 +232,12 @@
     "birthday_today": "今日生日",
     "birthday_tomorrow": "明日生日",
     "no_birthday": "暂无角色过生日",
-    "birthday_age": "{age}岁"
+    "birthday_age": "{age}岁",
+    "random_vn_tip": "试试手气，随机跳转到一个作品页面"
   },
   "library": {
-    "title": "库",
-    "description": "探索 VNDB 数据库",
+    "title": "搜索",
+    "description": "全局搜索作品 / 版本 / 会社 / 人物 / 角色 / 标签 / 特征",
     "view_list": "查看 {name} 列表",
     "vn": "作品",
     "releases": "版本",
@@ -228,7 +245,18 @@
     "staff": "人物",
     "characters": "角色",
     "tags": "标签",
-    "traits": "特征"
+    "traits": "特征",
+    "categories": "分类浏览",
+    "search_placeholder": "搜索作品、会社、角色…（支持中文名）",
+    "searching": "搜索中…",
+    "search_empty": "没有找到相关内容，换个关键词试试",
+    "tag_vn_count": "{count} 部作品",
+    "trait_char_count": "{count} 个角色",
+    "no_results": "没有找到相关内容",
+    "vn_characters": "作品角色",
+    "vn_tags": "作品标签",
+    "vn_staff": "作品职员",
+    "hours_short": "{hours}h"
   },
   "producer_type": {
     "co": "会社",
@@ -238,14 +266,24 @@
   "search": {
     "title": "搜索",
     "description": "查找 Visual Novels 游戏信息",
-    "placeholder": "输入游戏名称搜索，按回车确认...",
+    "placeholder": "搜索{title}...",
     "no_results": "没有找到匹配的 Visual Novels 结果",
     "no_alttitle": "无副标题",
-    "relevance": "相关度"
+    "relevance": "相关度",
+    "subtitle": "搜索 {title} 相关信息",
+    "empty_hint": "输入关键词开始搜索",
+    "filter": "筛选",
+    "clear": "清除",
+    "save": "保存",
+    "released_range": "发布日期范围",
+    "rating_range": "评分范围",
+    "from": "从",
+    "to": "到",
+    "today": "今天"
   },
   "list": {
     "title": "列表",
-    "description": "管理你的 Visual Novels 收藏清单",
+    "description": "管理你的游戏收藏清单",
     "refresh": "刷新列表",
     "not_connected_title": "未连接账户",
     "not_connected_desc": "你需要先登录你的 VNDB 账户，以加载和管理你的个人收藏清单。",
@@ -274,7 +312,8 @@
       "title": "标题"
     },
     "expand_n": "展开全部 {count} 项",
-    "collapse": "收起"
+    "collapse": "收起",
+    "no_label": "未命名标签"
   },
   "login": {
     "title": "VNDB 账户",
@@ -292,7 +331,8 @@
     "logged_in_as": "已登录 (ID: {id})",
     "logout": "退出登录",
     "logout_success": "已退出登录",
-    "login_failed": "登录失败: {error}"
+    "login_failed": "登录失败: {error}",
+    "invalid_token": "Token 无效或网络错误"
   },
   "vn": {
     "details": "游戏详情",
@@ -309,6 +349,7 @@
     "rating": "评分",
     "votes": "{count}票",
     "votes_count": "投票数",
+    "length_from_votes": "{category} ({duration}，{count}人投票)",
     "description": "简介",
     "translation": {
       "title": "AI 翻译",
@@ -336,7 +377,13 @@
     },
     "links": {
       "resource_sites": "资源站",
-      "info_sites": "资料站"
+      "info_sites": "资料站",
+      "cross_search": "跨站搜索",
+      "cross_guide": "攻略 / 存档 / 补丁",
+      "cross_db": "数据库",
+      "cross_adult": "社区 / 18+",
+      "cross_mode_title": "游戏名",
+      "cross_other_titles": "换个标题搜"
     },
     "releases": {
       "loading": "正在加载版本发行数据...",
@@ -365,7 +412,7 @@
       "birthday": "生日",
       "birthday_val": "{month}月{day}日",
       "voiced_by": "声优",
-      "trait_spoiler_filter": "特征剧透过滤",
+      "trait_spoiler_filter": "剧透等级",
       "trait_spoiler_0": "无剧透",
       "trait_spoiler_1": "轻度剧透",
       "trait_spoiler_2": "严重剧透",
@@ -391,15 +438,15 @@
       "va_empty": "暂无声优信息"
     },
     "tags": {
-      "spoiler_filter": "最大剧透过滤等级",
+      "spoiler_filter": "剧透等级",
       "spoiler_0": "无剧透",
       "spoiler_1": "轻度剧透",
       "spoiler_2": "严重剧透",
-      "category_filter": "标签分类",
-      "category_cont": "内容",
-      "category_ero": "性内容",
-      "category_tech": "技术",
-      "search_mode_filter": "标签范围",
+      "category_filter": "分类",
+      "category_cont": "一般内容",
+      "category_ero": "色情内容",
+      "category_tech": "技术特点",
+      "search_mode_filter": "范围",
       "search_mode_summary": "摘要",
       "search_mode_all": "全部",
       "empty": "当前筛选条件下暂无标签信息，可尝试调整过滤等级或分类"
@@ -459,8 +506,27 @@
       "no_permission": "无权限",
       "confirm": "确定",
       "manage_labels": "管理标签",
-      "labels_description": "可多选标签分配到当前作品"
-    }
+      "labels_description": "可多选标签分配到当前作品",
+      "voted": "已评分",
+      "voted_auto": "由打分自动维护",
+      "private": "私密",
+      "add_vote": "点击评分",
+      "vote_hint": "点击编辑评分",
+      "vote_need_collect": "先加入收藏才能评分"
+    },
+    "notes_expand": "展开全文",
+    "notes_collapse": "收起",
+    "cover_main_visual": "主视觉图 (Main Visual)",
+    "cover_default": "封面图",
+    "cover_pkgfront": "包装封面 (Front)",
+    "cover_pkgback": "包装封底 (Back)",
+    "cover_pkgcontent": "包装内容 (Content)",
+    "cover_pkgside": "包装侧脊 (Side)",
+    "cover_pkgmed": "包装媒介 (Media)",
+    "cover_dig": "数字封面 (Digital)",
+    "release_unknown": "发售日未知",
+    "tag_rating_title": "评分: {rating} / 剧透: {spoiler}",
+    "length_vote_hint": "在 VNDB 网页上填写你通关这部作品花了多久"
   },
   "release": {
     "title": "版本详情",
@@ -479,7 +545,7 @@
     "patch": "补丁/更新",
     "freeware": "免费软件",
     "commercial": "商业收费",
-    "uncensored": "无修正",
+    "uncensored": "无码",
     "censored": "有修正",
     "voiced_none": "无配音",
     "voiced_ero": "仅 H 场景配音",
@@ -498,8 +564,21 @@
       "msc": "磁带",
       "mrt": "卡带",
       "in": "网络",
-      "otc": "其他"
-    }
+      "otc": "其他",
+      "crt": "卡带"
+    },
+    "all_ages_short": "0 - 全年龄",
+    "is_patch": "是补丁",
+    "not_patch": "非补丁",
+    "official_yes": "官方",
+    "official_no": "非官方",
+    "free": "免费",
+    "paid": "收费",
+    "voiced_none_short": "无配音",
+    "voiced_ero_only": "仅H场景配音",
+    "voiced_partial_short": "部分配音",
+    "voiced_full_short": "全配音",
+    "extlinks": "外部链接"
   },
   "metadata": {
     "gender": {
@@ -527,7 +606,8 @@
       "translated": "翻译版本",
       "ser": "同系列",
       "set": "同职员",
-      "collab": "联名/联动"
+      "collab": "联名/联动",
+      "shares-char": "共享角色"
     },
     "staff_role": {
       "scenario": "剧本",
@@ -541,7 +621,15 @@
       "publisher": "发行商",
       "developer": "开发商",
       "songs": "作词/作曲",
-      "staff": "演职人员/协力"
+      "staff": "演职人员/协力",
+      "va": "声优",
+      "qa": "QA",
+      "cooperation": "协力",
+      "analyzing": "引擎分析",
+      "package": "包装设计",
+      "thanks": "鸣谢",
+      "discuss": "讨论",
+      "return": "重制"
     },
     "length": {
       "1": "非常短 (< 2小时)",
@@ -585,7 +673,17 @@
       "tl": "他加禄语",
       "ro": "罗马尼亚语",
       "nl": "荷兰语",
-      "pt": "葡萄牙语"
+      "pt": "葡萄牙语",
+      "ja_orig": "日语 (原始)",
+      "zh_orig": "中文 (原始)",
+      "en_orig": "英语 (原始)",
+      "ko_orig": "韩语 (原始)",
+      "fr_orig": "法语 (原始)",
+      "de_orig": "德语 (原始)",
+      "ru_orig": "俄语 (原始)",
+      "es_orig": "西班牙语 (原始)",
+      "it_orig": "意大利语 (原始)",
+      "vi_orig": "越南语 (原始)"
     },
     "trait_group": {
       "hair": "头发",
@@ -670,7 +768,29 @@
       "smd": "Sega Mega Drive",
       "x1s": "Sharp X1",
       "mob": "其他(移动端)",
-      "oth": "其他"
+      "oth": "其他",
+      "xb1": "Xbox One",
+      "xb3": "Xbox Series"
+    },
+    "devstatus": {
+      "finished": "已完结",
+      "developing": "开发中",
+      "cancelled": "已取消"
+    },
+    "screenshots": {
+      "yes": "有截图",
+      "no": "无截图"
+    },
+    "blood_type": {
+      "a": "A 型",
+      "b": "B 型",
+      "ab": "AB 型",
+      "o": "O 型"
+    },
+    "producer_type": {
+      "co": "会社",
+      "in": "个人",
+      "ng": "同人"
     }
   },
   "favorites": {
@@ -692,5 +812,89 @@
       "staff": "人物",
       "producer": "会社"
     }
+  },
+  "update": {
+    "new_version_available": "发现新版本",
+    "no_changelog": "暂无更新说明",
+    "dont_remind_this_version": "本版本不再提示",
+    "later": "暂不更新",
+    "update_now": "立即更新",
+    "manual_check_tip": "可在设置-关于页面手动检查哦~"
+  },
+  "error": {
+    "timeout": "请求超时，请检查网络后重试",
+    "rate_limit": "请求过于频繁，请稍后重试",
+    "network": "网络连接失败，请检查网络设置"
+  },
+  "save_search": {
+    "title": "保存搜索",
+    "hint": "请输入名称，最多{max}个字",
+    "placeholder": "输入搜索名称",
+    "name_required": "请输入名称",
+    "name_too_long": "名称最多{max}个字",
+    "name_exists": "名称已存在"
+  },
+  "filter": {
+    "tag_title": "选择标签",
+    "tag_search_placeholder": "搜索标签名称...",
+    "popular_tags": "热门标签",
+    "trait_title": "特征",
+    "trait_search_placeholder": "搜索特征名称...",
+    "popular_traits": "热门特征",
+    "search_results": "搜索结果",
+    "load_more": "加载更多",
+    "no_tags_found": "没有找到匹配的标签",
+    "no_traits_found": "没有找到匹配的特征",
+    "selected": "已选",
+    "tags_unit": "个标签",
+    "traits_unit": "个特征",
+    "translation_match": "翻译匹配",
+    "birthday": "生日",
+    "body_data": "身体数据",
+    "clear_body_data": "清除身体数据",
+    "height": "身高 (cm)",
+    "weight": "体重 (kg)",
+    "bust": "胸围 (cm)",
+    "cup": "杯型",
+    "day": "日"
+  },
+  "tag": {
+    "view_related_vns": "查看相关作品",
+    "no_results": "未找到相关标签",
+    "translation_match": "翻译匹配",
+    "translation_badge": "翻译"
+  },
+  "trait": {
+    "view_related_chars": "查看相关角色",
+    "no_results": "未找到相关特征"
+  },
+  "character": {
+    "no_results": "未找到相关角色",
+    "birthday_short": "{month}月{day}日",
+    "month": "{n}月"
+  },
+  "staff": {
+    "no_results": "未找到相关人物",
+    "other_names": "其他曾用名",
+    "works": "参与作品",
+    "not_found": "未找到该人物的信息"
+  },
+  "producer": {
+    "no_results": "未找到相关会社",
+    "developed_works": "开发作品"
+  },
+  "saved_search": {
+    "type_vn": "VN 搜索",
+    "type_releases": "版本搜索",
+    "type_producers": "制作商搜索",
+    "type_staff": "制作人员搜索",
+    "type_characters": "角色搜索",
+    "type_tags": "标签搜索",
+    "type_traits": "特征搜索",
+    "latest_chinese": "最新汉化",
+    "latest_release": "最新发布",
+    "earliest_release": "最早发布",
+    "before_today": "今天之前",
+    "before_date": "{date}之前"
   }
 }

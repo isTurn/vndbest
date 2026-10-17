@@ -7,20 +7,37 @@ import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
 import AppHeader from '@/components/AppHeader.vue'
 import BaseSelect from '@/components/BaseSelect.vue'
-import { IonPage, IonContent } from '@ionic/vue'
+import { IonPage, IonContent, IonImg, IonSpinner } from '@ionic/vue'
 import { useTheme } from '@/composables/useTheme'
 import { useBackground } from '@/composables/useBackground'
-import { SETTINGS_SECTION_ICONS, THEME_OPTION_ICONS } from '@/icons/icon-names'
+import { SETTINGS_SECTION_ICONS, THEME_OPTION_ICONS, APP_ICON_NAMES } from '@/icons/icon-names'
+
+// 本项目仓库（完善者 isTurn 的 fork）与上游原作者仓库
+const REPO_URL = 'https://github.com/isTurn/vndbest'
+const REPO_LABEL = 'isTurn/vndbest'
+const UPSTREAM_REPO_URL = 'https://github.com/Cyancat000/vndbest'
+const UPSTREAM_REPO_LABEL = 'Cyancat000/vndbest'
 import { cacheManager } from '@/utils/cacheManager'
 import { useToast } from '@/composables/useToast'
 import { useAppUpdate } from '@/composables/useAppUpdate'
 import { useFavorites } from '@/composables/useFavorites'
+import { useImageLoader } from '@/composables/useImageLoader'
+import {
+  getCrossSearchBrowserMode,
+  setCrossSearchBrowserMode,
+  getReleaseLinkBrowserMode,
+  setReleaseLinkBrowserMode,
+  LINK_BROWSER_INAPP,
+  LINK_BROWSER_SYSTEM
+} from '@/utils/linkOpener'
+import { getTranslatorEnabled, setTranslatorEnabled } from '@/utils/vndbTranslator'
 
 const route = useRoute()
 const router = useRouter()
 const { t, locale } = useI18n()
 const { themeMode } = useTheme()
 const { showToast } = useToast()
+const imageLoader = useImageLoader()
 const {
   appVersion: APP_VERSION,
   updateState,
@@ -92,6 +109,12 @@ const settingsSections = computed(() => ([
     title: t('settings.sections.favorites.title'),
     description: t('settings.sections.favorites.description'),
     icon: SETTINGS_SECTION_ICONS.favorites
+  },
+  {
+    key: 'navigation',
+    title: t('settings.sections.navigation.title'),
+    description: t('settings.sections.navigation.description'),
+    icon: SETTINGS_SECTION_ICONS.navigation
   },
   {
     key: 'storage',
@@ -296,6 +319,31 @@ watch(currentLang, (newLang) => {
   localStorage.setItem('vndb_lang', newLang)
 })
 
+// ====== 外链跳转方式（内置浏览器 / 系统浏览器）======
+// 只有两项独立设置：跨站搜索、版本外链。两者都默认系统浏览器。
+const linkBrowserOptions = [
+  { value: LINK_BROWSER_INAPP, label: 'settings.link_browser_inapp', icon: APP_ICON_NAMES.common.appWindow },
+  { value: LINK_BROWSER_SYSTEM, label: 'settings.link_browser_system', icon: APP_ICON_NAMES.common.externalLink }
+]
+
+// 跨站搜索
+const crossSearchBrowserMode = ref(getCrossSearchBrowserMode())
+watch(crossSearchBrowserMode, (mode) => {
+  setCrossSearchBrowserMode(mode)
+})
+
+// 版本外链
+const releaseLinkBrowserMode = ref(getReleaseLinkBrowserMode())
+watch(releaseLinkBrowserMode, (mode) => {
+  setReleaseLinkBrowserMode(mode)
+})
+
+// 内置浏览器里的 VNDB 中文化（等同内置了「VNDB优先原文和中文化」油猴脚本）
+const translatorEnabled = ref(getTranslatorEnabled())
+watch(translatorEnabled, (on) => {
+  setTranslatorEnabled(on)
+})
+
 function goToLogin() {
   router.push('/login')
 }
@@ -448,6 +496,27 @@ const themeOptions = [
                 v-model="currentLang"
                 :options="languageOptions"
               />
+            </div>
+
+            <!-- 内置浏览器里的 VNDB 中文化 -->
+            <div class="flex items-start justify-between gap-3 py-2 border-t border-neutral-100 dark:border-neutral-700/50">
+              <div class="min-w-0 flex-1">
+                <label class="block text-sm font-medium text-neutral-800 dark:text-neutral-200">{{ t('settings.vndb_translator') }}</label>
+                <p class="mt-0.5 text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('settings.vndb_translator_desc') }}</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                :aria-checked="translatorEnabled"
+                @click="translatorEnabled = !translatorEnabled"
+                class="relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors duration-200"
+                :class="translatorEnabled ? 'bg-sky-500' : 'bg-neutral-300 dark:bg-neutral-600'"
+              >
+                <span
+                  class="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200"
+                  :class="translatorEnabled ? 'translate-x-[22px]' : 'translate-x-[2px]'"
+                />
+              </button>
             </div>
 
           </div>
@@ -761,14 +830,31 @@ const themeOptions = [
                 <div class="flex items-center gap-3 min-w-0 flex-1">
                   <!-- 缩略图 / 图标 -->
                   <div class="relative h-14 w-11 shrink-0 overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-100 dark:bg-neutral-800">
-                    <img
+                    <ion-img
                       v-if="item.image"
-                      :src="item.image"
+                      :key="`fav-${item.type}-${item.id}-${imageLoader.getRetryCount(`fav-${item.type}-${item.id}`)}`"
+                      :src="imageLoader.resolveSrc(`fav-${item.type}-${item.id}`, item.image)"
                       :alt="item.title"
-                      class="h-full w-full object-cover"
-                      loading="lazy"
+                      class="h-full w-full object-cover transition-opacity duration-300"
+                      :class="{ 'opacity-0': !imageLoader.isSuccess(`fav-${item.type}-${item.id}`) }"
+                      @ionImgWillLoad="imageLoader.onWillLoad(`fav-${item.type}-${item.id}`)"
+                      @ionImgDidLoad="imageLoader.onLoad(`fav-${item.type}-${item.id}`)"
+                      @ionError="imageLoader.onError(`fav-${item.type}-${item.id}`)"
                     />
-                    <div v-else class="flex h-full w-full items-center justify-center">
+                    <ion-spinner
+                      v-if="item.image && imageLoader.isLoading(`fav-${item.type}-${item.id}`)"
+                      name="crescent"
+                      class="absolute inset-0 m-auto z-10 text-neutral-400"
+                      style="width: 14px; height: 14px;"
+                    />
+                    <div
+                      v-if="item.image && imageLoader.isError(`fav-${item.type}-${item.id}`)"
+                      @click.stop="imageLoader.retry(`fav-${item.type}-${item.id}`)"
+                      class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 z-10 cursor-pointer"
+                    >
+                      <Icon icon="lucide:refresh-cw" class="h-3 w-3 text-neutral-400 dark:text-neutral-500" />
+                    </div>
+                    <div v-if="!item.image" class="flex h-full w-full items-center justify-center">
                       <Icon
                         :icon="
                           item.type === 'vn' ? 'lucide:gamepad-2' :
@@ -807,6 +893,57 @@ const themeOptions = [
                   :title="t('favorites.remove')"
                 >
                   <Icon icon="lucide:heart" class="h-4 w-4 fill-red-500 text-red-500" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <template v-else-if="activeSection === 'navigation'">
+          <div class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 shadow-xs space-y-4">
+            <div class="border-b border-neutral-100 dark:border-neutral-700/50 pb-2">
+              <h2 class="text-sm font-semibold text-neutral-800 dark:text-neutral-200">{{ t('settings.sections.navigation.title') }}</h2>
+              <p class="text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('settings.sections.navigation.description') }}</p>
+            </div>
+
+            <!-- 跨站搜索打开方式 -->
+            <div class="space-y-2 py-1">
+              <div>
+                <label class="block text-sm font-medium text-neutral-800 dark:text-neutral-200">{{ t('settings.cross_search_browser') }}</label>
+                <p class="mt-0.5 text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('settings.cross_search_browser_desc') }}</p>
+              </div>
+              <div class="flex rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 p-0.5 gap-0.5">
+                <button
+                  v-for="opt in linkBrowserOptions"
+                  :key="'cross-' + opt.value"
+                  type="button"
+                  @click="crossSearchBrowserMode = opt.value"
+                  class="flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-md text-xs font-medium transition-all duration-200 whitespace-nowrap"
+                  :class="crossSearchBrowserMode === opt.value ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 shadow-sm' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'"
+                >
+                  <Icon :icon="opt.icon" class="h-4 w-4" />
+                  <span>{{ t(opt.label) }}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 版本外链打开方式 -->
+            <div class="space-y-2 py-1 border-t border-neutral-100 dark:border-neutral-700/50">
+              <div>
+                <label class="block text-sm font-medium text-neutral-800 dark:text-neutral-200">{{ t('settings.release_link_browser') }}</label>
+                <p class="mt-0.5 text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('settings.release_link_browser_desc') }}</p>
+              </div>
+              <div class="flex rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 p-0.5 gap-0.5">
+                <button
+                  v-for="opt in linkBrowserOptions"
+                  :key="'rel-' + opt.value"
+                  type="button"
+                  @click="releaseLinkBrowserMode = opt.value"
+                  class="flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-md text-xs font-medium transition-all duration-200 whitespace-nowrap"
+                  :class="releaseLinkBrowserMode === opt.value ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 shadow-sm' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'"
+                >
+                  <Icon :icon="opt.icon" class="h-4 w-4" />
+                  <span>{{ t(opt.label) }}</span>
                 </button>
               </div>
             </div>
@@ -926,6 +1063,7 @@ const themeOptions = [
                 :href="latestReleaseUrl"
                 target="_blank"
                 rel="noopener noreferrer"
+                data-native
                 class="flex items-center justify-between py-2 px-3 -mx-3 rounded-lg border border-green-100 dark:border-green-800/30 bg-green-50/50 dark:bg-green-900/10 transition hover:bg-green-50 dark:hover:bg-green-900/20 active:bg-green-100 dark:active:bg-green-900/30"
               >
                 <span class="text-green-700 dark:text-green-300 font-medium">{{ t('settings.about.download_update') }}</span>
@@ -939,15 +1077,35 @@ const themeOptions = [
                 <span class="text-neutral-500 dark:text-neutral-400">{{ t('settings.about.developer') }}</span>
                 <span class="font-medium text-neutral-800 dark:text-neutral-200">Heki喵 (Cyancat000)</span>
               </div>
+              <div class="flex justify-between">
+                <span class="text-neutral-500 dark:text-neutral-400">{{ t('settings.about.maintainer') }}</span>
+                <span class="font-medium text-neutral-800 dark:text-neutral-200">isTurn</span>
+              </div>
+
+              <!-- 本项目（完善后的分支） -->
               <a
-                href="https://github.com/Cyancat000/vndbest"
+                :href="REPO_URL"
                 target="_blank"
                 rel="noopener noreferrer"
                 class="flex items-center justify-between py-2 px-3 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 transition hover:bg-neutral-100 dark:hover:bg-neutral-800 active:bg-neutral-150"
               >
                 <span class="text-neutral-500 dark:text-neutral-400">{{ t('settings.about.github') }}</span>
-                <div class="flex items-center gap-1">
-                  <span class="font-medium text-neutral-800 dark:text-neutral-200 truncate max-w-[180px]">Cyancat000/vndbest</span>
+                <div class="flex items-center gap-1 min-w-0">
+                  <span class="font-medium text-neutral-800 dark:text-neutral-200 truncate max-w-[180px]">{{ REPO_LABEL }}</span>
+                  <Icon icon="lucide:external-link" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500 shrink-0" />
+                </div>
+              </a>
+
+              <!-- 上游原作者项目 -->
+              <a
+                :href="UPSTREAM_REPO_URL"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="flex items-center justify-between py-2 px-3 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50 transition hover:bg-neutral-100 dark:hover:bg-neutral-800 active:bg-neutral-150"
+              >
+                <span class="text-neutral-500 dark:text-neutral-400">{{ t('settings.about.upstream') }}</span>
+                <div class="flex items-center gap-1 min-w-0">
+                  <span class="font-medium text-neutral-800 dark:text-neutral-200 truncate max-w-[180px]">{{ UPSTREAM_REPO_LABEL }}</span>
                   <Icon icon="lucide:external-link" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500 shrink-0" />
                 </div>
               </a>

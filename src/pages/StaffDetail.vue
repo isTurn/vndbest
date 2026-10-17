@@ -188,7 +188,7 @@ const sortOptions = [
 
         <!-- Aliases -->
         <div v-if="staff.aliases?.length > 1" class="space-y-2">
-          <h3 class="text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider px-1">其他曾用名</h3>
+          <h3 class="text-xs font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider px-1">{{ t('staff.other_names') }}</h3>
           <div class="flex flex-wrap gap-2">
             <span
               v-for="alias in staff.aliases.filter(a => a.name !== staff.name)"
@@ -220,7 +220,7 @@ const sortOptions = [
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
             <div class="h-4 w-1 rounded-full bg-neutral-900 dark:bg-neutral-100"></div>
-            <h3 class="text-sm font-bold text-neutral-900 dark:text-neutral-100 uppercase tracking-wider">参与作品</h3>
+            <h3 class="text-sm font-bold text-neutral-900 dark:text-neutral-100 uppercase tracking-wider">{{ t('staff.works') }}</h3>
           </div>
           <span class="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded-full">
             {{ items.length }}{{ hasMore ? '+' : '' }}
@@ -244,7 +244,7 @@ const sortOptions = [
     
     <div v-else class="flex flex-col items-center justify-center py-20 text-neutral-400 dark:text-neutral-500">
       <Icon icon="lucide:user-x" class="h-10 w-10 mb-4 opacity-20" />
-      <p>未找到该人物的信息</p>
+      <p>{{ t('staff.not_found') }}</p>
     </div>
   </div>
   </ion-content>

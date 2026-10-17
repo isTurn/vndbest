@@ -1,9 +1,11 @@
 <script setup>
 import { ref } from 'vue'
 import { Icon } from '@iconify/vue'
+import { useI18n } from 'vue-i18n'
 import { useTranslation } from '@/composables/useTranslation'
 
 const { translateTraitName } = useTranslation()
+const { t } = useI18n()
 
 const props = defineProps({
   trait: {
@@ -82,7 +84,7 @@ function cleanDescription(desc) {
           <!-- Char Count -->
           <div class="px-4 pb-2">
             <span class="text-[11px] text-neutral-400 dark:text-neutral-500 font-medium">
-              {{ trait.char_count }} Characters
+              {{ t('common.count_char_short', { count: trait.char_count }) }}
             </span>
           </div>
 
@@ -93,7 +95,7 @@ function cleanDescription(desc) {
             </p>
           </div>
           <div v-else class="px-4 pb-3">
-            <p class="text-xs text-neutral-400 dark:text-neutral-500 italic">暂无描述</p>
+            <p class="text-xs text-neutral-400 dark:text-neutral-500 italic">{{ t('common.no_description') }}</p>
           </div>
 
           <!-- Footer -->
@@ -102,7 +104,7 @@ function cleanDescription(desc) {
               @click="handleDetail"
               class="w-full py-2 rounded-lg bg-neutral-900 text-white text-xs font-medium hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-white transition-colors cursor-pointer"
             >
-              查看相关角色
+              {{ t('trait.view_related_chars') }}
             </button>
           </div>
         </div>

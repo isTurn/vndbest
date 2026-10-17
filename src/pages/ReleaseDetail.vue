@@ -2,14 +2,18 @@
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { translateError } from '@/utils/errorMessage'
 import { Icon } from '@iconify/vue'
 import AppHeader from '@/components/AppHeader.vue'
+import AgeRating from '@/components/AgeRating.vue'
+import { PLATFORM_ICON_NAMES, APP_ICON_NAMES } from '@/icons/icon-names'
 import { getReleaseDetail } from '@/api/vndb'
 import { usePrivacy, getImageNsfwLevel } from '@/composables/usePrivacy'
 import { useImageLoader } from '@/composables/useImageLoader'
 import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
 import { useFavorites } from '@/composables/useFavorites'
+import { openExternalUrl, getReleaseLinkBrowserMode } from '@/utils/linkOpener'
 import { IonPage, IonContent, IonImg, IonSpinner } from '@ionic/vue'
 
 const { getDetailAction, getCardAction } = usePrivacy()
@@ -18,6 +22,17 @@ const { copyText } = useClipboard()
 const { showToast } = useToast()
 
 const { t } = useI18n()
+
+// 平台图标（与 ReleaseList 保持一致）
+function getPlatformIcon(platform) {
+  return PLATFORM_ICON_NAMES[platform] || APP_ICON_NAMES.common.monitor
+}
+// VNDB 提供的外链：走「版本外链」独立设置（内置浏览器 / 系统浏览器）
+const openExtLink = (link) => {
+  if (!link?.url) return
+  openExternalUrl(link.url, { mode: getReleaseLinkBrowserMode() })
+}
+
 const route = useRoute()
 const router = useRouter()
 const releaseId = ref(route.params.id)
@@ -38,7 +53,7 @@ const fetchReleaseDetail = async () => {
     }
   } catch (err) {
     console.error('Failed to fetch release detail:', err)
-    error.value = err.message || t('vn.not_found')
+    error.value = translateError(err, t, 'vn.not_found')
   } finally {
     loading.value = false
   }
@@ -223,7 +238,7 @@ watch(
       {{ error || t('vn.not_found') }}
       <div class="mt-4">
         <button @click="fetchReleaseDetail" class="rounded-lg bg-neutral-900 px-4 py-2 text-white text-xs font-bold dark:bg-neutral-100 dark:text-neutral-900 active:scale-95 transition">
-          Retry
+          {{ t('common.retry') }}
         </button>
       </div>
     </div>
@@ -239,9 +254,11 @@ watch(
           <ion-img
             v-if="release.images?.length > 0 && !(coverAction === 'hide' && !revealedItems.has('cover'))"
             :key="`release-cover-${imageLoader.getRetryCount('release-cover')}`"
-            :src="release.images[0].url"
+            :src="imageLoader.resolveSrc('release-cover', release.images[0].thumbnail || release.images[0].url)"
+            :alt="release.title || 'cover'"
             class="h-full w-full object-cover transition-opacity duration-500"
             :class="{ 'opacity-0': !imageLoader.isSuccess('release-cover') }"
+            @ionImgWillLoad="imageLoader.onWillLoad('release-cover')"
             @ionImgDidLoad="imageLoader.onLoad('release-cover')"
             @ionError="imageLoader.onError('release-cover')"
           />
@@ -336,7 +353,13 @@ watch(
             </div>
 
             <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.platforms') }}</span>
-            <span class="text-neutral-800 dark:text-neutral-200 font-medium">{{ release.platforms?.map(p => t(`metadata.platform.${p}`, p)).join(', ') }}</span>
+            <div class="flex flex-wrap gap-1">
+              <span v-for="p in (release.platforms || [])" :key="p"
+                class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-600 font-medium">
+                <Icon :icon="getPlatformIcon(p)" class="h-3 w-3 shrink-0" />
+                {{ t(`metadata.platform.${p}`, p) }}
+              </span>
+            </div>
 
             <span v-if="release.engine" class="text-neutral-400 dark:text-neutral-500">{{ t('release.engine') }}</span>
             <span v-if="release.engine" class="text-neutral-800 dark:text-neutral-200 font-medium">{{ release.engine }}</span>
@@ -361,9 +384,7 @@ watch(
             </div>
 
             <span v-if="release.minage !== null" class="text-neutral-400 dark:text-neutral-500">{{ t('vn.releases.age') }}</span>
-            <span v-if="release.minage !== null" class="font-bold px-1.5 py-0.5 rounded bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 text-[10px] w-fit">
-              {{ release.minage === 0 ? t('release.all_ages') : release.minage + '+' }}
-            </span>
+            <AgeRating v-if="release.minage !== null" :minage="release.minage" :uncensored="release.uncensored" class="font-bold" />
           </div>
         </div>
       </div>
@@ -380,9 +401,11 @@ watch(
           >
             <ion-img
               :key="`rel-img-${idx}-${imageLoader.getRetryCount(`rel-img-${idx}`)}`"
-              :src="img.url"
+              :alt="img.type || 'cover'"
+              :src="imageLoader.resolveSrc(`rel-img-${idx}`, img.thumbnail || img.url)"
               class="h-full w-full object-contain transition-opacity duration-500"
               :class="{ 'blur-md': shouldBlurCoverImg(img), 'opacity-0': !imageLoader.isSuccess(`rel-img-${idx}`) }"
+              @ionImgWillLoad="imageLoader.onWillLoad(`rel-img-${idx}`)"
               @ionImgDidLoad="imageLoader.onLoad(`rel-img-${idx}`)"
               @ionError="imageLoader.onError(`rel-img-${idx}`)"
             />
@@ -423,9 +446,11 @@ watch(
             <div class="h-16 w-12 shrink-0 rounded-lg overflow-hidden border border-neutral-100 bg-neutral-50 dark:border-neutral-800 dark:bg-neutral-800 relative">
               <ion-img
                 :key="`vn-card-${vn.id}-${imageLoader.getRetryCount(`vn-card-${vn.id}`)}`"
-                :src="vn.image?.thumbnail || vn.image?.url"
+                :src="imageLoader.resolveSrc(`vn-card-${vn.id}`, vn.image?.thumbnail || vn.image?.url)"
+                :alt="vn.title || 'cover'"
                 class="h-full w-full object-cover transition-opacity duration-500"
                 :class="{ 'blur-md': shouldBlurVnCard(vn), 'opacity-0': !imageLoader.isSuccess(`vn-card-${vn.id}`) }"
+                @ionImgWillLoad="imageLoader.onWillLoad(`vn-card-${vn.id}`)"
                 @ionImgDidLoad="imageLoader.onLoad(`vn-card-${vn.id}`)"
                 @ionError="imageLoader.onError(`vn-card-${vn.id}`)"
               />
@@ -485,7 +510,27 @@ watch(
         </div>
       </div>
 
-      <!-- 5. 备注 (模仿 VnDetail Description 风格) -->
+      <!-- 5. 外部链接（VNDB 提供） -->
+      <div v-if="release.extlinks?.length" class="space-y-1.5">
+        <h3 class="text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 flex items-center gap-1.5">
+          <Icon icon="lucide:external-link" class="h-3.5 w-3.5" />
+          {{ t('release.extlinks') }}
+        </h3>
+        <div class="flex flex-wrap gap-2">
+          <button
+            v-for="link in release.extlinks"
+            :key="link.url"
+            type="button"
+            @click="openExtLink(link)"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 text-xs font-medium text-neutral-700 dark:text-neutral-300 hover:border-neutral-400 dark:hover:border-neutral-500 transition-colors cursor-pointer active:scale-[0.98]"
+          >
+            <Icon icon="lucide:external-link" class="h-3 w-3 text-neutral-400 dark:text-neutral-500" />
+            {{ link.label }}
+          </button>
+        </div>
+      </div>
+
+      <!-- 6. 备注 (模仿 VnDetail Description 风格) -->
       <div v-if="release.notes" class="space-y-1.5">
         <h3 class="text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 flex items-center gap-1.5">
           <Icon icon="lucide:sticky-note" class="h-3.5 w-3.5" />
