@@ -16,6 +16,7 @@
     "@capacitor/haptics": "^8.0.2",
     "@capacitor/keyboard": "^8.0.3",
     "@capacitor/status-bar": "^8.0.2",
+    "@capgo/inappbrowser": "^8.6.13",
     "@iconify-icons/eos-icons": "^1.2.4",
     "@iconify-icons/lucide": "^1.2.39",
     "@iconify-icons/simple-icons": "^1.2.26",
