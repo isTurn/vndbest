@@ -39,6 +39,7 @@ export const APP_ICON_NAMES = {
     eye: 'lucide:eye',
     eyeOff: 'lucide:eye-off',
     star: 'lucide:star',
+    award: 'lucide:award',
     quote: 'lucide:quote',
     loader: 'lucide:loader',
     loader2: 'lucide:loader-2',
@@ -90,6 +91,9 @@ export const APP_ICON_NAMES = {
     weight: 'lucide:weight',
     circle: 'lucide:circle',
     heart: 'lucide:heart',
+    play: 'lucide:play',
+    pause: 'lucide:pause',
+    ban: 'lucide:ban',
     droplets: 'lucide:droplets',
     venus: 'lucide:circle',
     mars: 'lucide:circle-dot',
@@ -100,7 +104,9 @@ export const APP_ICON_NAMES = {
     square: 'lucide:square',
     globe: 'lucide:globe',
     pencilLine: 'lucide:pencil-line',
-    upload: 'lucide:upload'
+    upload: 'lucide:upload',
+    barChart: 'lucide:bar-chart-3',
+    trendingUp: 'lucide:trending-up'
   },
   loaders: {
     eosLoading: 'eos-icons:loading'

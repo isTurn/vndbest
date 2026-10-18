@@ -143,7 +143,14 @@
 
             <!-- 语言（先选语言，版本列表会按语言筛选） -->
             <div v-if="availableLangs.length" class="space-y-2">
-              <label class="text-xs font-medium text-neutral-500 dark:text-neutral-400">{{ t('vn.length_vote.langs') }}</label>
+              <div class="flex items-center justify-between gap-2">
+                <label class="text-xs font-medium text-neutral-500 dark:text-neutral-400">
+                  {{ t('vn.length_vote.langs') }}
+                </label>
+                <span v-if="langLimited" class="text-[10px] text-neutral-400 dark:text-neutral-500">
+                  {{ t('vn.length_vote.langs_limited', '仅显示所选版本的语言') }}
+                </span>
+              </div>
               <div class="flex flex-wrap gap-1.5">
                 <button
                   v-for="lang in availableLangs"
@@ -157,11 +164,6 @@
                 >
                   <LanguageFlag :lang="lang" class="h-3.5 w-3.5" />
                   {{ t(`metadata.lang.${lang}`, lang) }}
-                  <Icon
-                    v-if="form.lang.includes(lang)"
-                    icon="lucide:check"
-                    class="h-3 w-3 shrink-0"
-                  />
                 </button>
               </div>
             </div>
@@ -540,14 +542,33 @@ function releaseLangs(rel) {
   return rel.languages.map((l) => (typeof l === 'string' ? l : l.lang)).filter(Boolean)
 }
 
-const availableLangs = computed(() => {
+/** 全部版本支持的语言（未按版本筛选） */
+const allAvailableLangs = computed(() => {
   const set = new Set()
   for (const rel of allReleases.value) {
-    if (form.value.rid.length && !form.value.rid.includes(rel.id)) continue
     for (const l of releaseLangs(rel)) set.add(l)
   }
   return Array.from(set)
 })
+
+const availableLangs = computed(() => {
+  const checked = form.value.rid
+  // 勾了版本：只显示这些版本支持的语言（已投过票时就是自己玩过的语言）；
+  // 全部取消勾选后 checked 为空，退回显示所有语言。
+  const set = new Set()
+  for (const rel of allReleases.value) {
+    if (checked.length && !checked.includes(rel.id)) continue
+    for (const l of releaseLangs(rel)) set.add(l)
+  }
+  // 记录里已选的语言始终保留，避免版本数据缺失时 chip 突然消失
+  for (const l of form.value.lang) set.add(l)
+  return Array.from(set)
+})
+
+/** 语言是否正被所选版本限制（用于标题旁提示） */
+const langLimited = computed(
+  () => form.value.rid.length > 0 && allAvailableLangs.value.length > availableLangs.value.length
+)
 
 /** 版本列表按「当前已选语言」筛选：选了语言就只显示包含该语言的版本 */
 const visibleReleases = computed(() => {
@@ -621,13 +642,15 @@ watch(
   }
 )
 
-// 版本变化时把不再可用的语言剔掉，避免提交被拒
+// 版本变化时不主动删掉已选语言（否则会悄悄改掉用户已有的投票），
+// 只剔除所有版本都不支持的语言，避免提交被服务端拒绝。
 watch(
   () => form.value.rid.slice().sort().join(','),
   () => {
-    const allowed = availableLangs.value
-    if (!allowed.length) return
-    form.value.lang = form.value.lang.filter((l) => allowed.includes(l))
+    const all = allAvailableLangs.value
+    if (!all.length) return
+    const kept = form.value.lang.filter((l) => all.includes(l))
+    if (kept.length !== form.value.lang.length) form.value.lang = kept
   }
 )
 

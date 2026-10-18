@@ -289,7 +289,7 @@ function getResultDisplay(search, item) {
   const type = search.type
   if (type === 'releases') {
     return {
-      image: item.images?.[0]?.thumbnail || item.images?.[0]?.url || null,
+      image: getReleaseImage(item)?.thumbnail || getReleaseImage(item)?.url || null,
       title: item.alttitle || item.title,
       subtitle: item.released || '',
       badges: (item.languages || []).slice(0, 2).map(l => typeof l === 'string' ? l : l.lang),
@@ -395,7 +395,7 @@ onMounted(async () => {
   getReleaseList(['released', '<=', today], { sort: 'released', reverse: true, results: 5 })
     .then(res => {
       justReleased.value = res.results
-      prefetchFromItems(res.results, it => it.images?.[0]?.thumbnail || it.images?.[0]?.url, 5, { priority: true })
+      prefetchFromItems(res.results, it => getReleaseImage(it)?.thumbnail || getReleaseImage(it)?.url, 5, { priority: true })
       loadingSections.value.releases = false
     }).catch(err => {
       console.error('获取刚刚发布失败:', err)
@@ -406,7 +406,7 @@ onMounted(async () => {
   getReleaseList(['released', '>', today], { sort: 'released', reverse: false, results: 5 })
     .then(res => {
       upcomingReleases.value = res.results
-      prefetchFromItems(res.results, it => it.images?.[0]?.thumbnail || it.images?.[0]?.url, 5)
+      prefetchFromItems(res.results, it => getReleaseImage(it)?.thumbnail || getReleaseImage(it)?.url, 5)
     }).catch(err => {
       console.error('获取即将发布失败:', err)
     })
@@ -477,8 +477,17 @@ function navigateToBirthdaySearch(month, day) {
 
 // 隐私过滤：获取 release 封面的 NSFW 等级
 function getReleaseCoverNsfwLevel(item) {
-  if (!item?.images?.length) return 0
-  return getImageNsfwLevel(item.images[0])
+  const img = getReleaseImage(item)
+  return img ? getImageNsfwLevel(img) : 0
+}
+
+// 版本封面：自身没有封面时回退到关联游戏主封面
+function getReleaseImage(item) {
+  if (!item) return null
+  if (item.images?.length && item.images[0]) return item.images[0]
+  const vnCover = item.vns?.find(v => v?.image?.url || v?.image?.thumbnail)?.image
+  if (vnCover && (vnCover.thumbnail || vnCover.url)) return vnCover
+  return null
 }
 
 // 隐私过滤：判断 release 卡片是否需要模糊
@@ -640,33 +649,35 @@ function getFilterSummary(item) {
   <div class="page-container pb-24 space-y-6">
     <AppHeader mode="page" icon="lucide:home" :title="t('home.title')" :subtitle="t('home.subtitle')" />
 
-    <!-- 统计区块 (Notion Style Block) -->
-    <div class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 shadow-xs">
-      <h2 class="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-3 flex items-center gap-2">
-        <Icon icon="lucide:info" class="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
-        {{ t('home.stats_title') }}
-      </h2>
-      
-      <div v-if="loadingSections.stats" class="grid grid-cols-2 gap-3">
-        <div v-for="i in 4" :key="i" class="animate-pulse rounded-lg bg-neutral-100 dark:bg-neutral-800 p-3 h-16"></div>
-      </div>
-      
-      <div v-else-if="stats" class="grid grid-cols-2 gap-3">
-        <div class="rounded-lg border border-neutral-100 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/50 p-3">
-          <div class="text-xs text-neutral-500 dark:text-neutral-400">{{ t('home.vn') }}</div>
-          <div class="text-lg font-bold text-neutral-950 dark:text-neutral-50 mt-0.5">{{ stats.vn?.toLocaleString() || '0' }}</div>
+    <!-- 统计区块：标题在左（与其他卡片标题同字号、不换行），四项数据在右侧排成 2×2 -->
+    <div class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 shadow-xs">
+      <div class="flex items-center gap-3">
+        <h2 class="text-sm font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2 shrink-0 whitespace-nowrap">
+          <Icon icon="lucide:info" class="h-4 w-4 shrink-0 text-neutral-500 dark:text-neutral-400" />
+          <span>{{ t('home.stats_short', '平台数据') }}</span>
+        </h2>
+
+        <div v-if="loadingSections.stats" class="ml-auto grid grid-cols-2 gap-1 min-w-0">
+          <div v-for="i in 4" :key="i" class="animate-pulse rounded-md bg-neutral-100 dark:bg-neutral-800 h-5"></div>
         </div>
-        <div class="rounded-lg border border-neutral-100 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/50 p-3">
-          <div class="text-xs text-neutral-500 dark:text-neutral-400">{{ t('home.releases') }}</div>
-          <div class="text-lg font-bold text-neutral-950 dark:text-neutral-50 mt-0.5">{{ stats.releases?.toLocaleString() || '0' }}</div>
-        </div>
-        <div class="rounded-lg border border-neutral-100 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/50 p-3">
-          <div class="text-xs text-neutral-500 dark:text-neutral-400">{{ t('home.producers') }}</div>
-          <div class="text-lg font-bold text-neutral-950 dark:text-neutral-50 mt-0.5">{{ stats.producers?.toLocaleString() || '0' }}</div>
-        </div>
-        <div class="rounded-lg border border-neutral-100 dark:border-neutral-700 bg-neutral-50/50 dark:bg-neutral-800/50 p-3">
-          <div class="text-xs text-neutral-500 dark:text-neutral-400">{{ t('home.staff') }}</div>
-          <div class="text-lg font-bold text-neutral-950 dark:text-neutral-50 mt-0.5">{{ stats.staff?.toLocaleString() || '0' }}</div>
+
+        <div v-else-if="stats" class="ml-auto grid grid-cols-2 gap-1 min-w-0">
+          <div class="flex items-baseline justify-between gap-1 rounded-md bg-neutral-50 dark:bg-neutral-800/50 px-1.5 py-0.5 min-w-0">
+            <span class="truncate text-[10px] leading-none text-neutral-500 dark:text-neutral-400">{{ t('home.vn') }}</span>
+            <span class="shrink-0 text-[11px] font-bold leading-none text-neutral-950 dark:text-neutral-50 tabular-nums">{{ stats.vn?.toLocaleString() || '0' }}</span>
+          </div>
+          <div class="flex items-baseline justify-between gap-1 rounded-md bg-neutral-50 dark:bg-neutral-800/50 px-1.5 py-0.5 min-w-0">
+            <span class="truncate text-[10px] leading-none text-neutral-500 dark:text-neutral-400">{{ t('home.releases') }}</span>
+            <span class="shrink-0 text-[11px] font-bold leading-none text-neutral-950 dark:text-neutral-50 tabular-nums">{{ stats.releases?.toLocaleString() || '0' }}</span>
+          </div>
+          <div class="flex items-baseline justify-between gap-1 rounded-md bg-neutral-50 dark:bg-neutral-800/50 px-1.5 py-0.5 min-w-0">
+            <span class="truncate text-[10px] leading-none text-neutral-500 dark:text-neutral-400">{{ t('home.producers') }}</span>
+            <span class="shrink-0 text-[11px] font-bold leading-none text-neutral-950 dark:text-neutral-50 tabular-nums">{{ stats.producers?.toLocaleString() || '0' }}</span>
+          </div>
+          <div class="flex items-baseline justify-between gap-1 rounded-md bg-neutral-50 dark:bg-neutral-800/50 px-1.5 py-0.5 min-w-0">
+            <span class="truncate text-[10px] leading-none text-neutral-500 dark:text-neutral-400">{{ t('home.staff') }}</span>
+            <span class="shrink-0 text-[11px] font-bold leading-none text-neutral-950 dark:text-neutral-50 tabular-nums">{{ stats.staff?.toLocaleString() || '0' }}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -842,9 +853,9 @@ function getFilterSummary(item) {
           >
             <div class="h-10 w-8 rounded bg-neutral-100 dark:bg-neutral-800 overflow-hidden shrink-0 border border-neutral-200/50 dark:border-neutral-700/50 relative">
               <ion-img
-                v-if="item.images?.[0]?.url"
+                v-if="getReleaseImage(item)"
                 :key="`jr-${item.id}-${imageLoader.getRetryCount(`jr-${item.id}`)}`"
-                :src="imageLoader.resolveSrc(`jr-${item.id}`, item.images[0].thumbnail || item.images[0].url)"
+                :src="imageLoader.resolveSrc(`jr-${item.id}`, getReleaseImage(item).thumbnail || getReleaseImage(item).url)"
                 :alt="item.title || 'cover'"
                 class="h-full w-full object-cover transition-opacity duration-500"
                 :class="{ 'blur-md': shouldBlurReleaseCover(item), 'opacity-0': !imageLoader.isSuccess(`jr-${item.id}`) }"
@@ -853,19 +864,19 @@ function getFilterSummary(item) {
                 @ionError="imageLoader.onError(`jr-${item.id}`)"
               />
               <ion-spinner
-                v-if="item.images?.[0]?.url && imageLoader.isLoading(`jr-${item.id}`)"
+                v-if="getReleaseImage(item) && imageLoader.isLoading(`jr-${item.id}`)"
                 name="crescent"
                 class="absolute inset-0 m-auto z-10 text-neutral-400"
                 style="width: 16px; height: 16px;"
               />
               <div
-                v-if="item.images?.[0]?.url && imageLoader.isError(`jr-${item.id}`)"
+                v-if="getReleaseImage(item) && imageLoader.isError(`jr-${item.id}`)"
                 @click.stop="imageLoader.retry(`jr-${item.id}`)"
                 class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 z-10 cursor-pointer"
               >
                 <Icon icon="lucide:refresh-cw" class="h-3 w-3 text-neutral-400 dark:text-neutral-500" />
               </div>
-              <div v-if="!item.images?.[0]?.url || shouldBlurReleaseCover(item)" class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 pointer-events-none">
+              <div v-if="!getReleaseImage(item) || shouldBlurReleaseCover(item)" class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 pointer-events-none">
                 <Icon :icon="shouldBlurReleaseCover(item) ? 'lucide:eye-off' : 'lucide:package'" class="h-4 w-4" :class="shouldBlurReleaseCover(item) ? 'text-neutral-400' : 'text-neutral-300 dark:text-neutral-600'" />
               </div>
             </div>
@@ -905,9 +916,9 @@ function getFilterSummary(item) {
           >
             <div class="h-10 w-8 rounded bg-neutral-100 dark:bg-neutral-800 overflow-hidden shrink-0 border border-neutral-200/50 dark:border-neutral-700/50 relative">
               <ion-img
-                v-if="item.images?.[0]?.url"
+                v-if="getReleaseImage(item)"
                 :key="`ur-${item.id}-${imageLoader.getRetryCount(`ur-${item.id}`)}`"
-                :src="imageLoader.resolveSrc(`ur-${item.id}`, item.images[0].thumbnail || item.images[0].url)"
+                :src="imageLoader.resolveSrc(`ur-${item.id}`, getReleaseImage(item).thumbnail || getReleaseImage(item).url)"
                 :alt="item.title || 'cover'"
                 class="h-full w-full object-cover transition-opacity duration-500"
                 :class="{ 'blur-md': shouldBlurReleaseCover(item), 'opacity-0': !imageLoader.isSuccess(`ur-${item.id}`) }"
@@ -916,19 +927,19 @@ function getFilterSummary(item) {
                 @ionError="imageLoader.onError(`ur-${item.id}`)"
               />
               <ion-spinner
-                v-if="item.images?.[0]?.url && imageLoader.isLoading(`ur-${item.id}`)"
+                v-if="getReleaseImage(item) && imageLoader.isLoading(`ur-${item.id}`)"
                 name="crescent"
                 class="absolute inset-0 m-auto z-10 text-neutral-400"
                 style="width: 16px; height: 16px;"
               />
               <div
-                v-if="item.images?.[0]?.url && imageLoader.isError(`ur-${item.id}`)"
+                v-if="getReleaseImage(item) && imageLoader.isError(`ur-${item.id}`)"
                 @click.stop="imageLoader.retry(`ur-${item.id}`)"
                 class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 z-10 cursor-pointer"
               >
                 <Icon icon="lucide:refresh-cw" class="h-3 w-3 text-neutral-400 dark:text-neutral-500" />
               </div>
-              <div v-if="!item.images?.[0]?.url || shouldBlurReleaseCover(item)" class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 pointer-events-none">
+              <div v-if="!getReleaseImage(item) || shouldBlurReleaseCover(item)" class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 pointer-events-none">
                 <Icon :icon="shouldBlurReleaseCover(item) ? 'lucide:eye-off' : 'lucide:package'" class="h-4 w-4" :class="shouldBlurReleaseCover(item) ? 'text-neutral-400' : 'text-neutral-300 dark:text-neutral-600'" />
               </div>
             </div>

@@ -244,7 +244,8 @@
     "birthday_tomorrow": "明日の誕生日",
     "no_birthday": "今日誕生日のキャラクターはいません",
     "birthday_age": "{age}歳",
-    "random_vn_tip": "ランダムに作品ページへ移動します"
+    "random_vn_tip": "ランダムに作品ページへ移動します",
+    "stats_short": "データ概要"
   },
   "library": {
     "title": "検索",
@@ -384,7 +385,8 @@
       "screenshots": "スクリーンショット",
       "reviews": "レビュー",
       "quotes": "引用",
-      "links": "リンク"
+      "links": "リンク",
+      "stats": "統計"
     },
     "links": {
       "resource_sites": "リソースサイト",
@@ -609,7 +611,27 @@
       "mine_loading": "VNDB からあなたの記録を読み込み中…",
       "mine_loaded": "VNDB のあなたの記録を読み込みました",
       "mine_error": "読み込みに失敗しました：{error}（ローカル入力は可能です）",
-      "mine_retry": "再試行"
+      "mine_retry": "再試行",
+      "langs_limited": "選択した版の言語のみ表示"
+    },
+    "stats": {
+      "title": "ユーザー統計",
+      "votes": "投票数",
+      "average": "平均",
+      "median": "中央値",
+      "rank": "{rank} 位",
+      "distribution": "得点分布",
+      "recent": "最近の投票",
+      "loading": "投票統計を読み込み中…",
+      "empty": "投票データがありません",
+      "reload": "再取得",
+      "error": "統計の取得に失敗しました：{error}",
+      "blocked": "VNDB に拒否されました。しばらくしてから再試行してください",
+      "not_logged_in": "先にアプリ内で vndb.org にログインしてください",
+      "not_native": "統計はアプリ内ブラウザで実行する必要があります",
+      "user_vote": "あなたの得点",
+      "count": "{count} 票",
+      "percent": "{percent}%"
     }
   },
   "release": {

@@ -40,6 +40,7 @@ import trash2 from '@iconify-icons/lucide/trash-2'
 import eye from '@iconify-icons/lucide/eye'
 import eyeOff from '@iconify-icons/lucide/eye-off'
 import star from '@iconify-icons/lucide/star'
+import award from '@iconify-icons/lucide/award'
 import quote from '@iconify-icons/lucide/quote'
 import loader from '@iconify-icons/lucide/loader'
 import loader2 from '@iconify-icons/lucide/loader-2'
@@ -61,6 +62,8 @@ import shield from '@iconify-icons/lucide/shield'
 import shieldAlert from '@iconify-icons/lucide/shield-alert'
 import alertTriangle from '@iconify-icons/lucide/alert-triangle'
 import downloadCloud from '@iconify-icons/lucide/download-cloud'
+import barChart from '@iconify-icons/lucide/bar-chart-3'
+import trendingUp from '@iconify-icons/lucide/trending-up'
 import palette from '@iconify-icons/lucide/palette'
 import monitor from '@iconify-icons/lucide/monitor'
 import sun from '@iconify-icons/lucide/sun'
@@ -72,6 +75,9 @@ import badge from '@iconify-icons/lucide/badge'
 import badgeCheck from '@iconify-icons/lucide/badge-check'
 import calendar from '@iconify-icons/lucide/calendar'
 import circleDot from '@iconify-icons/lucide/circle-dot'
+import play from '@iconify-icons/lucide/play'
+import pause from '@iconify-icons/lucide/pause'
+import ban from '@iconify-icons/lucide/ban'
 import calendarCheck from '@iconify-icons/lucide/calendar-check'
 import calendarDays from '@iconify-icons/lucide/calendar-days'
 import clock from '@iconify-icons/lucide/clock'
@@ -157,6 +163,7 @@ const ICON_DATA = {
   [APP_ICON_NAMES.common.eye]: eye,
   [APP_ICON_NAMES.common.eyeOff]: eyeOff,
   [APP_ICON_NAMES.common.star]: star,
+  [APP_ICON_NAMES.common.award]: award,
   [APP_ICON_NAMES.common.quote]: quote,
   [APP_ICON_NAMES.common.loader]: loader,
   [APP_ICON_NAMES.common.loader2]: loader2,
@@ -206,6 +213,9 @@ const ICON_DATA = {
   [APP_ICON_NAMES.common.weight]: weight,
   [APP_ICON_NAMES.common.circle]: circle,
   [APP_ICON_NAMES.common.heart]: heart,
+  [APP_ICON_NAMES.common.play]: play,
+  [APP_ICON_NAMES.common.pause]: pause,
+  [APP_ICON_NAMES.common.ban]: ban,
   [APP_ICON_NAMES.common.droplets]: droplets,
   [APP_ICON_NAMES.common.venus]: circle,
   [APP_ICON_NAMES.common.mars]: circleDot,
@@ -239,6 +249,8 @@ const ICON_DATA = {
   'simple-icons:googlechrome': siGoogleChrome,
   [APP_ICON_NAMES.common.tag]: tag,
   [APP_ICON_NAMES.common.bookmarkPlus]: bookmarkPlus,
+  [APP_ICON_NAMES.common.barChart]: barChart,
+  [APP_ICON_NAMES.common.trendingUp]: trendingUp,
   // 模板里以字面量 'lucide:loader-circle' 引用，实际复用 loader-2 的图形
   'lucide:loader-circle': loader2,
   'solar:star-broken': star,

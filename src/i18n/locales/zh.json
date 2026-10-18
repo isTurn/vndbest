@@ -243,7 +243,8 @@
     "birthday_tomorrow": "明日生日",
     "no_birthday": "暂无角色过生日",
     "birthday_age": "{age}岁",
-    "random_vn_tip": "试试手气，随机跳转到一个作品页面"
+    "random_vn_tip": "试试手气，随机跳转到一个作品页面",
+    "stats_short": "平台数据"
   },
   "library": {
     "title": "搜索",
@@ -383,7 +384,8 @@
       "screenshots": "截图",
       "reviews": "评论",
       "quotes": "摘录",
-      "links": "外链"
+      "links": "外链",
+      "stats": "统计"
     },
     "links": {
       "resource_sites": "资源站",
@@ -608,7 +610,27 @@
       "mine_loading": "正在从 VNDB 读取你的时长记录…",
       "mine_loaded": "已读取你在 VNDB 上的时长记录",
       "mine_error": "读取失败：{error}（可继续本地填写）",
-      "mine_retry": "重试"
+      "mine_retry": "重试",
+      "langs_limited": "仅显示所选版本的语言"
+    },
+    "stats": {
+      "title": "用户统计",
+      "votes": "票数",
+      "average": "平均分",
+      "median": "中位数",
+      "rank": "第 {rank} 位",
+      "distribution": "评分分布",
+      "recent": "最近的投票",
+      "loading": "正在读取评分统计…",
+      "empty": "暂无评分数据",
+      "reload": "重新获取",
+      "error": "获取统计失败：{error}",
+      "blocked": "VNDB 拒绝了请求，请稍后再试",
+      "not_logged_in": "请先在应用内登录 vndb.org",
+      "not_native": "统计功能需要在内置浏览器中运行",
+      "user_vote": "你的评分",
+      "count": "{count} 人",
+      "percent": "{percent}%"
     }
   },
   "release": {

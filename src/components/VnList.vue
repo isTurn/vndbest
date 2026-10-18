@@ -9,7 +9,7 @@ import { IonImg, IonSpinner } from '@ionic/vue'
 import { usePrivacy, getImageNsfwLevel } from '@/composables/usePrivacy'
 import { useImageLoader } from '@/composables/useImageLoader'
 import { prefetchFromItems } from '@/utils/imagePrefetch'
-import { getLabelName } from '@/utils/ulistLabels'
+import { getLabelName, getLabelIcon } from '@/utils/ulistLabels'
 import SkeletonCard from './SkeletonCard.vue'
 import ErrorState from './ErrorState.vue'
 import { useUlistStatus } from '@/composables/useUlistStatus'
@@ -367,6 +367,13 @@ function statusStyle(item) {
   return STATUS_STYLE[Number(lbl?.id)] || STATUS_STYLE[4]
 }
 
+// 每种收藏状态配一个语义化图标（映射表统一放在 utils/ulistLabels.js）
+function statusIcon(item) {
+  const lbl = getStatusLabel(item)
+  if (!lbl) return null
+  return getLabelIcon(lbl.id, null)
+}
+
 // 收藏列表的条目自带全部 labels（系统标签 + 自定义标签），而标题行已经用
 // 状态徽章显示了其中优先级最高的那个系统标签。这里把它排掉，避免同一个
 // 「游玩中」在卡片上出现两次。
@@ -568,9 +575,10 @@ function toggleReverse() {
                     </span>
                     <span
                       v-if="getStatusLabel(item)"
-                      class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border"
+                      class="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border"
                       :class="statusStyle(item)"
                     >
+                      <Icon v-if="statusIcon(item)" :icon="statusIcon(item)" class="h-2.5 w-2.5 shrink-0" />
                       {{ labelText(getStatusLabel(item)) }}
                     </span>
                   </div>
@@ -590,7 +598,7 @@ function toggleReverse() {
                   :key="lbl.id"
                   class="inline-flex items-center gap-1 text-[10px] text-neutral-600 dark:text-neutral-400 bg-neutral-100/80 dark:bg-neutral-800/80 px-2 py-0.5 rounded-md border border-neutral-200/50 dark:border-neutral-700/50"
                 >
-                  <Icon icon="lucide:bookmark" class="h-3 w-3 text-neutral-400 shrink-0" />
+                  <Icon :icon="getLabelIcon(lbl.id, 'lucide:tag')" class="h-3 w-3 text-neutral-400 shrink-0" />
                   <span>{{ labelText(lbl) }}</span>
                 </div>
               </div>
@@ -703,9 +711,10 @@ function toggleReverse() {
                 </span>
                 <span
                   v-if="getStatusLabel(item)"
-                  class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border"
+                  class="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border"
                   :class="statusStyle(item)"
                 >
+                  <Icon v-if="statusIcon(item)" :icon="statusIcon(item)" class="h-2.5 w-2.5 shrink-0" />
                   {{ labelText(getStatusLabel(item)) }}
                 </span>
                 <span
@@ -787,9 +796,10 @@ function toggleReverse() {
                 </span>
                 <span
                   v-if="getStatusLabel(item)"
-                  class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border"
+                  class="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border"
                   :class="statusStyle(item)"
                 >
+                  <Icon v-if="statusIcon(item)" :icon="statusIcon(item)" class="h-2.5 w-2.5 shrink-0" />
                   {{ labelText(getStatusLabel(item)) }}
                 </span>
                 <span
@@ -833,9 +843,10 @@ function toggleReverse() {
               </span>
               <span
                 v-if="getStatusLabel(item)"
-                class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 scale-90 origin-left border"
+                class="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 scale-90 origin-left border"
                 :class="statusStyle(item)"
               >
+                <Icon v-if="statusIcon(item)" :icon="statusIcon(item)" class="h-2.5 w-2.5 shrink-0" />
                 {{ labelText(getStatusLabel(item)) }}
               </span>
             </div>

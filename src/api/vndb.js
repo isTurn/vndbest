@@ -437,7 +437,7 @@ export async function getVnReleases(vnId) {
     method: 'POST',
     body: JSON.stringify({
       filters: ['vn', '=', ['id', '=', vnId]],
-      fields: 'id, title, alttitle, released, languages{lang}, platforms, official, patch, freeware, notes, uncensored, minage, extlinks{url,label,name}, images{url,dims,type,languages,sexual,thumbnail,thumbnail_dims}',
+      fields: 'id, title, alttitle, released, languages{lang}, platforms, official, patch, freeware, notes, uncensored, minage, extlinks{url,label,name}, images{url,dims,type,languages,sexual,thumbnail,thumbnail_dims}, vns{id,title,alttitle,image{url,thumbnail,sexual,dims}}',
       sort: 'released',
       results: 50
     })
@@ -450,7 +450,7 @@ export async function getVnReleases(vnId) {
  */
 export async function getReleaseList(filters = [], params = {}) {
   const payload = {
-    fields: 'id, title, alttitle, released, languages{lang}, platforms, official, patch, freeware, notes, uncensored, minage, extlinks{url,label,name}, images{url,dims,type,languages,sexual,thumbnail,thumbnail_dims}',
+    fields: 'id, title, alttitle, released, languages{lang}, platforms, official, patch, freeware, notes, uncensored, minage, extlinks{url,label,name}, images{url,dims,type,languages,sexual,thumbnail,thumbnail_dims}, vns{id,title,alttitle,image{url,thumbnail,sexual,dims}}',
     results: 20,
     ...params
   }

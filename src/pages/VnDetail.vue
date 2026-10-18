@@ -11,11 +11,12 @@ import LanguageFlag from '@/components/LanguageFlag.vue'
 import LengthVoteModal from '@/components/LengthVoteModal.vue'
 import ActionSheet from '@/components/ActionSheet.vue'
 import { getLengthVote, formatPlayTime } from '@/utils/lengthVote'
+import { fetchVnStats, getCachedVnStats } from '@/utils/vnStats'
 import AgeRating from '@/components/AgeRating.vue'
 import { usePrivacy, getImageNsfwLevel } from '@/composables/usePrivacy'
 import { useTranslation } from '@/composables/useTranslation'
 import { useImageLoader } from '@/composables/useImageLoader'
-import { getLabelName, isVotedLabel, SYSTEM_LABEL_MAX_ID } from '@/utils/ulistLabels'
+import { getLabelName, getLabelIcon, isVotedLabel, SYSTEM_LABEL_MAX_ID } from '@/utils/ulistLabels'
 import { PLATFORM_ICON_NAMES, APP_ICON_NAMES } from '@/icons/icon-names'
 import { buildCrossSearchLinks, buildCrossSearchTitles, pickDefaultTitle, openCrossSearchSite } from '@/utils/crossSearch'
 import { openExternalUrl, getReleaseLinkBrowserMode, getCrossSearchBrowserMode } from '@/utils/linkOpener'
@@ -223,7 +224,7 @@ const currentSelectedLabels = computed(() => {
     const entryLbl = collectionEntry.value?.labels?.find(l => l.id === id)
     const rawName = userLbl?.label || entryLbl?.label || entryLbl?.name || LABEL_NAMES[id] || ''
     const name = getLabelI18n(id, rawName)
-    return { id, name, isSystem: id <= SYSTEM_LABEL_MAX_ID }
+    return { id, name, isSystem: id <= SYSTEM_LABEL_MAX_ID, icon: getLabelIcon(id, 'lucide:tag') }
   })
 })
 
@@ -241,6 +242,7 @@ const currentStatusLabel = computed(() => {
     if (found) {
       return {
         id: found.id,
+        icon: found.icon,
         name: `${found.name} (+${currentSelectedLabels.value.length - 1})`
       }
     }
@@ -248,6 +250,7 @@ const currentStatusLabel = computed(() => {
   const first = currentSelectedLabels.value[0]
   return {
     id: first.id,
+    icon: first.icon,
     name: `${first.name} (+${currentSelectedLabels.value.length - 1})`
   }
 })
@@ -279,7 +282,7 @@ const statusOptions = computed(() => {
         value: lbl.id,
         label: labelText,
         count: lbl.count,
-        icon: isSystem ? 'solar:bookmark-bold' : 'lucide:tag',
+        icon: getLabelIcon(lbl.id, 'lucide:tag'),
         description: lbl.private ? t('vn.status.private') : ''
       })
     }
@@ -296,7 +299,7 @@ const statusOptions = computed(() => {
       options.push({
         value: l.id,
         label: labelText,
-        icon: isSystem ? 'solar:bookmark-bold' : 'lucide:tag'
+        icon: getLabelIcon(l.id, 'lucide:tag')
       })
       existingSet.add(l.id)
     }
@@ -309,7 +312,7 @@ const statusOptions = computed(() => {
       options.push({
         value: id,
         label: getLabelI18n(id, defaultName),
-        icon: 'solar:bookmark-bold'
+        icon: getLabelIcon(id, 'lucide:tag')
       })
     }
   }
@@ -1310,6 +1313,9 @@ const loadVnDetail = async (id) => {
       collectionLoaded.value = false
       collectionLoading.value = true
       resetQuoteTranslations()
+      statsData.value = null
+      statsError.value = ''
+      statsLoadedFor.value = ''
       
       // 并发异步加载其余所有子选项卡数据，加快响应时间
       loadReleases(id)
@@ -1351,14 +1357,28 @@ const loadReleases = async (id) => {
 }
 
 // —— 版本按语言分组（同语言放一类，可折叠）——
-// 一个版本可能带多种语言，取「主语言」(main) 或第一个作为归组依据，
+// 一个版本可能带多种语言：
+//  - 若同行版本里带中文（zh-Hans / zh-Hant / zh），折叠栏优先按中文归类，
+//    因为中文用户最可能在意的就是中文版；
+//  - 否则取「主语言」(main)，再否则取第一个；
 // 保证每个版本只出现在一组里，不会重复。
+const ZH_LANGS = ['zh-Hans', 'zh-Hant', 'zh']
 const releaseLangOf = (rel) => {
   const langs = Array.isArray(rel?.languages) ? rel.languages : []
   const list = langs.map((l) => (typeof l === 'string' ? l : l.lang)).filter(Boolean)
   if (!list.length) return ''
+  for (const zh of ZH_LANGS) {
+    if (list.includes(zh)) return zh
+  }
   const main = langs.find((l) => l && typeof l === 'object' && l.main)
   return (main && main.lang) || list[0]
+}
+
+// 分组排序：日语优先、中文第二，其余按版本数降序；无语言归到「其他版本」放最后
+const releaseGroupRank = (lang) => {
+  if (lang === 'ja') return 0
+  if (ZH_LANGS.includes(lang)) return 1
+  return 2
 }
 
 const releaseGroups = computed(() => {
@@ -1368,10 +1388,12 @@ const releaseGroups = computed(() => {
     if (!map.has(lang)) map.set(lang, [])
     map.get(lang).push(rel)
   }
-  // 有语言的组在前，按版本数降序；无语言归到「其他版本」放最后
   const groups = Array.from(map.entries()).map(([lang, items]) => ({ lang, items }))
   groups.sort((a, b) => {
     if (!a.lang !== !b.lang) return a.lang ? -1 : 1
+    const ra = releaseGroupRank(a.lang)
+    const rb = releaseGroupRank(b.lang)
+    if (ra !== rb) return ra - rb
     if (b.items.length !== a.items.length) return b.items.length - a.items.length
     return a.lang.localeCompare(b.lang)
   })
@@ -1446,6 +1468,98 @@ const loadQuotes = async (id) => {
     quotesLoading.value = false
   }
 }
+
+// 加载 评分统计（Tab「统计」）：Kana API 没有分布数据，需要抓 vndb.org 页面
+const statsData = ref(null)
+const statsLoading = ref(false)
+const statsError = ref('')
+const statsLoadedFor = ref('')
+
+const statsMaxCount = computed(() => {
+  const dist = statsData.value?.distribution || []
+  return dist.reduce((m, d) => Math.max(m, Number(d.count) || 0), 0)
+})
+
+const statsTotalVotes = computed(() => {
+  if (statsData.value?.total) return Number(statsData.value.total)
+  return (statsData.value?.distribution || []).reduce((s, d) => s + (Number(d.count) || 0), 0)
+})
+
+const statsMedian = computed(() => {
+  const dist = statsData.value?.distribution || []
+  const total = statsTotalVotes.value
+  if (!total) return null
+  const half = total / 2
+  let acc = 0
+  // distribution 已按 10 → 1 降序，中位数从低分往上数更直观
+  const asc = [...dist].sort((a, b) => a.score - b.score)
+  for (const d of asc) {
+    acc += Number(d.count) || 0
+    if (acc >= half) return d.score
+  }
+  return null
+})
+
+const statsRows = computed(() =>
+  (statsData.value?.distribution || []).map((d) => {
+    const count = Number(d.count) || 0
+    const max = statsMaxCount.value || 1
+    const total = statsTotalVotes.value || 1
+    return {
+      score: d.score,
+      count,
+      percent: ((count / total) * 100).toFixed(1),
+      width: Math.max(2, Math.round((count / max) * 100))
+    }
+  })
+)
+
+const translateStatsError = (code) => {
+  const map = {
+    BLOCKED: 'vn.stats.blocked',
+    NOT_LOGGED_IN: 'vn.stats.not_logged_in',
+    NOT_NATIVE: 'vn.stats.not_native',
+    TIMEOUT: 'vn.stats.error',
+    NO_STATS: 'vn.stats.empty'
+  }
+  const key = map[code]
+  return key ? t(key, { error: code }) : t('vn.stats.error', { error: code })
+}
+
+const loadStats = async (id, force = false) => {
+  const vid = id || vn.value?.id
+  if (!vid) return
+  if (!force && statsLoadedFor.value === vid && statsData.value) return
+  statsError.value = ''
+  const cached = force ? null : getCachedVnStats(vid)
+  if (cached) {
+    statsData.value = cached
+    statsLoadedFor.value = vid
+    return
+  }
+  statsLoading.value = true
+  statsData.value = null
+  try {
+    const res = await fetchVnStats(vid, { useCache: !force })
+    if (res.ok && res.stats) {
+      statsData.value = res.stats
+      statsLoadedFor.value = vid
+    } else {
+      statsError.value = translateStatsError(res.error || 'ERROR')
+    }
+  } catch (err) {
+    statsError.value = translateStatsError(String(err?.message || err))
+  } finally {
+    statsLoading.value = false
+  }
+}
+
+// 切到「统计」页时才去抓（避免进详情页就开隐藏 WebView）
+watch(activeTab, (tab) => {
+  if (tab === 'stats' && vn.value?.id) loadStats(vn.value.id)
+})
+
+const reloadStats = () => loadStats(vn.value?.id, true)
 
 // 复制摘录内容
 const copiedQuoteId = ref(null)
@@ -1934,7 +2048,7 @@ watch(
                       class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-xs font-medium text-neutral-800 dark:text-neutral-200 hover:border-neutral-300 dark:hover:border-neutral-600 transition cursor-pointer max-w-[220px]"
                     >
                       <Icon
-                        :icon="currentSelectedLabels.length === 0 ? 'lucide:bookmark-plus' : 'solar:bookmark-bold'"
+                        :icon="currentSelectedLabels.length === 0 ? 'lucide:bookmark-plus' : (currentStatusLabel?.icon || 'lucide:tag')"
                         class="h-3.5 w-3.5 shrink-0"
                         :class="currentSelectedLabels.length === 0 ? 'text-neutral-400 dark:text-neutral-500' : 'text-amber-500 dark:text-amber-400'"
                       />
@@ -1954,7 +2068,7 @@ watch(
                       :key="lbl.id"
                       class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-200/60 dark:border-neutral-700/60 font-medium"
                     >
-                      <Icon :icon="lbl.isSystem ? 'solar:bookmark-bold' : 'lucide:tag'" class="h-2.5 w-2.5" />
+                      <Icon :icon="lbl.icon" class="h-2.5 w-2.5" />
                       {{ lbl.name }}
                     </span>
                   </div>
@@ -2121,10 +2235,10 @@ watch(
           :max-items="8"
           :empty-title="t('vn.relations_empty_title', '暂无相关作品')"
           :empty-desc="t('vn.relations_empty_desc', '该作品没有相关联的其他作品')"
-          default-layout="text"
+          default-layout="list"
           title-mode="ja-romaji"
           show-status
-          storage-key="vndb_vn_relations_layout"
+          storage-key="vndb_vn_relations_layout_v2"
         />
       </div>
 
@@ -2132,7 +2246,7 @@ watch(
 
       <!-- 选项卡导航 (Notion Tab Style) -->
       <div class="border-b border-neutral-200 dark:border-neutral-700 pt-2">
-        <nav class="flex space-x-5 -mb-px overflow-x-auto no-scrollbar" aria-label="Tabs">
+        <nav class="flex gap-x-[15px] -mb-px overflow-x-auto no-scrollbar" aria-label="Tabs">
           <button
             v-for="tab in [
               { id: 'releases', name: t('vn.tabs.releases') },
@@ -2142,10 +2256,11 @@ watch(
               { id: 'covers', name: t('vn.tabs.covers') },
               { id: 'screenshots', name: t('vn.tabs.screenshots') },
               { id: 'quotes', name: t('vn.tabs.quotes') },
+              { id: 'stats', name: t('vn.tabs.stats') },
             ]"
             :key="tab.id"
             @click="activeTab = tab.id"
-            class="whitespace-nowrap pb-3 px-1 border-b-2 font-medium text-xs transition-colors"
+            class="whitespace-nowrap pb-2.5 px-0.5 border-b-2 font-medium text-xs transition-colors"
             :class="[ activeTab === tab.id ? 'border-neutral-900 dark:border-neutral-100 text-neutral-900 dark:text-neutral-100 font-semibold' : 'border-transparent text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600' ]"
           >
             {{ tab.name }}
@@ -2848,7 +2963,103 @@ watch(
           </div>
         </div>
 
-        <!-- 8. 外链跳转 Tab 已移除：资源站/资料站与跨站搜索重复，统一到页面顶部「跨站搜索」区块 -->
+        <!-- 8. 用户统计 Tab：评分分布柱状图 -->
+        <div v-else-if="activeTab === 'stats'" class="space-y-3">
+          <!-- 加载中 -->
+          <div v-if="statsLoading" class="flex flex-col items-center justify-center py-10 gap-2">
+            <Icon icon="eos-icons:loading" class="h-6 w-6 text-neutral-300 dark:text-neutral-600" />
+            <span class="text-[10px] text-neutral-400 dark:text-neutral-500 font-bold uppercase tracking-widest">{{ t('vn.stats.loading') }}</span>
+          </div>
+
+          <!-- 错误 / 空 -->
+          <div v-else-if="statsError" class="flex flex-col items-center justify-center gap-2 py-8 text-center">
+            <Icon icon="lucide:alert-triangle" class="h-5 w-5 text-amber-500 dark:text-amber-400" />
+            <p class="text-[11px] text-neutral-500 dark:text-neutral-400">{{ statsError }}</p>
+            <button
+              @click="reloadStats"
+              class="inline-flex items-center gap-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2.5 py-1 text-[10px] font-semibold text-neutral-600 dark:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600 transition cursor-pointer"
+            >
+              <Icon icon="lucide:refresh-cw" class="h-3 w-3" />
+              {{ t('vn.stats.reload') }}
+            </button>
+          </div>
+
+          <div v-else-if="!statsRows.length" class="text-center py-6 text-xs text-neutral-400 dark:text-neutral-500">
+            {{ t('vn.stats.empty') }}
+          </div>
+
+          <!-- 柱状图 + 概览 -->
+          <template v-else>
+            <!-- 概览三格 -->
+            <div class="grid grid-cols-3 gap-2">
+              <div class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/60 px-2 py-2">
+                <div class="text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('vn.stats.votes') }}</div>
+                <div class="mt-0.5 text-sm font-bold text-neutral-800 dark:text-neutral-200">{{ statsTotalVotes }}</div>
+                <div v-if="statsData?.votesRank" class="text-[9px] text-neutral-400 dark:text-neutral-500">{{ t('vn.stats.rank', { rank: statsData.votesRank }) }}</div>
+              </div>
+              <div class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/60 px-2 py-2">
+                <div class="text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('vn.stats.average') }}</div>
+                <div class="mt-0.5 text-sm font-bold text-neutral-800 dark:text-neutral-200">{{ statsData?.average ?? '—' }}</div>
+                <div v-if="statsData?.averageRank" class="text-[9px] text-neutral-400 dark:text-neutral-500">{{ t('vn.stats.rank', { rank: statsData.averageRank }) }}</div>
+              </div>
+              <div class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/60 px-2 py-2">
+                <div class="text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('vn.stats.median') }}</div>
+                <div class="mt-0.5 text-sm font-bold text-neutral-800 dark:text-neutral-200">{{ statsMedian ?? '—' }}</div>
+                <div v-if="collectionEntry?.vote" class="text-[9px] text-neutral-400 dark:text-neutral-500">{{ t('vn.stats.user_vote') }}: {{ collectionEntry.vote }}</div>
+              </div>
+            </div>
+
+            <!-- 评分分布柱状图（横向条，10 → 1 自上而下，高分在上） -->
+            <div class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3">
+              <div class="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
+                <Icon icon="lucide:bar-chart-3" class="h-3.5 w-3.5" />
+                <span>{{ t('vn.stats.distribution') }}</span>
+              </div>
+              <div class="space-y-1">
+                <div
+                  v-for="row in statsRows"
+                  :key="row.score"
+                  class="flex items-center gap-2"
+                  :title="`${row.score} — ${row.count}`"
+                >
+                  <span class="w-4 shrink-0 text-right text-[10px] font-semibold text-neutral-500 dark:text-neutral-400">{{ row.score }}</span>
+                  <div class="relative h-3.5 min-w-0 flex-1 overflow-hidden rounded-sm bg-neutral-100 dark:bg-neutral-800">
+                    <div
+                      class="h-full rounded-sm transition-all duration-300"
+                      :class="row.score >= 8 ? 'bg-emerald-400 dark:bg-emerald-500' : row.score >= 5 ? 'bg-sky-400 dark:bg-sky-500' : 'bg-neutral-400 dark:bg-neutral-500'"
+                      :style="{ width: row.width + '%' }"
+                    ></div>
+                  </div>
+                  <span class="w-14 shrink-0 text-right text-[10px] tabular-nums text-neutral-400 dark:text-neutral-500">{{ row.count }}<span class="ml-1 opacity-60">{{ row.percent }}%</span></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 最近的投票 -->
+            <div v-if="statsData?.recent?.length" class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 overflow-hidden">
+              <div class="flex items-center gap-1.5 border-b border-neutral-100 dark:border-neutral-800 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-neutral-400 dark:text-neutral-500">
+                <Icon icon="lucide:users" class="h-3.5 w-3.5" />
+                <span>{{ t('vn.stats.recent') }}</span>
+                <button
+                  @click="reloadStats"
+                  class="ml-auto inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-200 transition cursor-pointer"
+                >
+                  <Icon icon="lucide:refresh-cw" class="h-3 w-3" />
+                  {{ t('vn.stats.reload') }}
+                </button>
+              </div>
+              <div class="divide-y divide-neutral-100 dark:divide-neutral-800">
+                <div v-for="(rv, idx) in statsData.recent" :key="`${rv.uid}-${idx}`" class="flex items-center gap-2 px-3 py-1.5 text-[11px]">
+                  <span class="min-w-0 flex-1 truncate text-neutral-700 dark:text-neutral-300">{{ rv.user }}</span>
+                  <span class="shrink-0 rounded-full bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 text-[9px] font-bold tabular-nums text-neutral-600 dark:text-neutral-300">{{ rv.vote }}</span>
+                  <span class="shrink-0 text-[10px] tabular-nums text-neutral-400 dark:text-neutral-500">{{ rv.date }}</span>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- 9. 外链跳转 Tab 已移除：资源站/资料站与跨站搜索重复，统一到页面顶部「跨站搜索」区块 -->
 
       </div>
     </div>

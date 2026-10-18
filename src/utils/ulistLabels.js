@@ -37,6 +37,27 @@ const SYSTEM_LABEL_I18N = {
   7: 'vn.status.voted'
 }
 
+/**
+ * 系统标签 id → 图标（已在 register-icons.js 注册）
+ * 每种收藏状态配一个语义化图标，比纯文字更快辨认。
+ */
+const SYSTEM_LABEL_ICON = {
+  1: 'lucide:play', // 游玩中
+  2: 'lucide:check-circle', // 已通关
+  3: 'lucide:pause', // 搁置中
+  4: 'lucide:x-circle', // 已弃坑
+  5: 'lucide:star', // 想玩（星形）
+  6: 'lucide:ban', // 黑名单
+  7: 'lucide:award' // 已评分（奖章）
+}
+
+/** 取得系统标签对应的图标名；自定义标签返回默认标签图标 */
+export function getLabelIcon(id, fallback) {
+  const icon = SYSTEM_LABEL_ICON[Number(id)]
+  if (icon) return icon
+  return fallback || 'lucide:tag'
+}
+
 /** 是否是预定义系统标签 */
 export function isSystemLabel(id) {
   const n = Number(id)

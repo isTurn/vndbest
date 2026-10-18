@@ -139,6 +139,11 @@ function getImage(item) {
   if (item.images && item.images.length > 0) {
     return item.images[0]
   }
+  // 版本自身没有封面时，回退到关联游戏的主封面
+  const vnCover = item.vns?.find(v => v?.image?.url || v?.image?.thumbnail)?.image
+  if (vnCover && (vnCover.thumbnail || vnCover.url)) {
+    return { ...vnCover, _fromVn: true }
+  }
   return null
 }
 
