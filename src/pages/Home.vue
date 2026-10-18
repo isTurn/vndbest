@@ -15,6 +15,7 @@ import { useSavedSearches, SEARCH_TYPE_MAP } from '@/composables/useSavedSearche
 import { IonPage, IonContent, IonImg, IonSpinner } from '@ionic/vue'
 import { useImageLoader } from '@/composables/useImageLoader'
 import { prefetchFromItems } from '@/utils/imagePrefetch'
+import { getReleaseImage, getReleaseImageUrl } from '@/utils/releaseImage'
 import { useToast } from '@/composables/useToast'
 import { useAppUpdate } from '@/composables/useAppUpdate'
 import UpdateDialog from '@/components/UpdateDialog.vue'
@@ -289,7 +290,7 @@ function getResultDisplay(search, item) {
   const type = search.type
   if (type === 'releases') {
     return {
-      image: item.images?.[0]?.thumbnail || item.images?.[0]?.url || null,
+      image: getReleaseImageUrl(item),
       title: item.alttitle || item.title,
       subtitle: item.released || '',
       badges: (item.languages || []).slice(0, 2).map(l => typeof l === 'string' ? l : l.lang),
@@ -395,7 +396,7 @@ onMounted(async () => {
   getReleaseList(['released', '<=', today], { sort: 'released', reverse: true, results: 5 })
     .then(res => {
       justReleased.value = res.results
-      prefetchFromItems(res.results, it => it.images?.[0]?.thumbnail || it.images?.[0]?.url, 5, { priority: true })
+      prefetchFromItems(res.results, it => getReleaseImageUrl(it), 5, { priority: true })
       loadingSections.value.releases = false
     }).catch(err => {
       console.error('获取刚刚发布失败:', err)
@@ -406,7 +407,7 @@ onMounted(async () => {
   getReleaseList(['released', '>', today], { sort: 'released', reverse: false, results: 5 })
     .then(res => {
       upcomingReleases.value = res.results
-      prefetchFromItems(res.results, it => it.images?.[0]?.thumbnail || it.images?.[0]?.url, 5)
+      prefetchFromItems(res.results, it => getReleaseImageUrl(it), 5)
     }).catch(err => {
       console.error('获取即将发布失败:', err)
     })
@@ -477,8 +478,19 @@ function navigateToBirthdaySearch(month, day) {
 
 // 隐私过滤：获取 release 封面的 NSFW 等级
 function getReleaseCoverNsfwLevel(item) {
-  if (!item?.images?.length) return 0
-  return getImageNsfwLevel(item.images[0])
+  const img = getReleaseImage(item)
+  if (!img) return 0
+  return getImageNsfwLevel(img)
+}
+
+/** release 是否有可展示的封面（含回退到关联作品封面） */
+function hasReleaseCover(item) {
+  return Boolean(getReleaseImageUrl(item))
+}
+
+/** release 展示图 URL（缩略图优先） */
+function releaseCoverUrl(item) {
+  return getReleaseImageUrl(item) || ''
 }
 
 // 隐私过滤：判断 release 卡片是否需要模糊
@@ -842,9 +854,9 @@ function getFilterSummary(item) {
           >
             <div class="h-10 w-8 rounded bg-neutral-100 dark:bg-neutral-800 overflow-hidden shrink-0 border border-neutral-200/50 dark:border-neutral-700/50 relative">
               <ion-img
-                v-if="item.images?.[0]?.url"
+                v-if="hasReleaseCover(item)"
                 :key="`jr-${item.id}-${imageLoader.getRetryCount(`jr-${item.id}`)}`"
-                :src="imageLoader.resolveSrc(`jr-${item.id}`, item.images[0].thumbnail || item.images[0].url)"
+                :src="imageLoader.resolveSrc(`jr-${item.id}`, releaseCoverUrl(item))"
                 :alt="item.title || 'cover'"
                 class="h-full w-full object-cover transition-opacity duration-500"
                 :class="{ 'blur-md': shouldBlurReleaseCover(item), 'opacity-0': !imageLoader.isSuccess(`jr-${item.id}`) }"
@@ -853,19 +865,19 @@ function getFilterSummary(item) {
                 @ionError="imageLoader.onError(`jr-${item.id}`)"
               />
               <ion-spinner
-                v-if="item.images?.[0]?.url && imageLoader.isLoading(`jr-${item.id}`)"
+                v-if="hasReleaseCover(item) && imageLoader.isLoading(`jr-${item.id}`)"
                 name="crescent"
                 class="absolute inset-0 m-auto z-10 text-neutral-400"
                 style="width: 16px; height: 16px;"
               />
               <div
-                v-if="item.images?.[0]?.url && imageLoader.isError(`jr-${item.id}`)"
+                v-if="hasReleaseCover(item) && imageLoader.isError(`jr-${item.id}`)"
                 @click.stop="imageLoader.retry(`jr-${item.id}`)"
                 class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 z-10 cursor-pointer"
               >
                 <Icon icon="lucide:refresh-cw" class="h-3 w-3 text-neutral-400 dark:text-neutral-500" />
               </div>
-              <div v-if="!item.images?.[0]?.url || shouldBlurReleaseCover(item)" class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 pointer-events-none">
+              <div v-if="!hasReleaseCover(item) || shouldBlurReleaseCover(item)" class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 pointer-events-none">
                 <Icon :icon="shouldBlurReleaseCover(item) ? 'lucide:eye-off' : 'lucide:package'" class="h-4 w-4" :class="shouldBlurReleaseCover(item) ? 'text-neutral-400' : 'text-neutral-300 dark:text-neutral-600'" />
               </div>
             </div>
@@ -905,9 +917,9 @@ function getFilterSummary(item) {
           >
             <div class="h-10 w-8 rounded bg-neutral-100 dark:bg-neutral-800 overflow-hidden shrink-0 border border-neutral-200/50 dark:border-neutral-700/50 relative">
               <ion-img
-                v-if="item.images?.[0]?.url"
+                v-if="hasReleaseCover(item)"
                 :key="`ur-${item.id}-${imageLoader.getRetryCount(`ur-${item.id}`)}`"
-                :src="imageLoader.resolveSrc(`ur-${item.id}`, item.images[0].thumbnail || item.images[0].url)"
+                :src="imageLoader.resolveSrc(`ur-${item.id}`, releaseCoverUrl(item))"
                 :alt="item.title || 'cover'"
                 class="h-full w-full object-cover transition-opacity duration-500"
                 :class="{ 'blur-md': shouldBlurReleaseCover(item), 'opacity-0': !imageLoader.isSuccess(`ur-${item.id}`) }"
@@ -916,19 +928,19 @@ function getFilterSummary(item) {
                 @ionError="imageLoader.onError(`ur-${item.id}`)"
               />
               <ion-spinner
-                v-if="item.images?.[0]?.url && imageLoader.isLoading(`ur-${item.id}`)"
+                v-if="hasReleaseCover(item) && imageLoader.isLoading(`ur-${item.id}`)"
                 name="crescent"
                 class="absolute inset-0 m-auto z-10 text-neutral-400"
                 style="width: 16px; height: 16px;"
               />
               <div
-                v-if="item.images?.[0]?.url && imageLoader.isError(`ur-${item.id}`)"
+                v-if="hasReleaseCover(item) && imageLoader.isError(`ur-${item.id}`)"
                 @click.stop="imageLoader.retry(`ur-${item.id}`)"
                 class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 z-10 cursor-pointer"
               >
                 <Icon icon="lucide:refresh-cw" class="h-3 w-3 text-neutral-400 dark:text-neutral-500" />
               </div>
-              <div v-if="!item.images?.[0]?.url || shouldBlurReleaseCover(item)" class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 pointer-events-none">
+              <div v-if="!hasReleaseCover(item) || shouldBlurReleaseCover(item)" class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 pointer-events-none">
                 <Icon :icon="shouldBlurReleaseCover(item) ? 'lucide:eye-off' : 'lucide:package'" class="h-4 w-4" :class="shouldBlurReleaseCover(item) ? 'text-neutral-400' : 'text-neutral-300 dark:text-neutral-600'" />
               </div>
             </div>

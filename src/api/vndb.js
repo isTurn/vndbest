@@ -450,7 +450,7 @@ export async function getVnReleases(vnId) {
  */
 export async function getReleaseList(filters = [], params = {}) {
   const payload = {
-    fields: 'id, title, alttitle, released, languages{lang}, platforms, official, patch, freeware, notes, uncensored, minage, extlinks{url,label,name}, images{url,dims,type,languages,sexual,thumbnail,thumbnail_dims}',
+    fields: 'id, title, alttitle, released, languages{lang}, platforms, official, patch, freeware, notes, uncensored, minage, extlinks{url,label,name}, images{url,dims,type,languages,sexual,thumbnail,thumbnail_dims}, vns{id,title,image{url,thumbnail,sexual}}',
     results: 20,
     ...params
   }

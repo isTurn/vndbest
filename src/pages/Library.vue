@@ -8,6 +8,8 @@ import { Icon } from '@iconify/vue'
 import AppHeader from '@/components/AppHeader.vue'
 import { IonPage, IonContent } from '@ionic/vue'
 import { prefetchImages } from '@/utils/imagePrefetch'
+import { getReleaseImageUrl } from '@/utils/releaseImage'
+import { useSearchHistory } from '@/composables/useSearchHistory'
 import {
   getVnList,
   getReleaseList,
@@ -82,6 +84,14 @@ const query = ref('')
 const isSearching = ref(false)
 const hasSearched = ref(false)
 const groups = ref([])
+
+const {
+  list: searchHistory,
+  isEmpty: searchHistoryEmpty,
+  add: addSearchHistory,
+  remove: removeSearchHistory,
+  clear: clearSearchHistory
+} = useSearchHistory()
 
 let debounceTimer = null
 
@@ -378,7 +388,7 @@ function normalizeItem(type, it) {
       id: it.id,
       title: it.alttitle || it.title || it.id,
       subtitle: [it.released, latin].filter(Boolean).join(' · '),
-      image: it.images?.[0]?.thumbnail || it.images?.[0]?.url || '',
+      image: getReleaseImageUrl(it) || '',
       to: `/release/${it.id}`
     }
   }
@@ -466,7 +476,22 @@ function clearQuery() {
 
 function submitSearch() {
   if (debounceTimer) clearTimeout(debounceTimer)
+  addSearchHistory(query.value)
   runSearch(query.value)
+}
+
+/** 点历史词条：填回输入框并立刻搜索 */
+function pickHistory(keyword) {
+  if (debounceTimer) clearTimeout(debounceTimer)
+  query.value = keyword
+  addSearchHistory(keyword)
+  runSearch(keyword)
+}
+
+/** 点搜索结果：这次搜索被用上了，记进历史 */
+function openResult(item) {
+  addSearchHistory(query.value)
+  navigateTo(item.to)
 }
 
 // 输入防抖 400ms 自动搜索
@@ -521,6 +546,42 @@ onUnmounted(() => {
       </button>
     </div>
 
+    <!-- 搜索历史：仅在还没开始搜索时展示，避免占满结果区 -->
+    <section v-if="!hasSearched && !searchHistoryEmpty" class="space-y-2">
+      <div class="flex items-center justify-between">
+        <h2 class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+          <Icon icon="lucide:history" class="h-3.5 w-3.5" />
+          {{ t('library.search_history') }}
+        </h2>
+        <button
+          @click="clearSearchHistory"
+          class="flex items-center gap-1 rounded-full px-2 py-1 text-[11px] text-neutral-400 transition hover:bg-neutral-100 hover:text-red-500 dark:text-neutral-500 dark:hover:bg-neutral-800 dark:hover:text-red-400 cursor-pointer"
+        >
+          <Icon icon="lucide:trash-2" class="h-3.5 w-3.5" />
+          {{ t('library.search_history_clear') }}
+        </button>
+      </div>
+      <div class="flex flex-wrap gap-1.5">
+        <div
+          v-for="kw in searchHistory"
+          :key="kw"
+          class="group flex max-w-full items-center gap-0.5 rounded-full border border-neutral-100 bg-white pl-3 pr-1 py-1 dark:border-neutral-700 dark:bg-neutral-900"
+        >
+          <button
+            @click="pickHistory(kw)"
+            class="min-w-0 truncate text-xs text-neutral-700 transition hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-neutral-100 cursor-pointer"
+          >{{ kw }}</button>
+          <button
+            @click.stop="removeSearchHistory(kw)"
+            :title="t('library.search_history_remove')"
+            class="shrink-0 rounded-full p-1 text-neutral-300 transition hover:bg-neutral-100 hover:text-red-500 dark:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-red-400 cursor-pointer"
+          >
+            <Icon icon="lucide:x" class="h-3 w-3" />
+          </button>
+        </div>
+      </div>
+    </section>
+
     <!-- 搜索结果：按类型分组 -->
     <template v-if="hasSearched">
       <div v-if="isSearching && !groups.length" class="flex flex-col items-center justify-center py-16 text-neutral-400 dark:text-neutral-500 space-y-3">
@@ -552,7 +613,7 @@ onUnmounted(() => {
             <button
               v-for="item in group.items"
               :key="item.id"
-              @click="navigateTo(item.to)"
+              @click="openResult(item)"
               class="flex w-full items-center gap-3 px-3 py-2.5 text-left transition hover:bg-neutral-50 dark:hover:bg-neutral-800 active:scale-[0.99] border-b border-neutral-50 dark:border-neutral-800 last:border-b-0"
             >
               <img

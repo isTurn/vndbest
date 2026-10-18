@@ -267,7 +267,10 @@
     "vn_characters": "VN Characters",
     "vn_tags": "VN Tags",
     "vn_staff": "VN Staff",
-    "hours_short": "{hours}h"
+    "hours_short": "{hours}h",
+    "search_history": "Search History",
+    "search_history_clear": "Clear All",
+    "search_history_remove": "Remove this entry"
   },
   "producer_type": {
     "co": "Company",

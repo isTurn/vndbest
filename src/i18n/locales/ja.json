@@ -267,7 +267,10 @@
     "vn_characters": "作品のキャラ",
     "vn_tags": "作品のタグ",
     "vn_staff": "作品のスタッフ",
-    "hours_short": "{hours}h"
+    "hours_short": "{hours}h",
+    "search_history": "検索履歴",
+    "search_history_clear": "すべて削除",
+    "search_history_remove": "この履歴を削除"
   },
   "producer_type": {
     "co": "会社",
