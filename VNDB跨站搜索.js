@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNDB跨站搜索
 // @namespace    http://tampermonkey.net/
-// @version      2.5.12
+// @version      2.5.14
 // @description  VNDB跨站搜索，可自选标题或id
 // @author       Hatsube
 // @match        https://vndb.org/*
@@ -44,6 +44,22 @@
         });
     }
 
+    const WP_SPACES = /[\s\u00a0\u1680\u2000-\u200b\u202f\u205f\u3000]+/g;
+    const WP_EDGE = /^[\-–—−－~～〜:：;；,，、。．.!！?？*＊"'“”‘’「」『』【】()（）〈〉《》…·_+&\/／\\|｜]+|[\-–—−－~～〜:：;；,，、。．.!！?？*＊"'“”‘’「」『』【】()（）〈〉《》…·_+&\/／\\|｜]+$/g;
+
+    function wpKeyword(value) {
+        const raw = String(value == null ? '' : value);
+        const cleaned = raw
+            .replace(WP_SPACES, ' ')
+            .replace(/[%％]/g, ' ')
+            .split(' ')
+            .map(function (token) { return token.replace(WP_EDGE, ''); })
+            .filter(Boolean)
+            .join(' ')
+            .trim();
+        return cleaned || raw.replace(WP_SPACES, ' ').replace(/\s+/g, ' ').trim();
+    }
+
     /* ================= 站点表 =================
      * url(keyword) → 用当前关键词拼出的搜索直达链接
      * group        → 分组（见 GROUPS）
@@ -66,6 +82,7 @@
         { key: 'searchgal', name: 'SearchGal', group: 'res', url: k => 'https://www.searchgal.top/?s=' + enc(k) },
         { key: 'zi0', name: '梓澪', group: 'res', url: () => 'https://zi6.cc' },
         { key: 'searchgal', name: 'SearchGal', group: 'res', url: k => 'https://www.searchgal.top/?s=' + enc(k) },
+        { key: 'lzacg', name: '量子ACG', group: 'res', kw: 'zh', url: k => 'https://lzacg.cc/?s=' + enc(wpKeyword(k)) },
         { key: 'ggbases', name: 'ggbases', group: 'res', url: k => 'https://www.ggbases.com/search.so?title=' + enc(k) },
         { key: 'dmm', name: 'DMM', group: 'res', url: k => 'https://www.dmm.co.jp/search/=/searchstr=' + enc(k) + '/' },
         { key: 'fanza', name: 'Fanza', group: 'res', url: k => 'https://dlsoft.dmm.co.jp/search/?service=pcgame&searchstr=' + enc(k) },
@@ -263,6 +280,13 @@
             || titles.find(isJa)
             || titles[0] || { text: '', lang: '' };
         const defaultTitle = defaultEntry.text;
+        // 部分站点（如量子ACG）只索引中文/罗马字标题，搜日文原名会无结果：
+        // 预先挑一个中文标题（优先 zh-Hans 标注，其次含汉字且不含假名的标题）
+        const zhEntry = titles.find(function (t) { return /^zh-Hans/i.test(t.lang); })
+            || titles.find(function (t) { return /^zh/i.test(t.lang) && !/[\u3040-\u30ff]/.test(t.text); })
+            || titles.find(function (t) { return /[\u4e00-\u9fff]/.test(t.text) && !/[\u3040-\u30ff]/.test(t.text); })
+            || null;
+        const zhTitle = zhEntry ? zhEntry.text : '';
         // chips 第一个就是默认标题，点它可以切回来；其余标题最多再显示 8 个
         const otherTitles = titles.filter(function (t) { return t.text !== defaultTitle; }).slice(0, 8);
         const chipTitles = defaultTitle ? [defaultEntry].concat(otherTitles) : otherTitles;
@@ -333,7 +357,13 @@
             siteLinks.forEach(function (link) {
                 const site = SITES.find(function (s) { return s.key === link.getAttribute('data-site'); });
                 if (!site) return;
-                link.href = site.url(keyword);
+                // 站点关键词偏好：未手动挑选标题时，kw='zh' 的站点改用中文标题搜索
+                let kw = keyword;
+                if (mode === MODE_TITLE && !pickedTitle && site.kw === 'zh' && zhTitle) {
+                    kw = zhTitle;
+                }
+                link.href = site.url(kw);
+                link.title = (kw !== keyword ? '搜索（中文标题）：' + kw : '');
             });
         }
 

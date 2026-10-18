@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
 import BaseSelect from './BaseSelect.vue'
 import AgeRating from './AgeRating.vue'
+import LanguageFlag from './LanguageFlag.vue'
 import { IonImg, IonSpinner } from '@ionic/vue'
 import { PLATFORM_ICON_NAMES, APP_ICON_NAMES } from '@/icons/icon-names'
 import { usePrivacy, getImageNsfwLevel } from '@/composables/usePrivacy'
@@ -403,8 +404,11 @@ onUnmounted(() => {
                 <span
                   v-for="lang in item.languages"
                   :key="lang.lang"
-                  class="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400"
-                >{{ t(`metadata.lang.${lang.lang}`, lang.lang) }}</span>
+                  class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400"
+                >
+                  <LanguageFlag :lang="lang.lang" class="h-3 w-3" />
+                  <span>{{ t(`metadata.lang.${lang.lang}`, lang.lang) }}</span>
+                </span>
                 <span
                   v-if="item.patch"
                   class="text-[9px] px-1 rounded bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/50"
@@ -523,8 +527,11 @@ onUnmounted(() => {
                 <span
                   v-for="lang in item.languages.slice(0, 3)"
                   :key="lang.lang"
-                  class="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400"
-                >{{ t(`metadata.lang.${lang.lang}`, lang.lang) }}</span>
+                  class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400"
+                >
+                  <LanguageFlag :lang="lang.lang" class="h-3 w-3" />
+                  <span>{{ t(`metadata.lang.${lang.lang}`, lang.lang) }}</span>
+                </span>
               </div>
               <div class="flex items-center justify-between text-[10px] text-neutral-400 dark:text-neutral-500">
                 <div class="flex items-center gap-1 min-w-0">
@@ -615,8 +622,11 @@ onUnmounted(() => {
                 <span
                   v-for="lang in item.languages.slice(0, 3)"
                   :key="lang.lang"
-                  class="text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400"
-                >{{ t(`metadata.lang.${lang.lang}`, lang.lang) }}</span>
+                  class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400"
+                >
+                  <LanguageFlag :lang="lang.lang" class="h-3 w-3" />
+                  <span>{{ t(`metadata.lang.${lang.lang}`, lang.lang) }}</span>
+                </span>
               </div>
               <div class="flex items-center justify-between text-[10px] text-neutral-400 dark:text-neutral-500">
                 <div class="flex items-center gap-1 min-w-0">
@@ -683,7 +693,10 @@ onUnmounted(() => {
               />
               <span v-if="item.patch" class="text-[9px] px-1 rounded bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-900/50">{{ t('release.patch') }}</span>
               <div class="flex gap-1">
-                <span v-for="lang in item.languages.slice(0, 3)" :key="lang.lang" class="text-[9px] text-neutral-400 dark:text-neutral-500">{{ t(`metadata.lang.${lang.lang}`, lang.lang) }}</span>
+                <span v-for="lang in item.languages.slice(0, 3)" :key="lang.lang" class="inline-flex items-center gap-0.5 text-[9px] text-neutral-400 dark:text-neutral-500">
+                  <LanguageFlag :lang="lang.lang" class="h-2.5 w-2.5" />
+                  <span>{{ t(`metadata.lang.${lang.lang}`, lang.lang) }}</span>
+                </span>
               </div>
             </div>
           </div>

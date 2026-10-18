@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
 import BaseSelect from './BaseSelect.vue'
+import LanguageFlag from './LanguageFlag.vue'
 import { IonImg, IonSpinner } from '@ionic/vue'
 import { usePrivacy, getImageNsfwLevel } from '@/composables/usePrivacy'
 import { useImageLoader } from '@/composables/useImageLoader'
@@ -88,6 +89,13 @@ const props = defineProps({
   emptyDesc: {
     type: String,
     default: null
+  },
+  // 标题显示策略：
+  //  'priority' 按设置的标题语言优先级（默认）
+  //  'ja-romaji' 日文原名在上、罗马音在下（相关作品等场景）
+  titleMode: {
+    type: String,
+    default: 'priority'
   }
 })
 
@@ -198,9 +206,21 @@ function handleItemClick(item) {
 }
 
 // 统一属性获取
+function getJaTitleEntry(item) {
+  const vn = item.vn || item
+  if (!vn || !vn.titles || vn.titles.length === 0) return null
+  return vn.titles.find(t => t.lang === 'ja') || null
+}
+
 function getTitle(item) {
   const vn = item.vn || item
   if (!vn) return ''
+
+  // 0. 日文原名优先模式：取 ja 标题，缺失时回退到常规优先级
+  if (props.titleMode === 'ja-romaji') {
+    const ja = getJaTitleEntry(item)
+    if (ja?.title) return ja.title
+  }
 
   // 1. 如果有 titles 数组，根据优先级查找
   if (vn.titles && vn.titles.length > 0) {
@@ -220,6 +240,14 @@ function getTitle(item) {
 function getAltTitle(item) {
   const vn = item.vn || item
   if (!vn) return ''
+
+  // 日文原名优先模式：副标题固定为该日文标题的罗马音
+  if (props.titleMode === 'ja-romaji') {
+    const ja = getJaTitleEntry(item)
+    const romaji = ja?.latin?.trim()
+    if (romaji && romaji !== ja?.title) return romaji
+    return ''
+  }
 
   const mainTitle = getTitle(item)
   
@@ -483,8 +511,9 @@ function toggleReverse() {
                   {{ formatRating(getRating(item)) }}
                 </span>
 
-                <span v-if="getOlang(item)" class="text-[10px] rounded-full px-1.5 py-0.5 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 font-medium">
-                  {{ t(`metadata.lang.${getOlang(item)}`, getOlang(item)) }}
+                <span v-if="getOlang(item)" class="inline-flex items-center gap-1 text-[10px] rounded-full px-1.5 py-0.5 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 font-medium">
+                  <LanguageFlag :lang="getOlang(item)" class="h-3 w-3" />
+                  <span>{{ t(`metadata.lang.${getOlang(item)}`, getOlang(item)) }}</span>
                 </span>
                 <span v-if="getReleased(item)" class="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">
                   {{ getReleased(item) }}
@@ -546,6 +575,7 @@ function toggleReverse() {
             </div>
             <div class="p-3 space-y-1.5">
               <span class="text-xs font-semibold text-neutral-900 dark:text-neutral-100 block line-clamp-2 leading-tight">{{ getTitle(item) }}</span>
+              <span v-if="getAltTitle(item)" class="text-[10px] text-neutral-400 dark:text-neutral-500 block line-clamp-1 leading-tight">{{ getAltTitle(item) }}</span>
               <div v-if="getBadge(item)" class="flex">
                 <span
                   class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0"
@@ -614,6 +644,7 @@ function toggleReverse() {
             </div>
             <div class="p-3 space-y-1.5">
               <span class="text-xs font-semibold text-neutral-900 dark:text-neutral-100 block line-clamp-2 leading-tight">{{ getTitle(item) }}</span>
+              <span v-if="getAltTitle(item)" class="text-[10px] text-neutral-400 dark:text-neutral-500 block line-clamp-1 leading-tight">{{ getAltTitle(item) }}</span>
               <div v-if="getBadge(item)" class="flex">
                 <span
                   class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0"

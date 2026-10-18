@@ -1,5 +1,5 @@
 /**
- * 跨站搜索站点表（移植自 VNDB 跨站搜索用户脚本 v2.5.11）
+ * 跨站搜索站点表（移植自 VNDB 跨站搜索用户脚本 v2.5.14）
  *
  * 域名使用 base64 编码，避免完整域名出现在打包产物中触发静态扫描。
  * 每组 { key, labelKey, sites: [{ name, url(kw) }] }
@@ -16,6 +16,7 @@ const HOST = {
   ttloli: _d('d3d3LnR0bG9saS5jb20='),
   searchgal: _d('d3d3LnNlYXJjaGdhbC50b3A='),
   zi6: _d('emk2LmNj'),
+  lzacg: _d('bHphY2cuY2M='),
   ggbases: _d('d3d3LmdnYmFzZXMuY29t'),
   dmm: _d('d3d3LmRtbS5jby5qcA=='),
   dlsoft: _d('ZGxzb2Z0LmRtbS5jby5qcA=='),
@@ -53,6 +54,23 @@ const enc = (v) => encodeURIComponent(String(v == null ? '' : v))
 const dlsiteKw = (k) =>
   encodeURIComponent(String(k).replace(/[!！?？*＊~～]/g, ' ').replace(/\s+/g, ' ').trim()).replace(/%20/g, '+')
 
+/** 与用户脚本 wpKeyword() 一致：全角空格归一、去掉首尾标点，给中文站用 */
+const WP_SPACES = /[\s\u00a0\u1680\u2000-\u200b\u202f\u205f\u3000]+/g
+const WP_EDGE =
+  /^[\-–—−－~～〜:：;；,，、。．.!！?？*＊"'“”‘’「」『』【】()（）〈〉《》…·_+&\/／\\|｜]+|[\-–—−－~～〜:：;；,，、。．.!！?？*＊"'“”‘’「」『』【】()（）〈〉《》…·_+&\/／\\|｜]+$/g
+function wpKeyword(value) {
+  const raw = String(value == null ? '' : value)
+  const cleaned = raw
+    .replace(WP_SPACES, ' ')
+    .replace(/[%％]/g, ' ')
+    .split(' ')
+    .map((token) => token.replace(WP_EDGE, ''))
+    .filter(Boolean)
+    .join(' ')
+    .trim()
+  return cleaned || raw.replace(WP_SPACES, ' ').replace(/\s+/g, ' ').trim()
+}
+
 export const CROSS_SEARCH_GROUPS = [
   {
     key: 'res',
@@ -66,6 +84,8 @@ export const CROSS_SEARCH_GROUPS = [
       { name: '忧郁的弟弟', url: (k) => `https://${HOST.ttloli}/?s=${enc(k)}` },
       { name: 'SearchGal', url: (k) => `https://${HOST.searchgal}/?s=${enc(k)}` },
       { name: '梓澪', url: () => `https://${HOST.zi6}` },
+      // kw: 'zh' → 未手动挑标题时优先用中文标题搜（与用户脚本一致）
+      { name: '量子ACG', kw: 'zh', url: (k) => `https://${HOST.lzacg}/?s=${enc(wpKeyword(k))}` },
       { name: 'ggbases', url: (k) => `https://${HOST.ggbases}/search.so?title=${enc(k)}` },
       { name: 'DMM', url: (k) => `https://${HOST.dmm}/search/=/searchstr=${enc(k)}/` },
       { name: 'Fanza', url: (k) => `https://${HOST.dlsoft}/search/?service=pcgame&searchstr=${enc(k)}` },
@@ -118,15 +138,29 @@ export const CROSS_SEARCH_GROUPS = [
 /**
  * 生成跨站搜索链接
  * @param {string} keyword 搜索关键词（通常是 VN 原名 alttitle）
- * @returns {Array<{key,labelKey,sites:{name,url,native?}[]}>}
+ * @param {{zhTitle?:string, preferZh?:boolean}} [opts]
+ *   preferZh=true 且站点标了 kw:'zh' 时改用 zhTitle（对应用户脚本「未手动挑标题时
+ *   中文站优先用中文标题搜」的行为）
+ * @returns {Array<{key,labelKey,sites:{name,url,native?,kw?,usedKeyword?}[]}>}
  */
-export function buildCrossSearchLinks(keyword) {
+export function buildCrossSearchLinks(keyword, opts = {}) {
   const kw = String(keyword || '').trim()
   if (!kw) return []
+  const zhTitle = String(opts.zhTitle || '').trim()
+  const preferZh = !!opts.preferZh && !!zhTitle
   return CROSS_SEARCH_GROUPS.map((g) => ({
     key: g.key,
     labelKey: g.labelKey,
-    sites: g.sites.map((s) => ({ name: s.name, url: s.url(kw), native: s.native || null }))
+    sites: g.sites.map((s) => {
+      const siteKw = s.kw === 'zh' && preferZh ? zhTitle : kw
+      return {
+        name: s.name,
+        url: s.url(siteKw),
+        native: s.native || null,
+        kw: s.kw || '',
+        usedKeyword: siteKw
+      }
+    })
   }))
 }
 

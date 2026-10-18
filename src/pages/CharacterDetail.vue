@@ -273,6 +273,16 @@ const filteredTraitCount = computed(() => {
   }).length
 })
 
+// 简介 / 特征 向上弹出的小卡
+const infoSheet = ref(null) // null | 'description' | 'traits'
+
+const openInfoSheet = (tab) => {
+  if (tab === 'description' && !character.value?.description) tab = 'traits'
+  if (tab === 'traits' && !(character.value?.traits?.length > 0)) tab = 'description'
+  infoSheet.value = tab || null
+}
+const closeInfoSheet = () => { infoSheet.value = null }
+
 // 处理特征剧透等级选择
 const handleSelectTraitSpoiler = (level) => {
   if (level === 2) {
@@ -428,11 +438,13 @@ watch(
         <div class="flex-1 space-y-3 py-1">
           <div class="h-6 bg-neutral-100 dark:bg-neutral-800 rounded w-1/2"></div>
           <div class="h-4 bg-neutral-100 dark:bg-neutral-800 rounded w-1/3"></div>
-          <div class="grid grid-cols-2 gap-2 pt-2">
-            <div class="h-4 bg-neutral-100 dark:bg-neutral-800 rounded w-full"></div>
-            <div class="h-4 bg-neutral-100 dark:bg-neutral-800 rounded w-full"></div>
-            <div class="h-4 bg-neutral-100 dark:bg-neutral-800 rounded w-full"></div>
-            <div class="h-4 bg-neutral-100 dark:bg-neutral-800 rounded w-full"></div>
+          <div class="flex items-start justify-between gap-2 pt-2">
+            <div class="h-4 flex-1 bg-neutral-100 dark:bg-neutral-800 rounded"></div>
+            <div class="h-4 flex-1 bg-neutral-100 dark:bg-neutral-800 rounded"></div>
+            <div class="h-4 flex-1 bg-neutral-100 dark:bg-neutral-800 rounded"></div>
+            <div class="h-4 flex-1 bg-neutral-100 dark:bg-neutral-800 rounded"></div>
+            <div class="h-4 flex-1 bg-neutral-100 dark:bg-neutral-800 rounded"></div>
+            <div class="h-4 flex-1 bg-neutral-100 dark:bg-neutral-800 rounded"></div>
           </div>
         </div>
       </div>
@@ -488,8 +500,8 @@ watch(
             <div class="flex items-center gap-2">
               <h1
                 class="text-2xl font-black tracking-tight text-neutral-900 dark:text-neutral-100 leading-tight copyable-title"
-                @click="copyTitleText(character.name)"
-              >{{ character.name }}</h1>
+                @click="copyTitleText(character.original || character.name)"
+              >{{ character.original || character.name }}</h1>
               <div 
                 v-if="getSexIcon(character.sex)" 
                 class="shrink-0 inline-flex items-center rounded-lg px-2 py-1 border"
@@ -499,36 +511,36 @@ watch(
               </div>
             </div>
             <p
-              v-if="character.original"
+              v-if="character.original && character.name"
               class="text-sm text-neutral-500 dark:text-neutral-400 font-medium mt-0.5 copyable-title"
-              @click="copyTitleText(character.original)"
-            >{{ character.original }}</p>
+              @click="copyTitleText(character.name)"
+            >{{ character.name }}</p>
           </div>
           
-          <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-[11px]">
-            <div class="flex items-center justify-between border-b border-neutral-200/50 dark:border-neutral-700/50 pb-1">
-              <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.characters.gender') }}</span>
-              <span class="text-neutral-800 dark:text-neutral-200 font-bold">{{ translateGender(character.sex) }}</span>
+          <div class="flex items-start justify-between gap-2 text-[11px]">
+            <div class="min-w-0">
+              <span class="block truncate leading-tight text-neutral-400 dark:text-neutral-500">{{ t('vn.characters.gender') }}</span>
+              <span class="mt-0.5 block truncate leading-tight text-neutral-800 dark:text-neutral-200 font-bold">{{ translateGender(character.sex) }}</span>
             </div>
-            <div class="flex items-center justify-between border-b border-neutral-200/50 dark:border-neutral-700/50 pb-1">
-              <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.characters.blood_type') }}</span>
-              <span class="text-neutral-800 dark:text-neutral-200 font-bold uppercase">{{ character.blood_type || '?' }}</span>
+            <div class="min-w-0">
+              <span class="block truncate leading-tight text-neutral-400 dark:text-neutral-500">{{ t('vn.characters.blood_type') }}</span>
+              <span class="mt-0.5 block truncate leading-tight text-neutral-800 dark:text-neutral-200 font-bold uppercase">{{ character.blood_type || '?' }}</span>
             </div>
-            <div class="flex items-center justify-between border-b border-neutral-200/50 dark:border-neutral-700/50 pb-1">
-              <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.characters.age') }}</span>
-              <span class="text-neutral-800 dark:text-neutral-200 font-bold">{{ character.age || '?' }}</span>
+            <div class="min-w-0">
+              <span class="block truncate leading-tight text-neutral-400 dark:text-neutral-500">{{ t('vn.characters.age') }}</span>
+              <span class="mt-0.5 block truncate leading-tight text-neutral-800 dark:text-neutral-200 font-bold">{{ character.age || '?' }}</span>
             </div>
-            <div class="flex items-center justify-between border-b border-neutral-200/50 dark:border-neutral-700/50 pb-1">
-              <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.characters.height') }}</span>
-              <span class="text-neutral-800 dark:text-neutral-200 font-bold">{{ character.height ? `${character.height}cm` : '?' }}</span>
+            <div class="min-w-0">
+              <span class="block truncate leading-tight text-neutral-400 dark:text-neutral-500">{{ t('vn.characters.height') }}</span>
+              <span class="mt-0.5 block truncate leading-tight text-neutral-800 dark:text-neutral-200 font-bold">{{ character.height ? `${character.height}cm` : '?' }}</span>
             </div>
-            <div class="flex items-center justify-between border-b border-neutral-200/50 dark:border-neutral-700/50 pb-1">
-              <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.characters.weight') }}</span>
-              <span class="text-neutral-800 dark:text-neutral-200 font-bold">{{ character.weight ? `${character.weight}kg` : '?' }}</span>
+            <div class="min-w-0">
+              <span class="block truncate leading-tight text-neutral-400 dark:text-neutral-500">{{ t('vn.characters.weight') }}</span>
+              <span class="mt-0.5 block truncate leading-tight text-neutral-800 dark:text-neutral-200 font-bold">{{ character.weight ? `${character.weight}kg` : '?' }}</span>
             </div>
-            <div class="flex items-center justify-between border-b border-neutral-200/50 dark:border-neutral-700/50 pb-1">
-              <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.characters.birthday') }}</span>
-              <span class="text-neutral-800 dark:text-neutral-200 font-bold">
+            <div class="min-w-0">
+              <span class="block truncate leading-tight text-neutral-400 dark:text-neutral-500">{{ t('vn.characters.birthday') }}</span>
+              <span class="mt-0.5 block truncate leading-tight text-neutral-800 dark:text-neutral-200 font-bold">
                 {{ character.birthday ? t('vn.characters.birthday_val', { month: character.birthday[0], day: character.birthday[1] }) : '?' }}
               </span>
             </div>
@@ -544,133 +556,193 @@ watch(
         </div>
       </div>
 
-      <!-- 角色简述 -->
-      <div v-if="character.description" class="space-y-3">
-        <div class="flex items-center justify-between gap-3 px-1">
-          <div class="flex items-center gap-2">
-            <div class="h-3 w-1 rounded-full bg-neutral-900 dark:bg-neutral-100"></div>
-            <h3 class="text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">{{ t('vn.description') }}</h3>
-          </div>
-          <button
-            @click="translateDescription"
-            :disabled="translationLoading"
-            class="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2.5 py-1 text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 transition disabled:cursor-not-allowed disabled:opacity-60 hover:border-neutral-300 hover:text-neutral-700 dark:hover:border-neutral-600 dark:hover:text-neutral-200"
-          >
-            <Icon :icon="translationLoading ? 'lucide:loader-circle' : 'lucide:languages'" class="h-3.5 w-3.5" :class="{ 'animate-spin': translationLoading }" />
-            {{ translationLoading ? t('vn.translation.loading') : (translatedDescription ? t('vn.translation.retranslate') : t('vn.translation.action')) }}
-          </button>
-        </div>
-        <div
-          class="rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 px-5 py-4 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400 whitespace-pre-wrap bbcode-container selectable-text shadow-xs"
-          v-html="parseBBCode(character.description)"
-        ></div>
-        <div v-if="translatedDescription || translationError || translationLoading" class="rounded-2xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-5 py-4 space-y-2 shadow-xs">
-          <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-violet-500 dark:text-violet-400">
-            <Icon icon="lucide:languages" class="h-3.5 w-3.5" />
-            <span>{{ t('vn.translation.title') }}</span>
-          </div>
-          <div v-if="translationLoading" class="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400">
-            <Icon icon="lucide:loader-circle" class="h-4 w-4 animate-spin" />
-            <span>{{ t('vn.translation.loading') }}</span>
-          </div>
-          <div v-else-if="translationError" class="text-sm leading-relaxed text-rose-500 dark:text-rose-400">
-            {{ translationError }}
-          </div>
-          <p v-else class="text-sm leading-relaxed text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap selectable-text">
-            {{ translatedDescription }}
-          </p>
-        </div>
+      <!-- 简介 / 特征：同级切换 · 向上弹出的小卡 -->
+      <div v-if="character.description || (character.traits && character.traits.length > 0)" class="flex items-stretch gap-2">
+        <button
+          v-if="character.description"
+          @click="openInfoSheet('description')"
+          class="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl border border-neutral-200/80 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-[11px] font-semibold text-neutral-600 dark:text-neutral-300 shadow-xs transition active:scale-[0.99] hover:border-neutral-300 dark:hover:border-neutral-600"
+        >
+          <Icon icon="lucide:file-text" class="h-3.5 w-3.5 shrink-0 text-neutral-400 dark:text-neutral-500" />
+          <span class="truncate">{{ t('vn.description') }}</span>
+          <Icon icon="lucide:chevron-up" class="h-3.5 w-3.5 shrink-0 text-neutral-300 dark:text-neutral-600" />
+        </button>
+        <button
+          v-if="character.traits && character.traits.length > 0"
+          @click="openInfoSheet('traits')"
+          class="flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl border border-neutral-200/80 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-[11px] font-semibold text-neutral-600 dark:text-neutral-300 shadow-xs transition active:scale-[0.99] hover:border-neutral-300 dark:hover:border-neutral-600"
+        >
+          <Icon icon="lucide:tags" class="h-3.5 w-3.5 shrink-0 text-neutral-400 dark:text-neutral-500" />
+          <span class="truncate">{{ t('library.traits') }}</span>
+          <span class="shrink-0 rounded-full bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 text-[10px] font-bold text-neutral-400 dark:text-neutral-500">{{ filteredTraitCount }}</span>
+          <Icon icon="lucide:chevron-up" class="h-3.5 w-3.5 shrink-0 text-neutral-300 dark:text-neutral-600" />
+        </button>
       </div>
 
-      <!-- 特征标签 -->
-      <div v-if="character.traits && character.traits.length > 0" class="space-y-3">
-        <div class="flex items-center gap-2 px-1">
-          <div class="h-3 w-1 rounded-full bg-neutral-900 dark:bg-neutral-100"></div>
-          <h3 class="text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">{{ t('library.traits') }}</h3>
-          <span class="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5 rounded-full">
-            {{ filteredTraitCount }}
-          </span>
-        </div>
-
-        <!-- 特征筛选控件 -->
-        <div class="rounded-xl border border-neutral-200/80 dark:border-neutral-700 bg-neutral-50/60 dark:bg-neutral-800/40 p-2.5 space-y-1.5">
-          <!-- 剧透等级筛选 -->
-          <div class="flex items-center justify-between gap-2">
-            <span class="shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-neutral-500 dark:text-neutral-400">
-              <Icon icon="lucide:shield-alert" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
-              {{ t('vn.characters.trait_spoiler_filter') }}
-            </span>
-            <div class="flex shrink-0 items-center gap-0.5 rounded-full bg-neutral-200/70 dark:bg-neutral-700/60 p-0.5">
-              <button
-                v-for="level in [
-                  { val: 0, label: t('vn.characters.trait_spoiler_0') },
-                  { val: 1, label: t('vn.characters.trait_spoiler_1') },
-                  { val: 2, label: t('vn.characters.trait_spoiler_2') }
-                ]"
-                :key="level.val"
-                @click="handleSelectTraitSpoiler(level.val)"
-                class="whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-medium leading-none transition-all cursor-pointer"
-                :class="[ traitSpoilerLevel === level.val ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
-              >
-                {{ level.label }}
-              </button>
-            </div>
-          </div>
-
-          <!-- 性内容过滤 -->
-          <div class="flex items-center justify-between gap-2">
-            <span class="shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-neutral-500 dark:text-neutral-400">
-              <Icon icon="lucide:layers" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
-              {{ t('vn.characters.trait_sexual_filter') }}
-            </span>
-            <div class="flex shrink-0 items-center gap-0.5 rounded-full bg-neutral-200/70 dark:bg-neutral-700/60 p-0.5">
-              <button
-                @click="showTraitSexual = false"
-                class="whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-medium leading-none transition-all cursor-pointer"
-                :class="[ !showTraitSexual ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
-              >
-                {{ t('vn.characters.trait_sexual_hide') }}
-              </button>
-              <button
-                @click="showTraitSexual = true"
-                class="whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-medium leading-none transition-all cursor-pointer"
-                :class="[ showTraitSexual ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
-              >
-                {{ t('vn.characters.trait_sexual_show') }}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- 筛选后无结果提示 -->
-        <div v-if="filteredTraitCount === 0" class="text-center py-4 text-xs text-neutral-400 dark:text-neutral-500">
-          {{ t('vn.characters.trait_empty') }}
-        </div>
-
-        <!-- 特征分组展示 -->
-        <div v-else class="grid grid-cols-1 gap-4">
+      <!-- 向上弹出的小卡：简介 / 特征 -->
+      <Teleport to="body">
+        <Transition name="sheet-fade">
+          <div v-if="infoSheet" class="fixed inset-0 z-[55] bg-black/40" @click="closeInfoSheet"></div>
+        </Transition>
+        <Transition name="sheet-up">
           <div
-            v-for="(traits, group) in groupTraits(character.traits)"
-            :key="group"
-            class="space-y-2 bg-neutral-50/30 dark:bg-neutral-800/30 p-3 rounded-xl border border-neutral-100 dark:border-neutral-800"
+            v-if="infoSheet"
+            class="fixed inset-x-2 bottom-2 z-[55] flex max-h-[74vh] flex-col overflow-hidden rounded-2xl border border-neutral-200/80 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-2xl"
           >
-            <h5 class="text-[11px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-widest flex items-center gap-2">
-              {{ translateTraitGroup(group) }}
-            </h5>
-            <div class="flex flex-wrap gap-1.5">
-              <span
-                v-for="trait in traits"
-                :key="trait.id || trait.name"
-                @click="router.push(`/browse/characters?trait=${trait.id}`)"
-                class="px-3 py-1.5 rounded-full text-xs font-semibold shadow-xs transition-colors cursor-pointer active:scale-[0.98]"
-                :class="[ trait.spoiler === 2 ? 'bg-red-50 text-red-700 border border-red-100 hover:border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/50 dark:hover:border-red-600' : trait.spoiler === 1 ? 'bg-amber-50 text-amber-700 border border-amber-100 hover:border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/50 dark:hover:border-amber-600' : 'bg-white text-neutral-700 border border-neutral-200 hover:border-neutral-400 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700 dark:hover:border-neutral-500' ]"
+            <div class="flex shrink-0 justify-center pt-2" aria-hidden="true">
+              <div class="h-1 w-9 rounded-full bg-neutral-300 dark:bg-neutral-600"></div>
+            </div>
+
+            <!-- 同级切换 -->
+            <div class="flex shrink-0 items-center gap-1.5 px-3 pb-2 pt-1.5">
+              <div class="flex flex-1 items-center gap-0.5 rounded-full bg-neutral-100 dark:bg-neutral-800 p-0.5">
+                <button
+                  v-if="character.description"
+                  @click="infoSheet = 'description'"
+                  class="flex-1 whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] leading-none transition-all cursor-pointer"
+                  :class="[ infoSheet === 'description' ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium' ]"
+                >
+                  {{ t('vn.description') }}
+                </button>
+                <button
+                  v-if="character.traits && character.traits.length > 0"
+                  @click="infoSheet = 'traits'"
+                  class="flex-1 whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] leading-none transition-all cursor-pointer"
+                  :class="[ infoSheet === 'traits' ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium' ]"
+                >
+                  {{ t('library.traits') }}<span class="ml-1 text-[10px] font-bold text-neutral-400 dark:text-neutral-500">{{ filteredTraitCount }}</span>
+                </button>
+              </div>
+              <button
+                @click="closeInfoSheet"
+                class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-neutral-400 dark:text-neutral-500 transition hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+                :aria-label="t('common.cancel')"
               >
-                {{ translateTraitName(trait.name) }}
-              </span>
+                <Icon icon="lucide:x" class="h-4 w-4" />
+              </button>
+            </div>
+
+            <!-- 简介面板 -->
+            <div v-if="infoSheet === 'description'" class="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <div class="flex items-center justify-end">
+                <button
+                  @click="translateDescription"
+                  :disabled="translationLoading"
+                  class="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2.5 py-1 text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 transition disabled:cursor-not-allowed disabled:opacity-60 hover:border-neutral-300 hover:text-neutral-700 dark:hover:border-neutral-600 dark:hover:text-neutral-200"
+                >
+                  <Icon :icon="translationLoading ? 'lucide:loader-circle' : 'lucide:languages'" class="h-3.5 w-3.5" :class="{ 'animate-spin': translationLoading }" />
+                  {{ translationLoading ? t('vn.translation.loading') : (translatedDescription ? t('vn.translation.retranslate') : t('vn.translation.action')) }}
+                </button>
+              </div>
+              <div
+                class="rounded-xl border border-neutral-100 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-800 px-4 py-3 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400 whitespace-pre-wrap bbcode-container selectable-text shadow-xs"
+                v-html="parseBBCode(character.description)"
+              ></div>
+              <div v-if="translatedDescription || translationError || translationLoading" class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-4 py-3 space-y-2 shadow-xs">
+                <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-violet-500 dark:text-violet-400">
+                  <Icon icon="lucide:languages" class="h-3.5 w-3.5" />
+                  <span>{{ t('vn.translation.title') }}</span>
+                </div>
+                <div v-if="translationLoading" class="flex items-center gap-2 text-sm text-neutral-500 dark:text-neutral-400">
+                  <Icon icon="lucide:loader-circle" class="h-4 w-4 animate-spin" />
+                  <span>{{ t('vn.translation.loading') }}</span>
+                </div>
+                <div v-else-if="translationError" class="text-sm leading-relaxed text-rose-500 dark:text-rose-400">
+                  {{ translationError }}
+                </div>
+                <p v-else class="text-sm leading-relaxed text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap selectable-text">
+                  {{ translatedDescription }}
+                </p>
+              </div>
+            </div>
+
+            <!-- 特征面板 -->
+            <div
+              v-if="infoSheet === 'traits' && character.traits && character.traits.length > 0"
+              class="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+            >
+              <!-- 特征筛选控件 -->
+              <div class="rounded-xl border border-neutral-200/80 dark:border-neutral-700 bg-neutral-50/60 dark:bg-neutral-800/40 p-2 space-y-1.5">
+                <!-- 剧透等级筛选 -->
+                <div class="flex items-center justify-between gap-2">
+                  <span class="shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-neutral-500 dark:text-neutral-400">
+                    <Icon icon="lucide:shield-alert" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
+                    {{ t('vn.characters.trait_spoiler_filter') }}
+                  </span>
+                  <div class="flex shrink-0 items-center gap-0.5 rounded-full bg-neutral-200/70 dark:bg-neutral-700/60 p-0.5">
+                    <button
+                      v-for="level in [
+                        { val: 0, label: t('vn.characters.trait_spoiler_0') },
+                        { val: 1, label: t('vn.characters.trait_spoiler_1') },
+                        { val: 2, label: t('vn.characters.trait_spoiler_2') }
+                      ]"
+                      :key="level.val"
+                      @click="handleSelectTraitSpoiler(level.val)"
+                      class="whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-medium leading-none transition-all cursor-pointer"
+                      :class="[ traitSpoilerLevel === level.val ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
+                    >
+                      {{ level.label }}
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 性内容过滤 -->
+                <div class="flex items-center justify-between gap-2">
+                  <span class="shrink-0 inline-flex items-center gap-1 text-[12px] font-medium text-neutral-500 dark:text-neutral-400">
+                    <Icon icon="lucide:layers" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500" />
+                    {{ t('vn.characters.trait_sexual_filter') }}
+                  </span>
+                  <div class="flex shrink-0 items-center gap-0.5 rounded-full bg-neutral-200/70 dark:bg-neutral-700/60 p-0.5">
+                    <button
+                      @click="showTraitSexual = false"
+                      class="whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-medium leading-none transition-all cursor-pointer"
+                      :class="[ !showTraitSexual ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
+                    >
+                      {{ t('vn.characters.trait_sexual_hide') }}
+                    </button>
+                    <button
+                      @click="showTraitSexual = true"
+                      class="whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-medium leading-none transition-all cursor-pointer"
+                      :class="[ showTraitSexual ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs' : 'text-neutral-500 dark:text-neutral-400 font-medium hover:text-neutral-800 dark:hover:text-neutral-200' ]"
+                    >
+                      {{ t('vn.characters.trait_sexual_show') }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 筛选后无结果提示 -->
+              <div v-if="filteredTraitCount === 0" class="text-center py-4 text-xs text-neutral-400 dark:text-neutral-500">
+                {{ t('vn.characters.trait_empty') }}
+              </div>
+
+              <!-- 特征分组展示：分类在左，标签在右侧同行排列，压缩上下间距 -->
+              <div v-else class="space-y-1">
+                <div
+                  v-for="(traits, group) in groupTraits(character.traits)"
+                  :key="group"
+                  class="flex items-start gap-2 bg-neutral-50/30 dark:bg-neutral-800/30 px-2 py-1.5 rounded-lg border border-neutral-100 dark:border-neutral-800"
+                >
+                  <h5 class="w-16 shrink-0 pt-1 text-[11px] font-bold text-neutral-400 dark:text-neutral-500 uppercase tracking-wider leading-tight break-words">
+                    {{ translateTraitGroup(group) }}
+                  </h5>
+                  <div class="min-w-0 flex-1 flex flex-wrap gap-1">
+                    <span
+                      v-for="trait in traits"
+                      :key="trait.id || trait.name"
+                      @click="router.push(`/browse/characters?trait=${trait.id}`)"
+                      class="px-2.5 py-1 rounded-full text-[11px] font-semibold shadow-xs transition-colors cursor-pointer active:scale-[0.98]"
+                      :class="[ trait.spoiler === 2 ? 'bg-red-50 text-red-700 border border-red-100 hover:border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800/50 dark:hover:border-red-600' : trait.spoiler === 1 ? 'bg-amber-50 text-amber-700 border border-amber-100 hover:border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800/50 dark:hover:border-amber-600' : 'bg-white text-neutral-700 border border-neutral-200 hover:border-neutral-400 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700 dark:hover:border-neutral-500' ]"
+                    >
+                      {{ translateTraitName(trait.name) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        </Transition>
+      </Teleport>
 
       <!-- Other Instances（其他出场作品） -->
       <div v-if="character.vns && character.vns.length > 0" class="space-y-4 pt-2">
@@ -802,7 +874,7 @@ watch(
   <Teleport to="body">
     <div 
       v-if="showTraitSpoilerConfirm"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 animate-fade-in"
+      class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/40 animate-fade-in"
       @click="showTraitSpoilerConfirm = false"
     >
       <div 
@@ -851,5 +923,24 @@ watch(
 }
 :global(.dark) .bbcode-container :deep(a:hover) {
   color: #a3a3a3;
+}
+
+/* 向上的小卡过渡动画 */
+.sheet-fade-enter-active,
+.sheet-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.sheet-fade-enter-from,
+.sheet-fade-leave-to {
+  opacity: 0;
+}
+.sheet-up-enter-active,
+.sheet-up-leave-active {
+  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.28s ease;
+}
+.sheet-up-enter-from,
+.sheet-up-leave-to {
+  transform: translateY(100%);
+  opacity: 0;
 }
 </style>

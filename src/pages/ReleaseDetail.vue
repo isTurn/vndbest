@@ -6,6 +6,7 @@ import { translateError } from '@/utils/errorMessage'
 import { Icon } from '@iconify/vue'
 import AppHeader from '@/components/AppHeader.vue'
 import AgeRating from '@/components/AgeRating.vue'
+import LanguageFlag from '@/components/LanguageFlag.vue'
 import { PLATFORM_ICON_NAMES, APP_ICON_NAMES } from '@/icons/icon-names'
 import { getReleaseDetail } from '@/api/vndb'
 import { usePrivacy, getImageNsfwLevel } from '@/composables/usePrivacy'
@@ -346,9 +347,10 @@ watch(
             <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.languages') }}</span>
             <div class="flex flex-wrap gap-1">
               <span v-for="lang in release.languages" :key="lang.lang"
-                class="text-[11px] px-1.5 py-0.5 rounded-md bg-white border border-neutral-200 font-bold dark:bg-neutral-800 dark:border-neutral-700"
+                class="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-md bg-white border border-neutral-200 font-bold dark:bg-neutral-800 dark:border-neutral-700"
                 :class="{ '!bg-neutral-900 !text-white !border-neutral-900 dark:!bg-neutral-100 dark:!text-neutral-900 dark:!border-neutral-100': lang.main }">
-                {{ t(`metadata.lang.${lang.lang}`, lang.lang) }}
+                <LanguageFlag :lang="lang.lang" class="h-3.5 w-3.5" />
+                <span>{{ t(`metadata.lang.${lang.lang}`, lang.lang) }}</span>
               </span>
             </div>
 

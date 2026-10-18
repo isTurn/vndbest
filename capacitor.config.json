@@ -1,6 +1,6 @@
 {
-  "appId": "com.cyancat.vndbest",
-  "appName": "vndbest",
+  "appId": "com.vndb",
+  "appName": "VNDB",
   "webDir": "dist",
   "server": {
     "androidScheme": "https"

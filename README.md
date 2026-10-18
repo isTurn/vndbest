@@ -8,7 +8,7 @@
 
 VNDB（Visual Novel Database）的 Android 第三方客户端。基于 **Vue 3 + Vite + Ionic Vue + Capacitor** 构建，针对手机端浏览体验做了大量优化，并集成了跨站搜索、站内中文化、登录态持久化等增强功能。
 
-> 本项目 fork 自 [Cyancat000/vndbest](https://github.com/Cyancat000/vndbest)，由 [isTurn](https://github.com/isTurn) 继续完善与发布。
+> 本项目 fork 自 [Cyancat000/vndbest](https://github.com/Cyancat000/vndbest)，由 [isTurn](https://github.com/isTurn) 与 [Hatube01](https://github.com/Hatube01) 继续完善与发布。
 
 ---
 
@@ -76,7 +76,7 @@ VNDB（Visual Novel Database）的 Android 第三方客户端。基于 **Vue 3 +
 从 [Releases](https://github.com/isTurn/vndbest/releases) 下载最新的 APK 安装。
 
 - 要求 Android 7.0（API 24）及以上
-- 包名 `com.cyancat.vndbest`，与上游原项目一致，可直接覆盖升级
+- 包名 `com.vndb`
 
 ---
 
@@ -187,7 +187,7 @@ CI 默认使用 **debug keystore** 签名 release APK，以便直接安装测试
 | --- | --- | --- |
 | [VNDB优先原文和中文化](https://greasyfork.org/zh-CN/scripts/442355) v5.0.1 | 在内置浏览器里把 VNDB 页面中文化 | [Greasy Fork #442355](https://greasyfork.org/zh-CN/scripts/442355) |
 | [VNDBTranslatorLib](https://greasyfork.org/scripts/445990-vndbtranslatorlib) v5.0.0 | 上者的翻译词典（其 `@require` 依赖） | [Greasy Fork #445990](https://greasyfork.org/scripts/445990) |
-| [VNDB跨站搜索](https://greasyfork.org/zh-CN/scripts/600569) v2.5.11 | 跨站搜索站点表来源 | [Greasy Fork #600569](https://greasyfork.org/zh-CN/scripts/600569) |
+| [VNDB跨站搜索](https://greasyfork.org/zh-CN/scripts/600569) v2.5.14 | 跨站搜索站点表来源 | [Greasy Fork #600569](https://greasyfork.org/zh-CN/scripts/600569) |
 
 两个油猴脚本以源码形式固化在仓库中（`scripts/vendor/`、`VNDB优先原文和中文化.js`、`VNDB跨站搜索.js`），由 `scripts/build-vndb-translator.cjs` 拼接成可注入的 IIFE。感谢以上脚本作者的劳动，版权归原作者所有；若原作者有异议，请联系移除。
 
@@ -204,7 +204,7 @@ CI 默认使用 **debug keystore** 签名 release APK，以便直接安装测试
 ## 上游
 
 - 原项目：[Cyancat000/vndbest](https://github.com/Cyancat000/vndbest)
-- 完善与发布：[isTurn/vndbest](https://github.com/isTurn/vndbest)
+- 完善与发布：[isTurn/vndbest](https://github.com/isTurn/vndbest)、Hatube01
 
 ## 许可证
 

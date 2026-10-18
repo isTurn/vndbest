@@ -68,7 +68,7 @@ jobs:
           grep -q "inappbrowser" android/app/src/main/assets/capacitor.plugins.json
           echo "InAppBrowser plugin OK"
           # CookieKeeper 是工程内手写插件，由 MainActivity 手动注册，不在此文件中
-          grep -q "CookieKeeperPlugin" android/app/src/main/java/com/cyancat/vndbest/MainActivity.java
+          grep -q "CookieKeeperPlugin" android/app/src/main/java/com/vndb/MainActivity.java
           echo "CookieKeeper plugin OK"
           test -f android/app/src/main/assets/public/vndb-translator.js
           echo "translator script OK"

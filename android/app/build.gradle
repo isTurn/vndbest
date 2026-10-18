@@ -6,10 +6,10 @@ def releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")?.trim()
 def hasReleaseKeystore = releaseKeystorePath != null && !releaseKeystorePath.isEmpty() && file(releaseKeystorePath).exists()
 
 android {
-    namespace = "com.cyancat.vndbest"
+    namespace = "com.vndb"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.cyancat.vndbest"
+        applicationId "com.vndb"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // CI 可通过环境变量覆盖版本号，避免每次发版手改

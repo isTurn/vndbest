@@ -34,11 +34,14 @@ const THIRD_PARTY_CREDITS = [
   },
   {
     name: 'VNDB跨站搜索',
-    version: 'v2.5.11',
+    version: 'v2.5.14',
     desc: 'settings.about.credits_cross',
     url: 'https://greasyfork.org/zh-CN/scripts/600569'
   }
 ]
+
+// 完善者（本项目 fork 的维护者）
+const MAINTAINERS = ['isTurn', 'Hatube01']
 import { cacheManager } from '@/utils/cacheManager'
 import { useToast } from '@/composables/useToast'
 import { useAppUpdate } from '@/composables/useAppUpdate'
@@ -1099,9 +1102,15 @@ const themeOptions = [
                 <span class="text-neutral-500 dark:text-neutral-400">{{ t('settings.about.developer') }}</span>
                 <span class="font-medium text-neutral-800 dark:text-neutral-200">Heki喵 (Cyancat000)</span>
               </div>
-              <div class="flex justify-between">
-                <span class="text-neutral-500 dark:text-neutral-400">{{ t('settings.about.maintainer') }}</span>
-                <span class="font-medium text-neutral-800 dark:text-neutral-200">isTurn</span>
+              <div class="flex justify-between gap-2">
+                <span class="text-neutral-500 dark:text-neutral-400 shrink-0">{{ t('settings.about.maintainer') }}</span>
+                <span class="flex flex-wrap items-center justify-end gap-x-1.5 gap-y-1">
+                  <span
+                    v-for="m in MAINTAINERS"
+                    :key="m"
+                    class="font-medium text-neutral-800 dark:text-neutral-200"
+                  >{{ m }}</span>
+                </span>
               </div>
 
               <!-- 本项目（完善后的分支） -->

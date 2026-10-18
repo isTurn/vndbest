@@ -4,6 +4,8 @@ import { APP_ICON_NAMES, PLATFORM_ICON_NAMES } from './icon-names'
 import search from '@iconify-icons/lucide/search'
 import searchX from '@iconify-icons/lucide/search-x'
 import x from '@iconify-icons/lucide/x'
+import tag from '@iconify-icons/lucide/tag'
+import bookmarkPlus from '@iconify-icons/lucide/bookmark-plus'
 import check from '@iconify-icons/lucide/check'
 import checkCircle from '@iconify-icons/lucide/check-circle'
 import xCircle from '@iconify-icons/lucide/x-circle'
@@ -89,6 +91,11 @@ import heart from '@iconify-icons/lucide/heart'
 import droplets from '@iconify-icons/lucide/droplets'
 import database from '@iconify-icons/lucide/database'
 import hardDrive from '@iconify-icons/lucide/hard-drive'
+import checkSquare from '@iconify-icons/lucide/check-square'
+import square from '@iconify-icons/lucide/square'
+import globe from '@iconify-icons/lucide/globe'
+import pencilLine from '@iconify-icons/lucide/pencil-line'
+import upload from '@iconify-icons/lucide/upload'
 
 import eosLoading from '@iconify-icons/eos-icons/loading'
 
@@ -201,6 +208,11 @@ const ICON_DATA = {
   [APP_ICON_NAMES.common.venusMars]: badge,
   [APP_ICON_NAMES.common.database]: database,
   [APP_ICON_NAMES.common.hardDrive]: hardDrive,
+  [APP_ICON_NAMES.common.checkSquare]: checkSquare,
+  [APP_ICON_NAMES.common.square]: square,
+  [APP_ICON_NAMES.common.globe]: globe,
+  [APP_ICON_NAMES.common.pencilLine]: pencilLine,
+  [APP_ICON_NAMES.common.upload]: upload,
   [APP_ICON_NAMES.loaders.eosLoading]: eosLoading,
   [APP_ICON_NAMES.solar.starBroken]: star,
   [APP_ICON_NAMES.solar.starBold]: star,
@@ -220,7 +232,14 @@ const ICON_DATA = {
   'simple-icons:nintendogamecube': siNintendoGamecube,
   'simple-icons:sega': siSega,
   'simple-icons:xbox': siXbox,
-  'simple-icons:googlechrome': siGoogleChrome
+  'simple-icons:googlechrome': siGoogleChrome,
+  [APP_ICON_NAMES.common.tag]: tag,
+  [APP_ICON_NAMES.common.bookmarkPlus]: bookmarkPlus,
+  // 模板里以字面量 'lucide:loader-circle' 引用，实际复用 loader-2 的图形
+  'lucide:loader-circle': loader2,
+  'solar:star-broken': star,
+  'solar:star-bold': star,
+  'solar:bookmark-bold': bookmark
 }
 
 let registered = false

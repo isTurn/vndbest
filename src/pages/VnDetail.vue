@@ -7,7 +7,10 @@ import { Icon } from '@iconify/vue'
 import AppHeader from '@/components/AppHeader.vue'
 import { getVnDetail, getVnReleases, getVnCharacters, getVnQuotes, getVnListItem, patchVnListItem, deleteVnListItem, getUserListLabels } from '@/api/vndb'
 import VnList from '@/components/VnList.vue'
+import LanguageFlag from '@/components/LanguageFlag.vue'
+import LengthVoteModal from '@/components/LengthVoteModal.vue'
 import ActionSheet from '@/components/ActionSheet.vue'
+import { getLengthVote, formatPlayTime } from '@/utils/lengthVote'
 import AgeRating from '@/components/AgeRating.vue'
 import { usePrivacy, getImageNsfwLevel } from '@/composables/usePrivacy'
 import { useTranslation } from '@/composables/useTranslation'
@@ -1341,6 +1344,67 @@ const loadReleases = async (id) => {
   }
 }
 
+// —— 版本按语言分组（同语言放一类，可折叠）——
+// 一个版本可能带多种语言，取「主语言」(main) 或第一个作为归组依据，
+// 保证每个版本只出现在一组里，不会重复。
+const releaseLangOf = (rel) => {
+  const langs = Array.isArray(rel?.languages) ? rel.languages : []
+  const list = langs.map((l) => (typeof l === 'string' ? l : l.lang)).filter(Boolean)
+  if (!list.length) return ''
+  const main = langs.find((l) => l && typeof l === 'object' && l.main)
+  return (main && main.lang) || list[0]
+}
+
+const releaseGroups = computed(() => {
+  const map = new Map()
+  for (const rel of releases.value || []) {
+    const lang = releaseLangOf(rel)
+    if (!map.has(lang)) map.set(lang, [])
+    map.get(lang).push(rel)
+  }
+  // 有语言的组在前，按版本数降序；无语言归到「其他版本」放最后
+  const groups = Array.from(map.entries()).map(([lang, items]) => ({ lang, items }))
+  groups.sort((a, b) => {
+    if (!a.lang !== !b.lang) return a.lang ? -1 : 1
+    if (b.items.length !== a.items.length) return b.items.length - a.items.length
+    return a.lang.localeCompare(b.lang)
+  })
+  return groups
+})
+
+// 折叠状态：默认全部收起，只显示一行语言标题，点开才展开版本卡
+const expandedReleaseGroups = ref(new Set())
+const isReleaseGroupExpanded = (lang) => expandedReleaseGroups.value.has(lang)
+const toggleReleaseGroup = (lang) => {
+  const next = new Set(expandedReleaseGroups.value)
+  if (next.has(lang)) next.delete(lang)
+  else next.add(lang)
+  expandedReleaseGroups.value = next
+}
+// 两组都展开/收起
+const allReleaseGroupsExpanded = computed(
+  () =>
+    releaseGroups.value.length > 0 &&
+    releaseGroups.value.every((g) => expandedReleaseGroups.value.has(g.lang))
+)
+const toggleAllReleaseGroups = () => {
+  expandedReleaseGroups.value = allReleaseGroupsExpanded.value
+    ? new Set()
+    : new Set(releaseGroups.value.map((g) => g.lang))
+}
+
+// 只有一组（或只有一组有版本）时默认展开，避免点两次才看到内容
+watch(
+  releaseGroups,
+  (groups) => {
+    if (!groups.length) return
+    if (groups.length === 1 && !expandedReleaseGroups.value.size) {
+      expandedReleaseGroups.value = new Set([groups[0].lang])
+    }
+  },
+  { immediate: true }
+)
+
 // 加载 角色（Characters）列表
 const loadCharacters = async (id) => {
   charactersLoading.value = true
@@ -1431,7 +1495,7 @@ const isLoggedIn = computed(() => {
   return !!(token && token.trim())
 })
 
-// 外链跳转：跨站搜索（移植自 VNDB 跨站搜索脚本 v2.5.11）
+// 外链跳转：跨站搜索（移植自 VNDB 跨站搜索脚本 v2.5.14）
 // 候选标题：原名 / 各语言标题 / 拉丁转写，主标题排第一
 const crossSearchTitles = computed(() => buildCrossSearchTitles(vn.value))
 const crossSearchDefaultTitle = computed(() => pickDefaultTitle(crossSearchTitles.value))
@@ -1448,7 +1512,21 @@ const crossSearchKeyword = computed(() => {
   return (crossSearchPickedTitle.value || crossSearchDefaultTitle.value || '').trim()
 })
 
-const crossSearchGroups = computed(() => buildCrossSearchLinks(crossSearchKeyword.value))
+// 中文标题（供「量子ACG」等标了 kw:'zh' 的站点使用）
+const crossSearchZhTitle = computed(() => {
+  const hit = crossSearchTitles.value.find(
+    (t) => /^zh/i.test(t.lang || '') && /[\u4e00-\u9fff]/.test(t.text)
+  )
+  return hit ? hit.text : ''
+})
+
+const crossSearchGroups = computed(() =>
+  buildCrossSearchLinks(crossSearchKeyword.value, {
+    zhTitle: crossSearchZhTitle.value,
+    // 只在「没手动挑标题」时让中文站优先用中文标题，与用户脚本一致
+    preferZh: crossSearchMode.value === 'title' && !crossSearchPickedTitle.value
+  })
+)
 
 // 面板里最多再列 8 个候选标题（与脚本一致）
 const crossSearchChips = computed(() => {
@@ -1474,17 +1552,42 @@ function setCrossSearchMode(mode) {
 const handleCrossSearchClick = (e, site) => {
   if (!site) return
   e.preventDefault()
-  openCrossSearchSite(site, crossSearchKeyword.value)
+  // 中文站可能用的是中文标题，优先用它去搜
+  openCrossSearchSite(site, site.usedKeyword || crossSearchKeyword.value)
 }
 
-// VNDB 的「填写游戏时长」只能在他们网页上做（Kana API 没有写入时长的端点），
-// 这里按用户的跳转方式设置打开 v{id}/lengthvote 页面。
-// 时长页属于 VNDB 站内的跨站操作，跟随「跨站搜索打开方式」设置。
+// VNDB 的「填写游戏时长」：Kana API 没有写入时长的端点，但可以在应用内先填写、
+// 再借 vndb.org 的登录态把数据 POST 到站内接口 /js/VNLengthVote.json。
+// 所以这里改成和「收藏信息」一样的弹出小卡，不再跳外部网页。
+const showLengthVote = ref(false)
 const openLengthVote = () => {
   const id = vn.value?.id
   if (!id) return
-  openExternalUrl(`https://vndb.org/${id}/lengthvote`, { mode: getCrossSearchBrowserMode() })
+  showLengthVote.value = true
 }
+
+// 时长记录保存/同步后刷新详情页那一行的展示
+const onLengthVoteSaved = () => {
+  // localLengthVote / lengthDisplay 是 computed，依赖 localStorage 写入后的重算，
+  // 用一个 tick 级别的触发器强制重新读取一次。
+  lengthVoteVersion.value++
+}
+const lengthVoteVersion = ref(0)
+
+// 本地已保存的时长记录（用于详情页优先展示自己填的时长）
+const localLengthVote = computed(() => {
+  // 显式读 version，保证保存后重新计算
+  void lengthVoteVersion.value
+  return vn.value?.id ? getLengthVote(vn.value.id) : null
+})
+
+// 时长行文案：本地填过就显示「我的时长」，否则显示 VNDB 社区平均
+const lengthDisplay = computed(() => {
+  if (localLengthVote.value?.minutes) {
+    return formatPlayTime(localLengthVote.value.minutes)
+  }
+  return formatLength(vn.value || {})
+})
 
 // 版本卡片里的 VNDB 外链：走「版本外链」独立设置
 const openReleaseExtLink = (link) => {
@@ -1721,16 +1824,24 @@ watch(
 
             <span class="text-neutral-400 dark:text-neutral-500 pt-0.5">{{ t('vn.olang') }}</span>
             <div>
-              <span class="text-[11px] px-2 py-1 rounded-md bg-neutral-100 dark:bg-neutral-700/70 text-neutral-700 dark:text-neutral-300 font-medium">
-                {{ t(`metadata.lang.${vn.olang}`, vn.olang) || t('metadata.gender.unknown') }}
+              <span
+                v-if="vn.olang"
+                class="inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-md bg-neutral-100 dark:bg-neutral-700/70 text-neutral-700 dark:text-neutral-300 font-medium"
+                :title="t(`metadata.lang.${vn.olang}`, vn.olang)"
+              >
+                <LanguageFlag :lang="vn.olang" class="h-3.5 w-3.5" />
+                <span class="truncate">{{ t(`metadata.lang.${vn.olang}`, vn.olang) }}</span>
               </span>
+              <span v-else class="text-neutral-800 dark:text-neutral-300">{{ t('metadata.gender.unknown') }}</span>
             </div>
 
             <span class="text-neutral-400 dark:text-neutral-500 pt-0.5">{{ t('vn.languages') }}</span>
             <div class="flex flex-wrap gap-1">
               <span v-for="lang in (vn.languages || [])" :key="lang"
-                class="text-[11px] px-2 py-1 rounded-md bg-neutral-100 dark:bg-neutral-700/70 text-neutral-700 dark:text-neutral-300 font-medium">
-                {{ t(`metadata.lang.${lang}`, lang) }}
+                class="inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-md bg-neutral-100 dark:bg-neutral-700/70 text-neutral-700 dark:text-neutral-300 font-medium"
+                :title="t(`metadata.lang.${lang}`, lang)">
+                <LanguageFlag :lang="lang" class="h-3.5 w-3.5" />
+                <span>{{ t(`metadata.lang.${lang}`, lang) }}</span>
               </span>
               <span v-if="!vn.languages?.length" class="text-neutral-800 dark:text-neutral-300">{{ t('metadata.gender.unknown') }}</span>
             </div>
@@ -1752,7 +1863,12 @@ watch(
               class="inline-flex w-fit items-center gap-1 rounded-md px-1.5 py-0.5 -ml-1.5 text-left text-neutral-800 dark:text-neutral-200 transition hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
               :title="t('vn.length_vote_hint')"
             >
-              <span>{{ formatLength(vn) }}</span>
+              <span>{{ lengthDisplay }}</span>
+              <span
+                v-if="localLengthVote?.minutes"
+                class="inline-flex items-center gap-0.5 rounded-full bg-neutral-100 dark:bg-neutral-700/70 px-1.5 py-0.5 -my-0.5 text-[9px] font-medium text-neutral-500 dark:text-neutral-300"
+                :class="localLengthVote.syncedAt ? 'text-emerald-600 dark:text-emerald-400' : ''"
+              >{{ localLengthVote.syncedAt ? t('vn.length_vote.synced_badge') : t('vn.length_vote.local_badge') }}</span>
               <Icon icon="lucide:pencil-line" class="h-3 w-3 shrink-0 text-neutral-400 dark:text-neutral-500" />
             </button>
 
@@ -1987,6 +2103,7 @@ watch(
           :empty-title="t('vn.relations_empty_title', '暂无相关作品')"
           :empty-desc="t('vn.relations_empty_desc', '该作品没有相关联的其他作品')"
           default-layout="text"
+          title-mode="ja-romaji"
           storage-key="vndb_vn_relations_layout"
         />
       </div>
@@ -2028,12 +2145,46 @@ watch(
             {{ t('vn.releases.empty') }}
           </div>
           <div v-else class="space-y-3">
+            <!-- 分组工具行：说明 + 全部展开/收起 -->
+            <div class="flex items-center justify-between px-0.5">
+              <span class="text-[10px] text-neutral-400 dark:text-neutral-500 inline-flex items-center gap-1">
+                <Icon icon="lucide:languages" class="h-3 w-3 shrink-0" />{{ t('vn.releases.group_hint') }}
+              </span>
+              <button
+                type="button"
+                @click="toggleAllReleaseGroups"
+                class="text-[10px] text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200 transition cursor-pointer"
+              >{{ allReleaseGroupsExpanded ? t('vn.releases.collapse_all') : t('vn.releases.expand_all') }}</button>
+            </div>
+
+            <!-- 同语言归为一组，可折叠 -->
             <div
-              v-for="rel in releases"
-              :key="rel.id"
-              @click="router.push(`/release/${rel.id}`)"
-              class="p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 hover:shadow-xs hover:border-neutral-300 dark:hover:border-neutral-600 transition space-y-2 cursor-pointer active:scale-[0.98]"
+              v-for="group in releaseGroups"
+              :key="group.lang || '__none'"
+              class="rounded-lg border border-neutral-200 dark:border-neutral-700 overflow-hidden"
             >
+              <button
+                type="button"
+                @click="toggleReleaseGroup(group.lang)"
+                class="w-full flex items-center gap-2 px-3 py-2.5 bg-neutral-50 dark:bg-neutral-800/60 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition cursor-pointer"
+              >
+                <Icon
+                  :icon="isReleaseGroupExpanded(group.lang) ? 'lucide:chevron-down' : 'lucide:chevron-right'"
+                  class="h-3.5 w-3.5 shrink-0 text-neutral-400 dark:text-neutral-500"
+                />
+                <LanguageFlag v-if="group.lang" :lang="group.lang" class="h-3.5 w-3.5 shrink-0" />
+                <Icon v-else icon="lucide:globe" class="h-3.5 w-3.5 shrink-0 text-neutral-400 dark:text-neutral-500" />
+                <span class="text-xs font-semibold text-neutral-800 dark:text-neutral-200">{{ group.lang ? t(`metadata.lang.${group.lang}`, group.lang) : t('vn.releases.lang_other') }}</span>
+                <span class="text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('vn.releases.count', { count: group.items.length }) }}</span>
+              </button>
+
+              <div v-show="isReleaseGroupExpanded(group.lang)" class="space-y-3 p-3 bg-white dark:bg-neutral-900 border-t border-neutral-100 dark:border-neutral-800">
+                <div
+                  v-for="rel in group.items"
+                  :key="rel.id"
+                  @click="router.push(`/release/${rel.id}`)"
+                  class="p-3 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 hover:shadow-xs hover:border-neutral-300 dark:hover:border-neutral-600 transition space-y-2 cursor-pointer active:scale-[0.98]"
+                >
               <div class="flex justify-between items-start gap-2">
                 <div class="min-w-0">
                   <h4 class="font-semibold text-xs text-neutral-800 dark:text-neutral-200 leading-snug">{{ rel.alttitle || rel.title }}</h4>
@@ -2049,7 +2200,14 @@ watch(
               
               <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[10px] text-neutral-500 dark:text-neutral-400 pt-1 border-t border-neutral-100 dark:border-neutral-800">
                 <div>{{ t('vn.releases.date') }}: <span class="text-neutral-700 dark:text-neutral-300">{{ rel.released || t('metadata.gender.unknown') }}</span></div>
-                <div>{{ t('vn.releases.lang') }}: <span class="text-neutral-700 dark:text-neutral-300">{{ rel.languages?.map(l => t(`metadata.lang.${l.lang}`, l.lang)).join(', ') || t('metadata.gender.unknown') }}</span></div>
+                <div class="flex flex-wrap items-center gap-1">{{ t('vn.releases.lang') }}:
+                  <template v-if="rel.languages?.length">
+                    <span v-for="l in rel.languages" :key="l.lang" class="inline-flex items-center gap-0.5 text-neutral-700 dark:text-neutral-300">
+                      <LanguageFlag :lang="l.lang" class="h-3 w-3 shrink-0" />{{ t(`metadata.lang.${l.lang}`, l.lang) }}
+                    </span>
+                  </template>
+                  <span v-else class="text-neutral-700 dark:text-neutral-300">{{ t('metadata.gender.unknown') }}</span>
+                </div>
                 <div class="flex flex-wrap items-center gap-1">{{ t('vn.releases.platform') }}:
                   <template v-if="rel.platforms?.length">
                     <span v-for="p in rel.platforms" :key="p" class="inline-flex items-center gap-0.5 text-neutral-700 dark:text-neutral-300">
@@ -2077,6 +2235,8 @@ watch(
               </div>
 
               <div v-if="rel.notes" class="text-[10px] text-neutral-400 dark:text-neutral-500 bg-neutral-50 dark:bg-neutral-800 p-1.5 rounded whitespace-pre-wrap leading-normal" v-html="parseBBCode(rel.notes)"></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -2244,10 +2404,10 @@ watch(
                     class="min-w-0 flex-1 cursor-pointer group"
                   >
                     <h4 class="font-bold text-xs text-neutral-900 dark:text-neutral-100 truncate group-hover:text-neutral-600 dark:group-hover:text-neutral-400 transition flex items-center gap-1">
-                      {{ char.name }}
+                      {{ char.original || char.name }}
                       <Icon icon="lucide:chevron-right" class="h-2.5 w-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </h4>
-                    <p v-if="char.original" class="text-[10px] text-neutral-400 dark:text-neutral-500 font-normal truncate leading-none mt-0.5">{{ char.original }}</p>
+                    <p v-if="char.original && char.name" class="text-[10px] text-neutral-400 dark:text-neutral-500 font-normal truncate leading-none mt-0.5">{{ char.name }}</p>
                   </div>
                   <span
                     class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0"
@@ -2332,30 +2492,6 @@ watch(
 
         <!-- 4. 演职人员 Tab -->
         <div v-else-if="activeTab === 'staff'" class="space-y-5">
-          <!-- 演职人员 (Staff) -->
-          <div class="space-y-2">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-neutral-400">{{ t('vn.staff.title') }}</h3>
-            <div v-if="!vn.staff || vn.staff.length === 0" class="text-xs text-neutral-400 py-3 text-center">
-              {{ t('vn.staff.empty') }}
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div
-                v-for="(st, idx) in vn.staff"
-                :key="idx"
-                class="flex justify-between items-center p-2 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800 active:bg-neutral-100 dark:active:bg-neutral-700 transition-colors"
-                @click="st.id && router.push(`/staff/${st.id}`)"
-              >
-                <div class="min-w-0">
-                  <div class="text-xs font-medium text-neutral-800 dark:text-neutral-200 truncate">{{ st.name }}</div>
-                  <div v-if="st.original" class="text-[10px] text-neutral-400 dark:text-neutral-500 truncate">{{ st.original }}</div>
-                </div>
-                <span class="text-[10px] text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-700 px-2 py-0.5 rounded-full flex-shrink-0">
-                  {{ translateStaffRole(st.role) }}
-                </span>
-              </div>
-            </div>
-          </div>
-
           <!-- 声优 (Voice Actors) -->
           <div class="space-y-2">
             <h3 class="text-xs font-semibold uppercase tracking-wider text-neutral-400">{{ t('vn.staff.va_title') }}</h3>
@@ -2421,6 +2557,30 @@ watch(
                     {{ actor.note }}
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 演职人员 (Staff)：放在声优配音卡片下面 -->
+          <div class="space-y-2">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-neutral-400">{{ t('vn.staff.title') }}</h3>
+            <div v-if="!vn.staff || vn.staff.length === 0" class="text-xs text-neutral-400 py-3 text-center">
+              {{ t('vn.staff.empty') }}
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div
+                v-for="(st, idx) in vn.staff"
+                :key="idx"
+                class="flex justify-between items-center p-2 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-900 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800 active:bg-neutral-100 dark:active:bg-neutral-700 transition-colors"
+                @click="st.id && router.push(`/staff/${st.id}`)"
+              >
+                <div class="min-w-0">
+                  <div class="text-xs font-medium text-neutral-800 dark:text-neutral-200 truncate">{{ st.original || st.name }}</div>
+                  <div v-if="st.original && st.name" class="text-[10px] text-neutral-400 dark:text-neutral-500 truncate">{{ st.name }}</div>
+                </div>
+                <span class="text-[10px] text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-700 px-2 py-0.5 rounded-full flex-shrink-0">
+                  {{ translateStaffRole(st.role) }}
+                </span>
               </div>
             </div>
           </div>
@@ -3005,6 +3165,15 @@ watch(
         </div>
       </Transition>
     </Teleport>
+
+    <!-- 游戏时长填写小卡（与收藏信息弹窗同形态） -->
+    <LengthVoteModal
+      v-model:show="showLengthVote"
+      :vn-id="vn?.id || ''"
+      :releases="releases"
+      :community-text="formatLength(vn || {})"
+      @saved="onLengthVoteSaved"
+    />
 
     <!-- 收藏状态多选 ActionSheet -->
     <ActionSheet

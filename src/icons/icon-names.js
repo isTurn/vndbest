@@ -15,6 +15,7 @@ export const APP_ICON_NAMES = {
     plus: 'lucide:plus',
     minus: 'lucide:minus',
     bookmark: 'lucide:bookmark',
+    bookmarkPlus: 'lucide:bookmark-plus',
     externalLink: 'lucide:external-link',
     appWindow: 'lucide:app-window',
     compass: 'lucide:compass',
@@ -42,6 +43,7 @@ export const APP_ICON_NAMES = {
     loader: 'lucide:loader',
     loader2: 'lucide:loader-2',
     loaderCircle: 'lucide:loader-2',
+    tag: 'lucide:tag',
     tags: 'lucide:tags',
     scanSearch: 'lucide:scan-search',
     fingerprint: 'lucide:fingerprint',
@@ -91,7 +93,12 @@ export const APP_ICON_NAMES = {
     mars: 'lucide:circle-dot',
     venusMars: 'lucide:badge',
     database: 'lucide:database',
-    hardDrive: 'lucide:hard-drive'
+    hardDrive: 'lucide:hard-drive',
+    checkSquare: 'lucide:check-square',
+    square: 'lucide:square',
+    globe: 'lucide:globe',
+    pencilLine: 'lucide:pencil-line',
+    upload: 'lucide:upload'
   },
   loaders: {
     eosLoading: 'eos-icons:loading'

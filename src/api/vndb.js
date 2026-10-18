@@ -423,7 +423,7 @@ export async function getVnDetail(id) {
     method: 'POST',
     body: JSON.stringify({
       filters: ['id', '=', id],
-      fields: 'id, title, alttitle, titles{lang,title,latin}, image{url,dims,sexual,violence,thumbnail,thumbnail_dims}, released, olang, description, relations{id,title,alttitle,relation,relation_official,image{url,dims,thumbnail,sexual},rating,released,olang}, languages, platforms, developers{id,name}, rating, votecount, length, length_minutes, length_votes, tags{id,name,rating,spoiler,category,searchable}, staff{id,role,name,original}, va{note,staff{id,name,original},character{id,name,original,image{url,sexual}}}, screenshots{url,dims,thumbnail,thumbnail_dims,sexual}',
+      fields: 'id, title, alttitle, titles{lang,title,latin}, image{url,dims,sexual,violence,thumbnail,thumbnail_dims}, released, olang, description, relations{id,title,alttitle,titles{lang,title,latin},relation,relation_official,image{url,dims,thumbnail,sexual},rating,released,olang}, languages, platforms, developers{id,name}, rating, votecount, length, length_minutes, length_votes, tags{id,name,rating,spoiler,category,searchable}, staff{id,role,name,original}, va{note,staff{id,name,original},character{id,name,original,image{url,sexual}}}, screenshots{url,dims,thumbnail,thumbnail_dims,sexual}',
     })
   })
 }
@@ -535,7 +535,7 @@ export async function getCharacterDetail(id) {
     method: 'POST',
     body: JSON.stringify({
       filters: ['id', '=', id],
-      fields: 'id, name, original, description, image{url,dims,sexual,violence}, sex, blood_type, height, weight, bust, waist, hips, cup, age, birthday, vns{id,role,spoiler,title,alttitle,image{url,dims,thumbnail,sexual},rating,released,olang}, traits{id,name,spoiler,sexual,group_name}',
+      fields: 'id, name, original, description, image{url,dims,sexual,violence}, sex, blood_type, height, weight, bust, waist, hips, cup, age, birthday, vns{id,role,spoiler,title,alttitle,titles{lang,title,latin},image{url,dims,thumbnail,sexual},rating,released,olang}, traits{id,name,spoiler,sexual,group_name}',
     })
   })
 }

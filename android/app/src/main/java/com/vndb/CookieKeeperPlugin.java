@@ -1,4 +1,4 @@
-package com.cyancat.vndbest;
+package com.vndb;
 
 import android.webkit.CookieManager;
 

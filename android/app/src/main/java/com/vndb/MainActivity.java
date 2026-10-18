@@ -1,4 +1,4 @@
-package com.cyancat.vndbest;
+package com.vndb;
 
 import android.os.Bundle;
 

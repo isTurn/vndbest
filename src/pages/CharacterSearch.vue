@@ -922,7 +922,7 @@ const getSexClass = (sex) => {
           <div class="flex-1 min-w-0 py-0.5">
             <div class="flex items-center gap-2">
               <h3 class="font-bold text-sm text-neutral-900 dark:text-neutral-100 truncate">
-                {{ item.name }}
+                {{ item.original || item.name }}
               </h3>
               <div 
                 v-if="getSexIcon(item.sex)" 
@@ -933,8 +933,8 @@ const getSexClass = (sex) => {
               </div>
             </div>
             
-            <p v-if="item.original" class="text-[10px] text-neutral-400 dark:text-neutral-500 truncate mt-0.5 font-medium">
-              {{ item.original }}
+            <p v-if="item.original && item.name" class="text-[10px] text-neutral-400 dark:text-neutral-500 truncate mt-0.5 font-medium">
+              {{ item.name }}
             </p>
 
             <!-- Attributes -->

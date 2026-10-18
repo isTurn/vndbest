@@ -6,6 +6,7 @@ import { Icon } from '@iconify/vue'
 import AppHeader from '@/components/AppHeader.vue'
 import { getStaffDetail, getVnListByStaff } from '@/api/vndb'
 import VnList from '@/components/VnList.vue'
+import LanguageFlag from '@/components/LanguageFlag.vue'
 import { useToast } from '@/composables/useToast'
 import { useFavorites } from '@/composables/useFavorites'
 import { IonPage, IonContent } from '@ionic/vue'
@@ -173,8 +174,9 @@ const sortOptions = [
             <p v-if="staff.original" class="text-sm text-neutral-500 dark:text-neutral-400 font-medium">{{ staff.original }}</p>
           </div>
           <div v-if="staff.lang" class="shrink-0">
-            <span class="text-xs font-bold text-neutral-400 dark:text-neutral-500 tracking-tighter bg-neutral-50 dark:bg-neutral-800 px-2 py-1 rounded border border-neutral-100 dark:border-neutral-700">
-              {{ t(`metadata.lang.${staff.lang}`, staff.lang) }}
+            <span class="inline-flex items-center gap-1 text-xs font-bold text-neutral-400 dark:text-neutral-500 tracking-tighter bg-neutral-50 dark:bg-neutral-800 px-2 py-1 rounded border border-neutral-100 dark:border-neutral-700">
+              <LanguageFlag :lang="staff.lang" class="h-3 w-3" />
+              <span>{{ t(`metadata.lang.${staff.lang}`, staff.lang) }}</span>
             </span>
           </div>
         </div>
