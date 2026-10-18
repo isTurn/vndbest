@@ -41,7 +41,7 @@ const THIRD_PARTY_CREDITS = [
 ]
 
 // 完善者（本项目 fork 的维护者）
-const MAINTAINERS = ['isTurn', 'Hatube01']
+const MAINTAINERS = ['isTurn', 'Hatsube01']
 import { cacheManager } from '@/utils/cacheManager'
 import { useToast } from '@/composables/useToast'
 import { useAppUpdate } from '@/composables/useAppUpdate'

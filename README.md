@@ -8,7 +8,7 @@
 
 VNDB（Visual Novel Database）的 Android 第三方客户端。基于 **Vue 3 + Vite + Ionic Vue + Capacitor** 构建，针对手机端浏览体验做了大量优化，并集成了跨站搜索、站内中文化、登录态持久化等增强功能。
 
-> 本项目 fork 自 [Cyancat000/vndbest](https://github.com/Cyancat000/vndbest)，由 [isTurn](https://github.com/isTurn) 与 [Hatube01](https://github.com/Hatube01) 继续完善与发布。
+> 本项目 fork 自 [Cyancat000/vndbest](https://github.com/Cyancat000/vndbest)，由 [isTurn](https://github.com/isTurn) 与 [Hatsube01](https://github.com/Hatsube01) 继续完善与发布。
 
 ---
 
@@ -204,7 +204,7 @@ CI 默认使用 **debug keystore** 签名 release APK，以便直接安装测试
 ## 上游
 
 - 原项目：[Cyancat000/vndbest](https://github.com/Cyancat000/vndbest)
-- 完善与发布：[isTurn/vndbest](https://github.com/isTurn/vndbest)、Hatube01
+- 完善与发布：[isTurn/vndbest](https://github.com/isTurn/vndbest)、Hatsube01
 
 ## 许可证
 
