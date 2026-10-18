@@ -34,8 +34,11 @@ android {
     }
     buildTypes {
         release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // 开启代码压缩 + 资源裁剪：dex 从 11.6 MB 降到 ~1 MB 量级。
+            // proguard-rules.pro 里已补齐 Capacitor / 插件的反射 keep 规则。
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig hasReleaseKeystore ? signingConfigs.release : signingConfigs.debug
         }
     }

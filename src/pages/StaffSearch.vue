@@ -10,6 +10,8 @@ import BaseSelect from '@/components/BaseSelect.vue'
 import { searchStaff, getStaffList } from '@/api/vndb'
 import { IonPage, IonContent } from '@ionic/vue'
 import { useSavedSearches } from '@/composables/useSavedSearches'
+import { translateError } from '@/utils/errorMessage'
+import ErrorState from '@/components/ErrorState.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -25,6 +27,7 @@ const routeQuery = computed(() => (typeof route.query.q === 'string' ? route.que
 if (routeQuery.value) query.value = routeQuery.value
 const results = ref([])
 const isLoading = ref(false)
+const errorMsg = ref('')
 const hasMore = ref(false)
 const page = ref(1)
 const resultsPerPage = 25
@@ -98,6 +101,7 @@ async function fetchData(q = '', reset = true) {
   }
   
   isLoading.value = true
+  errorMsg.value = ''
   try {
     const filters = []
     const searchQ = q || query.value
@@ -143,6 +147,7 @@ async function fetchData(q = '', reset = true) {
     }
   } catch (err) {
     console.error('获取人物列表失败:', err)
+    errorMsg.value = translateError(err, t, 'list.error_fetching')
   } finally {
     isLoading.value = false
     
@@ -393,8 +398,14 @@ watch(sentinel, (el) => {
         <div v-else class="h-1 w-full opacity-0"></div>
       </div>
 
+      <!-- 错误态：网络/限流失败时显式提示，避免伪装成「查无此项」 -->
+      <ErrorState
+        v-if="results.length === 0 && !isLoading && errorMsg"
+        :message="errorMsg"
+        @retry="handleRefresh"
+      />
       <!-- 无搜索结果 -->
-      <div v-if="results.length === 0 && !isLoading && query" class="flex flex-col items-center justify-center py-20 text-neutral-400 dark:text-neutral-500 space-y-3">
+      <div v-if="results.length === 0 && !isLoading && query && !errorMsg" class="flex flex-col items-center justify-center py-20 text-neutral-400 dark:text-neutral-500 space-y-3">
         <Icon icon="lucide:search-x" class="h-10 w-10 text-neutral-200 dark:text-neutral-700" />
         <p class="text-sm">{{ t('staff.no_results') }}</p>
       </div>

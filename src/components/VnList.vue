@@ -10,6 +10,8 @@ import { usePrivacy, getImageNsfwLevel } from '@/composables/usePrivacy'
 import { useImageLoader } from '@/composables/useImageLoader'
 import { prefetchFromItems } from '@/utils/imagePrefetch'
 import { getLabelName } from '@/utils/ulistLabels'
+import SkeletonCard from './SkeletonCard.vue'
+import ErrorState from './ErrorState.vue'
 
 const { getCardAction } = usePrivacy()
 const imageLoader = useImageLoader()
@@ -96,10 +98,15 @@ const props = defineProps({
   titleMode: {
     type: String,
     default: 'priority'
+  },
+  // 已本地化的错误文案（由页面 translateError 生成）；非空时展示错误态而非空列表
+  errorMsg: {
+    type: String,
+    default: ''
   }
 })
 
-const emit = defineEmits(['loadMore', 'sortChange', 'reverseChange'])
+const emit = defineEmits(['loadMore', 'sortChange', 'reverseChange', 'retry'])
 
 const router = useRouter()
 const { t } = useI18n()
@@ -714,18 +721,19 @@ function toggleReverse() {
       </button>
     </div>
 
-    <!-- 加载中状态 (列表为空时) -->
-    <div v-if="items.length === 0 && isLoading" class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 text-center shadow-xs space-y-3">
-      <div class="mx-auto grid h-12 w-12 place-items-center rounded-full bg-neutral-50 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700">
-        <Icon icon="eos-icons:loading" class="h-5 w-5 text-neutral-400" />
-      </div>
-      <div class="space-y-1">
-        <h3 class="text-sm font-semibold text-neutral-800 dark:text-neutral-200">{{ t('common.loading') }}</h3>
-        <p class="text-xs text-neutral-400 dark:text-neutral-500 max-w-xs mx-auto">
-          {{ t('list.fetching_data', '正在努力加载内容...') }}
-        </p>
-      </div>
-    </div>
+    <!-- 加载中骨架屏（列表为空时） -->
+    <SkeletonCard
+      v-if="items.length === 0 && isLoading"
+      :layout="layoutMode === 'waterfall' ? 'card' : (layoutMode === 'compact' ? 'text' : 'list')"
+      :count="6"
+    />
+
+    <!-- 错误态：网络/限流失败时显式提示，避免伪装成「查无此项」 -->
+    <ErrorState
+      v-else-if="items.length === 0 && !isLoading && errorMsg"
+      :message="errorMsg"
+      @retry="emit('retry')"
+    />
 
     <!-- 触底加载哨兵 & 状态 -->
     <div ref="sentinel" class="py-6 flex justify-center" v-show="displayItems.length > 0">
@@ -741,7 +749,7 @@ function toggleReverse() {
     </div>
 
     <!-- 空状态 -->
-    <div v-if="filteredItems.length === 0 && !isLoading" class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 text-center shadow-xs space-y-3">
+    <div v-if="filteredItems.length === 0 && !isLoading && !errorMsg" class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-12 text-center shadow-xs space-y-3">
       <div class="mx-auto grid h-12 w-12 place-items-center rounded-full bg-neutral-50 dark:bg-neutral-800 border border-neutral-100 dark:border-neutral-700">
         <Icon icon="lucide:file" class="h-5 w-5 text-neutral-400" />
       </div>
