@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 上游原项目
+    url: https://github.com/Cyancat000/vndbest
+    about: 本项目 fork 自 Cyancat000/vndbest，原项目的问题请到上游反馈
+  - name: VNDB 官方
+    url: https://vndb.org/
+    about: 数据本身的错误（条目信息、缺失的作品）请直接到 VNDB 提交

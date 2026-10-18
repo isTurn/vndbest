@@ -14,6 +14,7 @@ import { Icon } from '@iconify/vue'
 import { getVnList, getTagList } from '@/api/vndb.js'
 import { IonPage, IonContent } from '@ionic/vue'
 import { useSavedSearches } from '@/composables/useSavedSearches'
+import { translateError } from '@/utils/errorMessage'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -29,6 +30,7 @@ const routeQuery = computed(() => (typeof route.query.q === 'string' ? route.que
 if (routeQuery.value) query.value = routeQuery.value
 const items = ref([])
 const isLoading = ref(false)
+const errorMsg = ref('')
 const hasMore = ref(false)
 const page = ref(1)
 const resultsPerPage = 20
@@ -197,6 +199,7 @@ async function fetchData(isLoadMore = false) {
 
   isLoading.value = true
   try {
+    errorMsg.value = ''
     if (!isLoadMore) {
       page.value = 1
     }
@@ -295,6 +298,7 @@ async function fetchData(isLoadMore = false) {
     hasMore.value = res.more
   } catch (error) {
     console.error('Failed to search VN:', error)
+    errorMsg.value = translateError(error, t, 'list.error_fetching')
   } finally {
     isLoading.value = false
   }
@@ -706,6 +710,7 @@ onMounted(async () => {
       :items="items"
       :is-loading="isLoading"
       :has-more="hasMore"
+      :error-msg="errorMsg"
       :sort-by="sortBy"
       :reverse="reverse"
       :custom-sort-options="sortOptions"
@@ -713,6 +718,7 @@ onMounted(async () => {
       @load-more="handleLoadMore"
       @sort-change="handleSortChange"
       @reverse-change="handleReverseChange"
+      @retry="handleSearch"
     />
   </SearchBase>
 
