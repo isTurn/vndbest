@@ -1711,7 +1711,7 @@ watch(
         </div>
 
         <!-- 基本属性信息 -->
-        <div class="flex-1 space-y-3 w-full">
+        <div class="flex-1 min-w-0 space-y-3 w-full">
           <div>
             <h1
               class="text-lg font-bold tracking-tight text-neutral-900 dark:text-neutral-100 leading-snug copyable-title"
@@ -1733,16 +1733,16 @@ watch(
             >
               <Icon icon="lucide:compass" class="h-4 w-4 text-indigo-500 dark:text-indigo-400 shrink-0" />
               <span class="text-xs font-bold text-neutral-800 dark:text-neutral-200">{{ t('vn.links.cross_search') }}</span>
-              <span class="text-[10px] text-neutral-400 dark:text-neutral-500 truncate flex-1">{{ crossSearchKeyword }}</span>
+              <span class="text-[10px] text-neutral-400 dark:text-neutral-500 truncate flex-1 min-w-0">{{ crossSearchKeyword }}</span>
               <Icon :icon="showCrossSearch ? 'lucide:chevron-up' : 'lucide:chevron-down'" class="h-3.5 w-3.5 text-neutral-400 dark:text-neutral-500 shrink-0" />
             </button>
             <div v-if="showCrossSearch" class="mt-2 space-y-2">
               <!-- 搜索方式：游戏名 / v{id} -->
-              <div class="flex items-center gap-1.5">
+              <div class="flex items-center gap-1.5 min-w-0">
                 <button
                   type="button"
                   @click="setCrossSearchMode('title')"
-                  class="px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors"
+                  class="shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors"
                   :class="crossSearchMode === 'title'
                     ? 'bg-indigo-500 border-indigo-500 text-white'
                     : 'border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400'"
@@ -1750,12 +1750,12 @@ watch(
                 <button
                   type="button"
                   @click="setCrossSearchMode('vn')"
-                  class="px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors"
+                  class="shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors"
                   :class="crossSearchMode === 'vn'
                     ? 'bg-indigo-500 border-indigo-500 text-white'
                     : 'border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400'"
                 >{{ vn.id }}</button>
-                <span class="text-[10px] text-neutral-400 dark:text-neutral-500 ml-1 truncate">{{ crossSearchKeyword }}</span>
+                <span class="text-[10px] text-neutral-400 dark:text-neutral-500 ml-1 truncate min-w-0 flex-1">{{ crossSearchKeyword }}</span>
               </div>
 
               <div v-for="group in crossSearchGroups" :key="'inline-' + group.key">
@@ -1792,7 +1792,7 @@ watch(
                       : 'border-neutral-200 dark:border-neutral-600 bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800'"
                   >
                     <span class="rounded bg-black/5 dark:bg-white/10 px-1 py-0.5 text-[9px] uppercase opacity-70 shrink-0">{{ chip.lang }}</span>
-                    <span class="truncate">{{ chip.text }}</span>
+                    <span class="truncate min-w-0">{{ chip.text }}</span>
                   </button>
                 </div>
               </div>
