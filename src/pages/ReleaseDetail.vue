@@ -11,6 +11,7 @@ import { PLATFORM_ICON_NAMES, APP_ICON_NAMES } from '@/icons/icon-names'
 import { getReleaseDetail } from '@/api/vndb'
 import { usePrivacy, getImageNsfwLevel } from '@/composables/usePrivacy'
 import { useImageLoader } from '@/composables/useImageLoader'
+import { getReleaseImage, getReleaseImageUrl } from '@/utils/releaseImage'
 import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
 import { useFavorites } from '@/composables/useFavorites'
@@ -119,7 +120,7 @@ function handleToggleReleaseFavorite() {
     type: 'release',
     title: getTitle(release.value),
     subtitle: getAltTitle(release.value) || release.value.id,
-    image: release.value.images?.[0]?.thumbnail || release.value.images?.[0]?.url || '',
+    image: getReleaseImageUrl(release.value) || '',
     extra: {
       released: release.value.released
     }
@@ -141,9 +142,20 @@ function toggleReveal(key) {
 
 // 详情页封面过滤动作
 const coverAction = computed(() => {
-  if (!release.value?.images?.length) return 'show'
-  return getDetailAction('release', getImageNsfwLevel(release.value.images[0]))
+  const img = getReleaseImage(release.value)
+  if (!img) return 'show'
+  return getDetailAction('release', getImageNsfwLevel(img))
 })
+
+/** 页面顶部封面：release 自己没有封面时回退到关联作品封面 */
+const coverImg = computed(() => getReleaseImage(release.value))
+
+/** 封面 URL（缩略图优先） */
+function coverSrc() {
+  const img = coverImg.value
+  if (!img) return ''
+  return img.thumbnail || img.url || ''
+}
 
 // 隐私过滤：关联 VN 卡片
 function getVnCardAction(vn) {
@@ -253,9 +265,9 @@ watch(
         >
           <!-- 正常图片 -->
           <ion-img
-            v-if="release.images?.length > 0 && !(coverAction === 'hide' && !revealedItems.has('cover'))"
+            v-if="coverSrc() && !(coverAction === 'hide' && !revealedItems.has('cover'))"
             :key="`release-cover-${imageLoader.getRetryCount('release-cover')}`"
-            :src="imageLoader.resolveSrc('release-cover', release.images[0].thumbnail || release.images[0].url)"
+            :src="imageLoader.resolveSrc('release-cover', coverSrc())"
             :alt="release.title || 'cover'"
             class="h-full w-full object-cover transition-opacity duration-500"
             :class="{ 'opacity-0': !imageLoader.isSuccess('release-cover') }"
@@ -264,13 +276,13 @@ watch(
             @ionError="imageLoader.onError('release-cover')"
           />
           <ion-spinner
-            v-if="release.images?.length > 0 && !(coverAction === 'hide' && !revealedItems.has('cover')) && imageLoader.isLoading('release-cover')"
+            v-if="coverSrc() && !(coverAction === 'hide' && !revealedItems.has('cover')) && imageLoader.isLoading('release-cover')"
             name="crescent"
             class="absolute inset-0 m-auto z-20 text-neutral-400"
             style="width: 24px; height: 24px;"
           />
           <div
-            v-if="release.images?.length > 0 && !(coverAction === 'hide' && !revealedItems.has('cover')) && imageLoader.isError('release-cover')"
+            v-if="coverSrc() && !(coverAction === 'hide' && !revealedItems.has('cover')) && imageLoader.isError('release-cover')"
             @click="imageLoader.retry('release-cover')"
             class="absolute inset-0 flex items-center justify-center bg-neutral-50 dark:bg-neutral-800 z-20 cursor-pointer"
           >
@@ -281,7 +293,7 @@ watch(
             <Icon icon="lucide:eye-off" class="h-10 w-10 text-neutral-400 dark:text-neutral-500" />
           </div>
           <!-- 无封面兜底 -->
-          <div v-if="!release.images?.length" class="h-full w-full flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
+          <div v-if="!coverSrc()" class="h-full w-full flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
             <Icon icon="lucide:package" class="h-10 w-10 text-neutral-300 dark:text-neutral-600" />
           </div>
           <!-- 小眼睛切换按钮 -->

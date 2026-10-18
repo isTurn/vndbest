@@ -5,6 +5,17 @@ apply plugin: 'com.android.application'
 def releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")?.trim()
 def hasReleaseKeystore = releaseKeystorePath != null && !releaseKeystorePath.isEmpty() && file(releaseKeystorePath).exists()
 
+// 版本号：优先取 CI 注入的环境变量；本地构建时按 CI 同一规则由 versionName 推导
+// （major*10000 + minor*100 + patch），避免本地包 versionCode 偏小导致
+// 覆盖安装正式版时被系统当成「降级」而拒绝。
+def appVersionName = System.getenv("VNDB_VERSION_NAME")?.trim() ?: "1.0.4"
+def envVersionCode = System.getenv("VNDB_VERSION_CODE")?.trim()
+def appVersionCode = envVersionCode ? envVersionCode.toInteger() : {
+    def parts = appVersionName.tokenize('.').collect { it.replaceAll(/[^0-9].*$/, '') as int }
+    while (parts.size() < 3) parts << 0
+    return parts[0] * 10000 + parts[1] * 100 + parts[2]
+}()
+
 android {
     namespace = "com.vndb"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -13,8 +24,8 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // CI 可通过环境变量覆盖版本号，避免每次发版手改
-        versionCode System.getenv("VNDB_VERSION_CODE")?.toInteger() ?: 8
-        versionName System.getenv("VNDB_VERSION_NAME") ?: "1.0.4"
+        versionName appVersionName
+        versionCode appVersionCode
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

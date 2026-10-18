@@ -11,6 +11,7 @@ import { PLATFORM_ICON_NAMES, APP_ICON_NAMES } from '@/icons/icon-names'
 import { usePrivacy, getImageNsfwLevel } from '@/composables/usePrivacy'
 import { useImageLoader } from '@/composables/useImageLoader'
 import { prefetchFromItems } from '@/utils/imagePrefetch'
+import { getReleaseImage } from '@/utils/releaseImage'
 import SkeletonCard from './SkeletonCard.vue'
 import ErrorState from './ErrorState.vue'
 
@@ -135,16 +136,7 @@ function getPlatformIcon(platform) {
 }
 
 function getImage(item) {
-  if (!item) return null
-  if (item.images && item.images.length > 0) {
-    return item.images[0]
-  }
-  // 版本自身没有封面时，回退到关联游戏的主封面
-  const vnCover = item.vns?.find(v => v?.image?.url || v?.image?.thumbnail)?.image
-  if (vnCover && (vnCover.thumbnail || vnCover.url)) {
-    return { ...vnCover, _fromVn: true }
-  }
-  return null
+  return getReleaseImage(item)
 }
 
 // 数据一到就预热封面，抵消 ion-img 的 IntersectionObserver 延迟

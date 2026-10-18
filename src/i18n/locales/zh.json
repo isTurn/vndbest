@@ -267,7 +267,10 @@
     "vn_characters": "作品角色",
     "vn_tags": "作品标签",
     "vn_staff": "作品职员",
-    "hours_short": "{hours}h"
+    "hours_short": "{hours}h",
+    "search_history": "搜索历史",
+    "search_history_clear": "清除全部",
+    "search_history_remove": "删除这条记录"
   },
   "producer_type": {
     "co": "会社",
