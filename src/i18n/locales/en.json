@@ -163,7 +163,12 @@
       "clearing": "Clearing...",
       "clear_cache_desc": "Clear all API response cache and in-memory cache. Login credentials, theme, and custom preferences will not be affected.",
       "clear_success": "Cache cleared successfully!",
-      "clear_failed": "Failed to clear cache, please try again"
+      "clear_failed": "Failed to clear cache, please try again",
+      "refresh_playtime": "Refresh my play times",
+      "refresh_playtime_desc": "Re-fetch your play times for all titles from VNDB so list cards can show them. It syncs automatically every 6 hours.",
+      "refresh_playtime_done": "Updated {count} play time records",
+      "refresh_playtime_failed": "Refresh failed: {error}",
+      "refreshing_playtime": "Refreshing…"
     },
     "about": {
       "title": "About",
@@ -600,7 +605,11 @@
       "refresh": "Refresh",
       "vote_count": "{count} votes",
       "filter_clear": "Clear filter",
-      "filter_empty": "No release in the selected language. Clear the language filter first."
+      "filter_empty": "No release in the selected language. Clear the language filter first.",
+      "mine_loading": "Loading your play time from VNDB…",
+      "mine_loaded": "Loaded your play time from VNDB",
+      "mine_error": "Load failed: {error} (you can still fill it in locally)",
+      "mine_retry": "Retry"
     }
   },
   "release": {

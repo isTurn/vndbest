@@ -14,7 +14,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // CI 可通过环境变量覆盖版本号，避免每次发版手改
         versionCode System.getenv("VNDB_VERSION_CODE")?.toInteger() ?: 8
-        versionName System.getenv("VNDB_VERSION_NAME") ?: "1.0.3"
+        versionName System.getenv("VNDB_VERSION_NAME") ?: "1.0.4"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

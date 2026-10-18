@@ -453,6 +453,7 @@ function cleanDescription(text) {
         :sort-by="sortBy"
         :reverse="reverse"
         :custom-sort-options="sortOptions"
+        show-status
         storage-key="vndb_producer_layout"
         @load-more="loadMore"
         @sort-change="handleSortChange"

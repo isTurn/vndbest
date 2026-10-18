@@ -163,7 +163,12 @@
       "clearing": "クリア中...",
       "clear_cache_desc": "すべての API 応答キャッシュとメモリデータを消去します。ログイン情報、テーマ、個人設定には影響しません。",
       "clear_success": "キャッシュを正常にクリアしました！",
-      "clear_failed": "キャッシュのクリアに失敗しました。もう一度お試しください"
+      "clear_failed": "キャッシュのクリアに失敗しました。もう一度お試しください",
+      "refresh_playtime": "自分のプレイ時間を更新",
+      "refresh_playtime_desc": "全作品のプレイ時間を VNDB から再取得し、リストのカードに表示します。通常は 6 時間ごとに自動同期します。",
+      "refresh_playtime_done": "{count} 件のプレイ時間を更新しました",
+      "refresh_playtime_failed": "更新に失敗しました：{error}",
+      "refreshing_playtime": "更新中…"
     },
     "about": {
       "title": "概要",
@@ -600,7 +605,11 @@
       "refresh": "更新",
       "vote_count": "{count} 件の投票",
       "filter_clear": "絞り込み解除",
-      "filter_empty": "選択した言語の版がありません。先に言語の選択を解除してください"
+      "filter_empty": "選択した言語の版がありません。先に言語の選択を解除してください",
+      "mine_loading": "VNDB からあなたの記録を読み込み中…",
+      "mine_loaded": "VNDB のあなたの記録を読み込みました",
+      "mine_error": "読み込みに失敗しました：{error}（ローカル入力は可能です）",
+      "mine_retry": "再試行"
     }
   },
   "release": {

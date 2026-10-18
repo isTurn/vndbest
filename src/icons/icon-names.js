@@ -59,6 +59,8 @@ export const APP_ICON_NAMES = {
     dices: 'lucide:dices',
     shield: 'lucide:shield',
     shieldAlert: 'lucide:shield-alert',
+    alertTriangle: 'lucide:alert-triangle',
+    downloadCloud: 'lucide:download-cloud',
     palette: 'lucide:palette',
     monitor: 'lucide:monitor',
     sun: 'lucide:sun',

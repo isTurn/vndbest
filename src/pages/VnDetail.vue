@@ -22,6 +22,7 @@ import { openExternalUrl, getReleaseLinkBrowserMode, getCrossSearchBrowserMode }
 import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
 import { useFavorites } from '@/composables/useFavorites'
+import { useUlistStatus } from '@/composables/useUlistStatus'
 import { IonPage, IonContent, IonImg, IonSpinner, IonToast } from '@ionic/vue'
 import { Capacitor, CapacitorHttp, registerPlugin } from '@capacitor/core'
 
@@ -31,6 +32,8 @@ const { getDetailAction, getScreenshotAction, getCardAction } = usePrivacy()
 const imageLoader = useImageLoader()
 const { copyText } = useClipboard()
 const { showToast: showGlobalToast } = useToast()
+// 相关作品列表要显示「在玩/已通关」等收藏状态，这里把详情页拿到的结果同步进缓存
+const { setStatusLabels } = useUlistStatus()
 
 const route = useRoute()
 const router = useRouter()
@@ -330,8 +333,11 @@ const loadCollectionStatus = async (vnId) => {
     const data = await getVnListItem(vnId)
     if (data && data.results && data.results.length > 0) {
       collectionEntry.value = data.results[0]
+      // 顺手把收藏标签与评分写进 VnList 的状态缓存，相关作品列表就能立刻显示状态与自己的评分
+      setStatusLabels(vnId, data.results[0].labels || [], data.results[0].vote ?? null)
     } else {
       collectionEntry.value = null
+      setStatusLabels(vnId, [], null)
     }
   } catch (err) {
     console.error('获取收藏状态失败:', err)
@@ -1589,6 +1595,10 @@ const lengthDisplay = computed(() => {
   return formatLength(vn.value || {})
 })
 
+// 社区平均时长（含分类与投票人数），填过自己的时长后仍要保留显示在下方
+const hasCommunityLength = computed(() => !!(vn.value?.length || vn.value?.length_minutes))
+const communityLengthText = computed(() => formatLength(vn.value || {}))
+
 // 版本卡片里的 VNDB 外链：走「版本外链」独立设置
 const openReleaseExtLink = (link) => {
   if (!link?.url) return
@@ -1860,16 +1870,25 @@ watch(
             <button
               type="button"
               @click="openLengthVote"
-              class="inline-flex w-fit items-center gap-1 rounded-md px-1.5 py-0.5 -ml-1.5 text-left text-neutral-800 dark:text-neutral-200 transition hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+              class="inline-flex w-fit flex-col items-start gap-0.5 rounded-md px-1.5 py-0.5 -ml-1.5 text-left text-neutral-800 dark:text-neutral-200 transition hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
               :title="t('vn.length_vote_hint')"
             >
-              <span>{{ lengthDisplay }}</span>
+              <span class="inline-flex items-center gap-1">
+                <span>{{ lengthDisplay }}</span>
+                <span
+                  v-if="localLengthVote?.minutes"
+                  class="inline-flex items-center gap-0.5 rounded-full bg-neutral-100 dark:bg-neutral-700/70 px-1.5 py-0.5 -my-0.5 text-[9px] font-medium text-neutral-500 dark:text-neutral-300"
+                  :class="localLengthVote.syncedAt ? 'text-emerald-600 dark:text-emerald-400' : ''"
+                >{{ localLengthVote.syncedAt ? t('vn.length_vote.synced_badge') : t('vn.length_vote.local_badge') }}</span>
+                <Icon icon="lucide:pencil-line" class="h-3 w-3 shrink-0 text-neutral-400 dark:text-neutral-500" />
+              </span>
+              <!-- 自己填过时长后，社区平均与投票人数仍然保留显示 -->
               <span
-                v-if="localLengthVote?.minutes"
-                class="inline-flex items-center gap-0.5 rounded-full bg-neutral-100 dark:bg-neutral-700/70 px-1.5 py-0.5 -my-0.5 text-[9px] font-medium text-neutral-500 dark:text-neutral-300"
-                :class="localLengthVote.syncedAt ? 'text-emerald-600 dark:text-emerald-400' : ''"
-              >{{ localLengthVote.syncedAt ? t('vn.length_vote.synced_badge') : t('vn.length_vote.local_badge') }}</span>
-              <Icon icon="lucide:pencil-line" class="h-3 w-3 shrink-0 text-neutral-400 dark:text-neutral-500" />
+                v-if="localLengthVote?.minutes && hasCommunityLength"
+                class="text-[10px] font-normal leading-tight text-neutral-400 dark:text-neutral-500"
+              >
+                {{ t('vn.length_vote.community_avg') }} · {{ communityLengthText }}
+              </span>
             </button>
 
             <template v-if="vn.rating">
@@ -2104,6 +2123,7 @@ watch(
           :empty-desc="t('vn.relations_empty_desc', '该作品没有相关联的其他作品')"
           default-layout="text"
           title-mode="ja-romaji"
+          show-status
           storage-key="vndb_vn_relations_layout"
         />
       </div>

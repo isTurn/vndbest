@@ -13,8 +13,24 @@
  * 这样既不用让用户手动去网页上填，也不依赖 API token（API token 没有写时长的权限）。
  */
 import { Capacitor } from '@capacitor/core'
+import { ref } from 'vue'
 
 const STORAGE_KEY = 'vndb_length_votes'
+/** 上次批量拉取「我的全部时长」的时间戳，避免每次进列表都开隐藏窗口 */
+const ALL_FETCHED_KEY = 'vndb_length_votes_fetched_at'
+/** 批量拉取的冷却时间：6 小时 */
+const ALL_FETCH_TTL = 6 * 60 * 60 * 1000
+
+/**
+ * 本地时长记录的版本号。
+ * 记录存在 localStorage 里不是响应式的，页面上的卡片依赖这个 ref 触发重渲染：
+ * 任何写入操作都会 +1，模板里读一下即可自动刷新。
+ */
+export const lengthVoteRevision = ref(0)
+
+function bumpRevision() {
+  lengthVoteRevision.value += 1
+}
 
 /** 阅读速度选项，值与 VNDB 的 speed 字段一致（0 慢 / 1 正常 / 2 快） */
 export const LENGTH_SPEEDS = [0, 1, 2]
@@ -39,6 +55,8 @@ function writeAll(map) {
   } catch (e) {
     /* 隐私模式下写不进去，忽略 */
   }
+  // 通知所有读取本地时长的地方（列表卡片、详情页）重新渲染
+  bumpRevision()
 }
 
 function normalizeId(vnId) {
@@ -95,6 +113,35 @@ export function markLengthVoteSynced(vnId) {
   if (!all[id]) return
   all[id] = { ...all[id], syncedAt: Date.now() }
   writeAll(all)
+}
+
+/**
+ * 把从 VNDB 读回来的记录写进本地缓存。
+ * 这样列表卡片上的「游玩时长」在没打开过填写弹窗时也能显示，
+ * 并且标记成已同步，不会误显示成「仅本地」。
+ */
+export function cacheRemoteLengthVote(vnId, vote) {
+  const id = normalizeId(vnId)
+  if (!id || !vote) return null
+  const minutes = Math.max(0, Math.round(Number(vote.length ?? vote.minutes) || 0))
+  if (!minutes) return null
+  const entry = {
+    minutes,
+    hours: Math.floor(minutes / 60),
+    mins: minutes % 60,
+    speed: vote.speed === null || vote.speed === undefined ? null : Number(vote.speed),
+    private: !!vote.private,
+    notes: vote.notes || '',
+    rid: Array.isArray(vote.rid) ? [...vote.rid] : [],
+    lang: Array.isArray(vote.lang) ? [...vote.lang] : [],
+    updatedAt: Date.now(),
+    syncedAt: Date.now(),
+    remoteId: vote.id ?? null
+  }
+  const all = readAll()
+  all[id] = entry
+  writeAll(all)
+  return { ...entry, vnId: id }
 }
 
 /** 删除本地记录 */
@@ -268,6 +315,35 @@ export async function fetchLengthVotes(vnId) {
 }
 
 /**
+ * 读取「我自己」在 VNDB 上已有的时长记录。
+ *
+ * 用于「修改前先获取自己账号上的记录」：打开填写弹窗时先把服务器上的现有记录拉回来，
+ * 而不是只信本地缓存（本地可能为空、或与网站上的不一致）。
+ * 数据来自 `/v{id}/lengthvote` 页面 pagevars 里的 `votes`，只读、不写。
+ *
+ * @returns {Promise<{ok:boolean, error?:string, votes?:Array, releases?:Array}>}
+ *   votes: [{ id, rid[], lang[], length, speed, private, notes }]
+ */
+export async function fetchMyLengthVote(vnId) {
+  if (!Capacitor.isNativePlatform()) {
+    return { ok: false, error: 'NOT_NATIVE' }
+  }
+  const vid = normalizeId(vnId)
+  if (!vid) return { ok: false, error: 'NO_VN' }
+
+  const res = await runHiddenPage(`https://vndb.org/${vid}/lengthvote`, buildReadMineScript(vid), {
+    timeout: 20000,
+    fallbackDelay: 5000
+  })
+  if (!res.ok) return { ok: false, error: res.error }
+  const votes = res.data?.votes || []
+  const releases = res.data?.releases || []
+  // 拿到的第一条（rid 最多的那条）就是用户在网站上的记录，写回本地缓存
+  if (votes.length) cacheRemoteLengthVote(vid, votes[0])
+  return { ok: true, votes, releases }
+}
+
+/**
  * 在 vndb.org 页面里执行的脚本：读 #pagevars，合并本地记录，POST /js/VNLengthVote.json。
  * 结果通过 window.mobileApp.postMessage 回传给 App。
  *
@@ -361,6 +437,201 @@ function buildInjectScript(vid, payload) {
       if (j._err) send({ok:false, error: j._err});
       else send({ok:true, votes: votes.length});
     }).catch(function(e){ send({ok:false, error:String(e)}); });
+  } catch (e) { send({ok:false, error:String(e)}); }
+})();`
+}
+
+/**
+ * 一次性把「我自己的全部时长记录」拉回来并写入本地缓存。
+ *
+ * 数据来自 `https://vndb.org/u{uid}/lengthvotes`：这是公开的按用户汇总页，
+ * 一页就能拿到该用户所有作品的时长（列表卡片要显示游玩时长，逐部去 /lengthvote
+ * 打开隐藏窗口代价太高，用这个汇总页一次搞定）。
+ *
+ * @returns {Promise<{ok:boolean, error?:string, count?:number}>}
+ */
+export async function fetchAllMyLengthVotes() {
+  if (!Capacitor.isNativePlatform()) {
+    return { ok: false, error: 'NOT_NATIVE' }
+  }
+  const uid = String(localStorage.getItem('vndb_user_id') || '').trim()
+  if (!/^u\d+$/.test(uid)) return { ok: false, error: 'NOT_LOGGED_IN' }
+
+  const res = await runHiddenPage(`https://vndb.org/${uid}/lengthvotes`, buildMyListScript(uid), {
+    timeout: 25000,
+    fallbackDelay: 5000
+  })
+  if (!res.ok) return { ok: false, error: res.error }
+
+  const rows = res.data?.votes || []
+  let count = 0
+  // 批量写入：几十条记录逐条写会触发几十次 localStorage 序列化 + 重渲染，这里合并成一次
+  const all = readAll()
+  const now = Date.now()
+  for (const row of rows) {
+    if (!row.vid || !row.minutes) continue
+    const id = normalizeId(row.vid)
+    if (!id) continue
+    const minutes = Math.max(0, Math.round(Number(row.minutes) || 0))
+    if (!minutes) continue
+    all[id] = {
+      minutes,
+      hours: Math.floor(minutes / 60),
+      mins: minutes % 60,
+      speed: row.speed === null || row.speed === undefined ? null : Number(row.speed),
+      private: false,
+      notes: row.notes || '',
+      rid: Array.isArray(row.rels) ? [...row.rels] : [],
+      lang: Array.isArray(row.langs) ? [...row.langs] : [],
+      updatedAt: now,
+      syncedAt: now,
+      remoteId: null
+    }
+    count++
+  }
+  if (count) writeAll(all)
+  return { ok: true, count }
+}
+
+/** 正在进行的批量拉取，避免多个列表同时触发重复请求 */
+let allFetching = null
+
+/**
+ * 带冷却的批量拉取：列表卡片要显示游玩时长时调用。
+ * 6 小时内只拉一次，失败也记时间戳（下次失败后不会立刻重试刷屏）。
+ * @param {boolean} force 忽略冷却强制刷新
+ */
+export async function ensureAllMyLengthVotes(force = false) {
+  if (!Capacitor.isNativePlatform()) return { ok: false, error: 'NOT_NATIVE' }
+  if (allFetching) return allFetching
+
+  const last = Number(localStorage.getItem(ALL_FETCHED_KEY) || 0)
+  if (!force && last && Date.now() - last < ALL_FETCH_TTL) {
+    return { ok: true, cached: true }
+  }
+
+  allFetching = (async () => {
+    const res = await fetchAllMyLengthVotes()
+    try {
+      localStorage.setItem(ALL_FETCHED_KEY, String(Date.now()))
+    } catch (e) {
+      /* ignore */
+    }
+    allFetching = null
+    return res
+  })()
+  return allFetching
+}
+
+/**
+ * 强制重新拉取（设置页「刷新我的游玩时长」按钮用），忽略 6 小时冷却。
+ */
+export async function refreshAllMyLengthVotes() {
+  return ensureAllMyLengthVotes(true)
+}
+
+/**
+ * 在 `/u{uid}/lengthvotes` 页面里执行的脚本：把「我的时长记录」表格解析成 JSON。
+ * 表头（6 列）：Date / Title / Time / Speed / Rel / Notes
+ *   - Title 列是 `<a href="/v64038">日文名</a>`，从中取 vN 作为作品 id
+ *   - Time 列是 vnlength_ 渲染的「5h」「1h34m」「45m」，必须按 h/m 分别解析
+ *   - Rel 列混着 `<abbr class="icon-lang-xx">` 和 `<a href="/r123">`
+ */
+function buildMyListScript(uid) {
+  const uidJson = JSON.stringify(uid)
+  return `(function(){
+  var uid = ${uidJson};
+  function send(obj){ try { obj.__vndbestLengthVote = 1; window.mobileApp.postMessage({detail: obj}); } catch(e){} }
+  try {
+    if (location.pathname.indexOf('login') >= 0) { send({ok:false, error:'NOT_LOGGED_IN'}); return; }
+    var bodyText = document.body ? (document.body.textContent || '') : '';
+    if (bodyText.indexOf('Crawlers are not permitted') >= 0) { send({ok:false, error:'BLOCKED'}); return; }
+
+    var table = document.querySelector('table.stripe') || document.querySelector('table.lengthlist') || document.querySelector('table');
+    if (!table) { send({ok:false, error:'NO_TABLE'}); return; }
+
+    var rows = table.querySelectorAll('tr');
+    var votes = [];
+    for (var i = 0; i < rows.length; i++) {
+      var tds = rows[i].querySelectorAll('td');
+      if (tds.length < 5) continue;
+      var dateTxt = (tds[0].textContent || '').trim();
+      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(dateTxt)) continue;
+
+      var titleLink = tds[1].querySelector('a[href^="/v"]');
+      if (!titleLink) continue;
+      var vid = (titleLink.getAttribute('href') || '').replace(/^\\//, '').split(/[?#]/)[0];
+      if (!/^v\\d+$/.test(vid)) continue;
+
+      var timeTxt = (tds[2].textContent || '').trim();
+      var hm = timeTxt.match(/(\\d+)\\s*h/i);
+      var mm = timeTxt.match(/(\\d+)\\s*m/i);
+      var minutes = (hm ? parseInt(hm[1], 10) * 60 : 0) + (mm ? parseInt(mm[1], 10) : 0);
+      if (!minutes) continue;
+
+      var speedTxt = (tds[3].textContent || '').trim().toLowerCase();
+      var speed = speedTxt === 'slow' ? 0 : speedTxt === 'normal' ? 1 : speedTxt === 'fast' ? 2 : null;
+
+      var rels = [];
+      var langs = [];
+      if (tds[4]) {
+        var anchors = tds[4].querySelectorAll('a');
+        for (var a = 0; a < anchors.length; a++) rels.push((anchors[a].textContent || '').trim());
+        var abbrs = tds[4].querySelectorAll('abbr');
+        for (var b = 0; b < abbrs.length; b++) {
+          var m2 = (abbrs[b].className || '').match(/icon-lang-([a-z-]+)/i);
+          if (m2) langs.push(m2[1]);
+        }
+      }
+      votes.push({
+        vid: vid,
+        date: dateTxt,
+        title: (titleLink.textContent || '').trim(),
+        minutes: minutes,
+        speed: speed,
+        rels: rels,
+        langs: langs,
+        notes: (tds[5] ? tds[5].textContent : '').trim()
+      });
+    }
+    send({ok:true, votes: votes});
+  } catch (e) { send({ok:false, error:String(e)}); }
+})();`
+}
+
+/**
+ * 在 `/v{id}/lengthvote` 页面里执行的脚本：只读取 `#pagevars` 里属于当前用户的投票记录。
+ * 不写库，纯读取，供「修改前先获取自己账号上的记录」用。
+ */
+function buildReadMineScript(vid) {
+  const vidJson = JSON.stringify(vid)
+  return `(function(){
+  var vid = ${vidJson};
+  function send(obj){ try { obj.__vndbestLengthVote = 1; window.mobileApp.postMessage({detail: obj}); } catch(e){} }
+  try {
+    var el = document.getElementById('pagevars');
+    if (!el) { send({ok:false, error: (location.pathname.indexOf('login') >= 0 ? 'NOT_LOGGED_IN' : 'NO_PAGEVARS')}); return; }
+    var pv = JSON.parse(el.textContent || el.innerText || '{}');
+    var w = pv.widget && pv.widget.VNLengthVote;
+    var d = w && w[0] && w[0][1];
+    if (!d) { send({ok:false, error: (pv.uid ? 'NO_WIDGET' : 'NOT_LOGGED_IN')}); return; }
+    var votes = (d.votes || []).map(function(v){
+      return {
+        id: v.id,
+        rid: v.rid || [],
+        lang: v.lang || [],
+        length: v.length,
+        speed: (v.speed === undefined ? null : v.speed),
+        private: !!v.private,
+        notes: v.notes || ''
+      };
+    });
+    // 按时长降序：多条记录时，最长的那条最可能是用户当前在用的
+    votes.sort(function(a, b){ return (b.length || 0) - (a.length || 0); });
+    var releases = (d.releases || []).map(function(r){
+      return { id: r.id, title: r.title || '', released: r.released || '', lang: r.lang || [] };
+    });
+    send({ok:true, votes: votes, releases: releases});
   } catch (e) { send({ok:false, error:String(e)}); }
 })();`
 }

@@ -37,6 +37,32 @@
 
           <!-- ========== Tab 1：我的填写 ========== -->
           <div v-if="activeTab === 'edit'" class="px-4 pb-4 space-y-4 overflow-y-auto flex-1">
+            <!-- 从 VNDB 拉取自己账号上已有记录的状态 -->
+            <div
+              v-if="mineLoading || mineError || mineLoaded"
+              class="flex items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-[10px] leading-tight"
+              :class="mineError
+                ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400'
+                : 'bg-neutral-50 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400'"
+            >
+              <span class="inline-flex items-center gap-1 min-w-0">
+                <Icon v-if="mineLoading" icon="lucide:loader-2" class="h-3 w-3 shrink-0 animate-spin" />
+                <Icon v-else-if="mineError" icon="lucide:alert-triangle" class="h-3 w-3 shrink-0" />
+                <Icon v-else icon="lucide:download-cloud" class="h-3 w-3 shrink-0" />
+                <span class="truncate">
+                  {{ mineLoading
+                    ? t('vn.length_vote.mine_loading')
+                    : (mineError ? t('vn.length_vote.mine_error', { error: mineError }) : t('vn.length_vote.mine_loaded')) }}
+                </span>
+              </span>
+              <button
+                v-if="!mineLoading"
+                type="button"
+                @click="loadMine()"
+                class="shrink-0 text-[10px] underline-offset-2 hover:underline cursor-pointer"
+              >{{ t('vn.length_vote.mine_retry') }}</button>
+            </div>
+
             <!-- 社区平均 -->
             <div class="flex items-center justify-between gap-2 rounded-lg bg-neutral-50 dark:bg-neutral-800 px-3 py-2">
               <span class="text-[11px] text-neutral-500 dark:text-neutral-400">{{ t('vn.length_vote.community_avg') }}</span>
@@ -141,12 +167,12 @@
             </div>
 
             <!-- 版本（可按语言筛选） -->
-            <div v-if="releasedReleases.length" class="space-y-2">
+            <div v-if="allReleases.length" class="space-y-2">
               <div class="flex items-center justify-between gap-2">
                 <label class="text-xs font-medium text-neutral-500 dark:text-neutral-400">
                   {{ t('vn.length_vote.releases') }}
                   <span v-if="form.lang.length" class="ml-1 text-[10px] font-normal text-neutral-400 dark:text-neutral-500">
-                    ({{ visibleReleases.length }}/{{ releasedReleases.length }})
+                    ({{ visibleReleases.length }}/{{ allReleases.length }})
                   </span>
                 </label>
                 <div class="flex items-center gap-2">
@@ -222,8 +248,7 @@
           </div>
 
           <!-- ========== Tab 2：大家的投票 ========== -->
-          <div v-else class="px-4 pb-4 overflow-y-auto flex-1 space-y-3">
-            <!-- 统计表 -->
+          <div v-else class="px-4 pb-4 overflow-y-auto flex-1 space-y-3">            <!-- 统计表 -->
             <div v-if="stats.length" class="rounded-lg bg-neutral-50 dark:bg-neutral-800 px-3 py-2 space-y-1">
               <div class="flex items-center justify-between">
                 <span class="text-[11px] font-medium text-neutral-500 dark:text-neutral-400">{{ t('vn.length_vote.stats_title') }}</span>
@@ -335,6 +360,7 @@ import {
   saveLengthVote,
   syncLengthVote,
   fetchLengthVotes,
+  fetchMyLengthVote,
   formatPlayTime
 } from '@/utils/lengthVote'
 import { useToast } from '@/composables/useToast'
@@ -368,6 +394,60 @@ function switchTab(tab) {
   if (tab === 'list' && !votesLoadedFor) {
     loadVotes()
   }
+}
+
+// ==================== 打开弹窗前先拉取自己账号上的记录 ====================
+const mineLoading = ref(false)
+const mineError = ref('')
+const mineLoaded = ref(false)
+
+/**
+ * 从 VNDB 把当前用户在这部作品上的时长记录拉回来，覆盖本地并回填表单。
+ * 「修改前先获取」的意义：网站上的记录可能被别处改过，本地缓存不一定最新。
+ */
+async function loadMine() {
+  if (!props.vnId) return
+  mineLoading.value = true
+  mineError.value = ''
+  try {
+    const res = await fetchMyLengthVote(props.vnId)
+    if (res.ok) {
+      mineLoaded.value = true
+      // 服务器有记录 → 用它回填；没有记录则保留本地/默认值
+      if (res.votes && res.votes.length) {
+        applyRemoteVote(res.votes[0])
+      }
+      // 服务器返回的可用版本可以补全 releases 缺失语言的情况
+      if (res.releases && res.releases.length) remoteReleases.value = res.releases
+    } else if (res.error === 'NOT_NATIVE') {
+      mineError.value = ''
+      mineLoaded.value = false
+    } else {
+      mineError.value = translateSyncError(res.error)
+    }
+  } catch (e) {
+    mineError.value = String(e?.message || e)
+  } finally {
+    mineLoading.value = false
+  }
+}
+
+/** 把服务器上的记录回填进表单（字段与 buildEntry 对齐） */
+function applyRemoteVote(vote) {
+  const minutes = Math.max(0, Math.round(Number(vote.length) || 0))
+  const isPrivate = !!vote.private
+  const isUncounted = !isPrivate && (vote.speed === null || vote.speed === undefined)
+  form.value = {
+    hours: minutes ? Math.floor(minutes / 60) : '',
+    mins: minutes ? minutes % 60 : '',
+    voteType: isPrivate ? 'private' : isUncounted ? 'uncounted' : 'counted',
+    speed: isUncounted || isPrivate ? 1 : Number(vote.speed),
+    rid: Array.isArray(vote.rid) ? [...vote.rid] : [],
+    lang: Array.isArray(vote.lang) ? [...vote.lang] : [],
+    notes: vote.notes || ''
+  }
+  feedback.value = ''
+  feedbackType.value = 'success'
 }
 
 /** 读取公开的时长时间列表（含其他人的备注） */
@@ -438,6 +518,23 @@ const releasedReleases = computed(() =>
   (props.releases || []).filter((r) => r && r.id && r.released)
 )
 
+/** 从 /lengthvote 页面拿回来的「可投票版本」，用于补全页面数据缺失的情况 */
+const remoteReleases = ref([])
+
+/** 版本下拉实际用到的列表：props.releases 优先，缺的用服务器返回的补 */
+const allReleases = computed(() => {
+  const byId = new Map()
+  for (const r of releasedReleases.value) byId.set(r.id, r)
+  for (const r of remoteReleases.value || []) {
+    if (!r || !r.id) continue
+    if (byId.has(r.id)) continue
+    // 服务器返回的 released 字段是字符串，lang 是数组
+    if (!r.released) continue
+    byId.set(r.id, { id: r.id, title: r.title || r.id, released: r.released, languages: r.lang || [] })
+  }
+  return Array.from(byId.values())
+})
+
 function releaseLangs(rel) {
   if (!Array.isArray(rel?.languages)) return []
   return rel.languages.map((l) => (typeof l === 'string' ? l : l.lang)).filter(Boolean)
@@ -445,7 +542,7 @@ function releaseLangs(rel) {
 
 const availableLangs = computed(() => {
   const set = new Set()
-  for (const rel of releasedReleases.value) {
+  for (const rel of allReleases.value) {
     if (form.value.rid.length && !form.value.rid.includes(rel.id)) continue
     for (const l of releaseLangs(rel)) set.add(l)
   }
@@ -455,8 +552,8 @@ const availableLangs = computed(() => {
 /** 版本列表按「当前已选语言」筛选：选了语言就只显示包含该语言的版本 */
 const visibleReleases = computed(() => {
   const langs = form.value.lang
-  if (!langs.length) return releasedReleases.value
-  return releasedReleases.value.filter((rel) =>
+  if (!langs.length) return allReleases.value
+  return allReleases.value.filter((rel) =>
     releaseLangs(rel).some((l) => langs.includes(l))
   )
 })
@@ -473,8 +570,8 @@ const allVisibleReleasesSelected = computed(
 
 const allReleasesSelected = computed(
   () =>
-    releasedReleases.value.length > 0 &&
-    releasedReleases.value.every((r) => form.value.rid.includes(r.id))
+    allReleases.value.length > 0 &&
+    allReleases.value.every((r) => form.value.rid.includes(r.id))
 )
 
 function resetForm() {
@@ -514,7 +611,13 @@ function resetForm() {
 watch(
   () => props.show,
   (v) => {
-    if (v) resetForm()
+    if (!v) return
+    // 每次打开都先清空上一次的远程状态，再本地回填，最后异步拉服务器记录覆盖
+    mineLoaded.value = false
+    mineError.value = ''
+    remoteReleases.value = []
+    resetForm()
+    loadMine()
   }
 )
 

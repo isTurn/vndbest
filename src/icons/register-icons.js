@@ -59,6 +59,8 @@ import gamepad2 from '@iconify-icons/lucide/gamepad-2'
 import dices from '@iconify-icons/lucide/dices'
 import shield from '@iconify-icons/lucide/shield'
 import shieldAlert from '@iconify-icons/lucide/shield-alert'
+import alertTriangle from '@iconify-icons/lucide/alert-triangle'
+import downloadCloud from '@iconify-icons/lucide/download-cloud'
 import palette from '@iconify-icons/lucide/palette'
 import monitor from '@iconify-icons/lucide/monitor'
 import sun from '@iconify-icons/lucide/sun'
@@ -174,6 +176,8 @@ const ICON_DATA = {
   [APP_ICON_NAMES.common.dices]: dices,
   [APP_ICON_NAMES.common.shield]: shield,
   [APP_ICON_NAMES.common.shieldAlert]: shieldAlert,
+  [APP_ICON_NAMES.common.alertTriangle]: alertTriangle,
+  [APP_ICON_NAMES.common.downloadCloud]: downloadCloud,
   [APP_ICON_NAMES.common.palette]: palette,
   [APP_ICON_NAMES.common.monitor]: monitor,
   [APP_ICON_NAMES.common.sun]: sun,

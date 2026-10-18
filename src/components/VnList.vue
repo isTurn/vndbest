@@ -10,9 +10,12 @@ import { usePrivacy, getImageNsfwLevel } from '@/composables/usePrivacy'
 import { useImageLoader } from '@/composables/useImageLoader'
 import { prefetchFromItems } from '@/utils/imagePrefetch'
 import { getLabelName } from '@/utils/ulistLabels'
+import { useUlistStatus } from '@/composables/useUlistStatus'
+import { getLengthVote, formatPlayTime, lengthVoteRevision, ensureAllMyLengthVotes } from '@/utils/lengthVote'
 
 const { getCardAction } = usePrivacy()
 const imageLoader = useImageLoader()
+const { preloadStatuses, getStatusLabels, getStatusVote } = useUlistStatus()
 
 // 收藏标签本地化（1~7 系统标签走 i18n，自定义标签原样）
 const labelText = (lbl) => getLabelName(lbl?.id, lbl?.label, t)
@@ -96,6 +99,13 @@ const props = defineProps({
   titleMode: {
     type: String,
     default: 'priority'
+  },
+  // 是否显示当前用户的收藏状态（在玩/已通关/想玩…）
+  // 会社页的「开发作品」、游戏页的「相关作品」这类非收藏列表需要打开它，
+  // 列表本身来自 /ulist 时（收藏页）已经有 labels，无需重复请求。
+  showStatus: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -279,7 +289,27 @@ watch(
 )
 function getOlang(item) { return item.vn?.olang || item.olang || '' }
 function getRating(item) { return item.vn?.rating || item.rating || null }
-function getUserVote(item) { return item.vote || null }
+// 自己的评分：收藏列表条目自带 vote；其它列表从收藏状态缓存里取（登录后自动批量拉取）
+function getUserVote(item) {
+  if (item.vote) return item.vote
+  return getStatusVote(item?.id || item?.vn?.id)
+}
+// 卡片的点击目标是 VN 详情页，id 要为 vN 形式
+function getVnIdOf(item) {
+  const raw = item?.id || item?.vn?.id || ''
+  const s = String(raw || '').trim()
+  if (!s) return ''
+  return s.startsWith('v') ? s : `v${s}`
+}
+// 自己记录的游玩时长（本地填写的，或从 VNDB 拉回来的那条）
+function getPlayTime(item) {
+  void lengthVoteRevision.value
+  const id = getVnIdOf(item)
+  if (!id) return ''
+  const entry = getLengthVote(id)
+  if (!entry || !entry.minutes) return ''
+  return formatPlayTime(entry.minutes)
+}
 function getBadge(item) {
   return item.role || item.relation || null
 }
@@ -293,6 +323,66 @@ const translateBadge = (val) => {
         ? t(`metadata.relation.${val.toLowerCase()}`)
         : val)
 }
+
+// ==================== 收藏状态（在玩 / 已通关 / 想玩…） ====================
+// 系统标签按这个顺序取第一个作为主状态显示，避免一条作品同时挂
+// 「在玩 + 已评分」两个标签时显示得乱七八糟。
+const STATUS_PRIORITY = [1, 2, 3, 4, 5, 6]
+const STATUS_STYLE = {
+  1: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/50',
+  2: 'bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 border-sky-100 dark:border-sky-900/50',
+  3: 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/50',
+  4: 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border-neutral-200 dark:border-neutral-700',
+  5: 'bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 border-violet-100 dark:border-violet-900/50',
+  6: 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border-red-100 dark:border-red-900/50'
+}
+
+// 收藏列表自身的条目带 labels，其它列表（会社开发作品、相关作品）靠 useUlistStatus 补
+function collectLabels(item) {
+  if (Array.isArray(item?.labels) && item.labels.length) return item.labels
+  if (!props.showStatus) return []
+  return getStatusLabels(item?.id || item?.vn?.id)
+}
+
+function getStatusLabel(item) {
+  const labels = collectLabels(item)
+  if (!labels.length) return null
+  const byId = new Map(labels.map((l) => [Number(l.id), l]))
+  for (const id of STATUS_PRIORITY) {
+    if (byId.has(id)) return byId.get(id)
+  }
+  // 只有自定义标签 / 只有 Voted(7) 时不显示状态，避免噪声
+  return null
+}
+
+function statusStyle(item) {
+  const lbl = getStatusLabel(item)
+  return STATUS_STYLE[Number(lbl?.id)] || STATUS_STYLE[4]
+}
+
+// 收藏列表的条目自带全部 labels（系统标签 + 自定义标签），而标题行已经用
+// 状态徽章显示了其中优先级最高的那个系统标签。这里把它排掉，避免同一个
+// 「游玩中」在卡片上出现两次。
+function getExtraLabels(item) {
+  const labels = collectLabels(item)
+  if (!labels.length) return []
+  const shown = getStatusLabel(item)
+  const shownId = shown ? Number(shown.id) : null
+  return labels.filter((l) => Number(l?.id) !== shownId)
+}
+
+// 列表数据到位就批量补齐收藏状态（评分 / 在玩状态都靠它，跟是否显示状态徽章无关）
+watch(
+  () => props.items,
+  (list) => {
+    if (!Array.isArray(list) || !list.length) return
+    const ids = list.map((it) => it?.id || it?.vn?.id).filter(Boolean)
+    if (ids.length) preloadStatuses(ids)
+    // 游玩时长存在本地缓存里，登录后后台批量拉一次（6 小时冷却），拉完自动重渲染
+    if (localStorage.getItem('vndb_api_token')) ensureAllMyLengthVotes().catch(() => {})
+  },
+  { immediate: true }
+)
 
 // 触底加载逻辑
 const sentinel = ref(null)
@@ -469,6 +559,13 @@ function toggleReverse() {
                     >
                       {{ translateBadge(getBadge(item)) }}
                     </span>
+                    <span
+                      v-if="getStatusLabel(item)"
+                      class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border"
+                      :class="statusStyle(item)"
+                    >
+                      {{ labelText(getStatusLabel(item)) }}
+                    </span>
                   </div>
                 </div>
                 <span v-if="item.lastmod" class="text-[10px] text-neutral-400 dark:text-neutral-500 shrink-0 mt-0.5">{{ formatDate(item.lastmod) }}</span>
@@ -478,11 +575,11 @@ function toggleReverse() {
               </span>
             </div>
 
-            <!-- 收藏列表专用标签 -->
-            <div v-if="item.labels && item.labels.length > 0" class="overflow-x-auto pb-1 -mb-1 scroll-smooth no-scrollbar">
+            <!-- 收藏列表专用标签（已去掉标题行状态徽章里重复显示的那个） -->
+            <div v-if="getExtraLabels(item).length > 0" class="overflow-x-auto pb-1 -mb-1 scroll-smooth no-scrollbar">
               <div class="flex gap-1.5 shrink-0 whitespace-nowrap">
                 <div
-                  v-for="lbl in item.labels"
+                  v-for="lbl in getExtraLabels(item)"
                   :key="lbl.id"
                   class="inline-flex items-center gap-1 text-[10px] text-neutral-600 dark:text-neutral-400 bg-neutral-100/80 dark:bg-neutral-800/80 px-2 py-0.5 rounded-md border border-neutral-200/50 dark:border-neutral-700/50"
                 >
@@ -511,9 +608,18 @@ function toggleReverse() {
                   {{ formatRating(getRating(item)) }}
                 </span>
 
-                <span v-if="getOlang(item)" class="inline-flex items-center gap-1 text-[10px] rounded-full px-1.5 py-0.5 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 font-medium">
+                <span
+                  v-if="getOlang(item)" class="inline-flex items-center gap-1 text-[10px] rounded-full px-1.5 py-0.5 border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 font-medium">
                   <LanguageFlag :lang="getOlang(item)" class="h-3 w-3" />
                   <span>{{ t(`metadata.lang.${getOlang(item)}`, getOlang(item)) }}</span>
+                </span>
+                <span
+                  v-if="getPlayTime(item)"
+                  class="inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium border bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 border-sky-100 dark:border-sky-900/50"
+                  :title="t('vn.length')"
+                >
+                  <Icon icon="lucide:clock" class="h-3 w-3" />
+                  {{ getPlayTime(item) }}
                 </span>
                 <span v-if="getReleased(item)" class="text-[10px] text-neutral-400 dark:text-neutral-500 font-medium">
                   {{ getReleased(item) }}
@@ -576,8 +682,9 @@ function toggleReverse() {
             <div class="p-3 space-y-1.5">
               <span class="text-xs font-semibold text-neutral-900 dark:text-neutral-100 block line-clamp-2 leading-tight">{{ getTitle(item) }}</span>
               <span v-if="getAltTitle(item)" class="text-[10px] text-neutral-400 dark:text-neutral-500 block line-clamp-1 leading-tight">{{ getAltTitle(item) }}</span>
-              <div v-if="getBadge(item)" class="flex">
+              <div v-if="getBadge(item) || getStatusLabel(item) || getPlayTime(item)" class="flex flex-wrap gap-1">
                 <span
+                  v-if="getBadge(item)"
                   class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0"
                   :class="[
                     getBadge(item) === 'main'
@@ -586,6 +693,20 @@ function toggleReverse() {
                   ]"
                 >
                   {{ translateBadge(getBadge(item)) }}
+                </span>
+                <span
+                  v-if="getStatusLabel(item)"
+                  class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border"
+                  :class="statusStyle(item)"
+                >
+                  {{ labelText(getStatusLabel(item)) }}
+                </span>
+                <span
+                  v-if="getPlayTime(item)"
+                  class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 border-sky-100 dark:border-sky-900/50 inline-flex items-center gap-0.5"
+                >
+                  <Icon icon="lucide:clock" class="h-2.5 w-2.5" />
+                  {{ getPlayTime(item) }}
                 </span>
               </div>
             </div>
@@ -645,8 +766,9 @@ function toggleReverse() {
             <div class="p-3 space-y-1.5">
               <span class="text-xs font-semibold text-neutral-900 dark:text-neutral-100 block line-clamp-2 leading-tight">{{ getTitle(item) }}</span>
               <span v-if="getAltTitle(item)" class="text-[10px] text-neutral-400 dark:text-neutral-500 block line-clamp-1 leading-tight">{{ getAltTitle(item) }}</span>
-              <div v-if="getBadge(item)" class="flex">
+              <div v-if="getBadge(item) || getStatusLabel(item) || getPlayTime(item)" class="flex flex-wrap gap-1">
                 <span
+                  v-if="getBadge(item)"
                   class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0"
                   :class="[
                     getBadge(item) === 'main'
@@ -655,6 +777,20 @@ function toggleReverse() {
                   ]"
                 >
                   {{ translateBadge(getBadge(item)) }}
+                </span>
+                <span
+                  v-if="getStatusLabel(item)"
+                  class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border"
+                  :class="statusStyle(item)"
+                >
+                  {{ labelText(getStatusLabel(item)) }}
+                </span>
+                <span
+                  v-if="getPlayTime(item)"
+                  class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 border-sky-100 dark:border-sky-900/50 inline-flex items-center gap-0.5"
+                >
+                  <Icon icon="lucide:clock" class="h-2.5 w-2.5" />
+                  {{ getPlayTime(item) }}
                 </span>
               </div>
               <!-- 整卡模糊遮罩 (右列) -->
@@ -688,12 +824,29 @@ function toggleReverse() {
               >
                 {{ translateBadge(getBadge(item)) }}
               </span>
+              <span
+                v-if="getStatusLabel(item)"
+                class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 scale-90 origin-left border"
+                :class="statusStyle(item)"
+              >
+                {{ labelText(getStatusLabel(item)) }}
+              </span>
             </div>
             <span v-if="getAltTitle(item)" class="text-[11px] text-neutral-400 dark:text-neutral-500 truncate">{{ getAltTitle(item) }}</span>
           </div>
-          <div v-if="getRating(item) || getUserVote(item)" class="flex items-center gap-1 shrink-0">
-            <Icon icon="lucide:star" class="h-3 w-3 text-neutral-300 dark:text-neutral-600 fill-neutral-300 dark:fill-neutral-600" />
-            <span class="text-xs font-medium text-neutral-500 dark:text-neutral-400">{{ formatRating(getUserVote(item) || getRating(item)) }}</span>
+          <div v-if="getRating(item) || getUserVote(item) || getPlayTime(item)" class="flex items-center gap-1.5 shrink-0">
+            <span v-if="getPlayTime(item)" class="inline-flex items-center gap-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-400">
+              <Icon icon="lucide:clock" class="h-3 w-3" />
+              {{ getPlayTime(item) }}
+            </span>
+            <template v-if="getRating(item) || getUserVote(item)">
+              <Icon
+                icon="lucide:star"
+                class="h-3 w-3 fill-neutral-300 dark:fill-neutral-600"
+                :class="getUserVote(item) ? 'text-amber-500 fill-amber-500' : 'text-neutral-300 dark:text-neutral-600'"
+              />
+              <span class="text-xs font-medium" :class="getUserVote(item) ? 'text-amber-700 dark:text-amber-400' : 'text-neutral-500 dark:text-neutral-400'">{{ formatRating(getUserVote(item) || getRating(item)) }}</span>
+            </template>
           </div>
         </div>
       </div>
