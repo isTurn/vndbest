@@ -31,6 +31,15 @@ function stripMeta(src) {
 const lib = stripMeta(fs.readFileSync(path.join(ROOT, 'scripts', 'vendor', 'VNDBTranslatorLib.user.js'), 'utf8'))
 const userscript = stripMeta(fs.readFileSync(path.join(ROOT, 'VNDB优先原文和中文化.js'), 'utf8'))
 
+// 版本号直接从源脚本的 UserScript 头里读，避免 banner 写死后过期
+function readVersion(file) {
+  const head = fs.readFileSync(file, 'utf8').slice(0, 4000)
+  const m = head.match(/@version\s+([^\s]+)/)
+  return m ? m[1] : 'unknown'
+}
+const libVersion = readVersion(path.join(ROOT, 'scripts', 'vendor', 'VNDBTranslatorLib.user.js'))
+const usVersion = readVersion(path.join(ROOT, 'VNDB优先原文和中文化.js'))
+
 const shims = `
 // GM_* 空实现（userscript 仅在 开发者模式=true 时调用，默认关闭）
 if (typeof GM_getValue === 'undefined') {
@@ -40,7 +49,7 @@ if (typeof GM_getValue === 'undefined') {
 }
 `
 
-const banner = `/* VNDB 中文化（VNDB优先原文和中文化 v5.0.1 + VNDBTranslatorLib v5.0.0）
+const banner = `/* VNDB 中文化（VNDB优先原文和中文化 v${usVersion} + VNDBTranslatorLib v${libVersion}）
  * 由 scripts/build-vndb-translator.cjs 生成，请勿手工编辑。
  */`
 

@@ -117,6 +117,12 @@ export function noteBrowserUrl(webviewId, url) {
   currentUrl.set(webviewId, url)
 }
 
+/** 读某个 WebView 最近一次已知地址（没有就返回空串） */
+export function getBrowserUrl(webviewId) {
+  if (!webviewId) return ''
+  return currentUrl.get(webviewId) || ''
+}
+
 /** 交给系统浏览器（会自动遵守设置里的「自选浏览器 / 每次询问」） */
 async function openExternally(url) {
   const href = String(url || '').trim()

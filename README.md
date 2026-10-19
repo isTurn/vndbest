@@ -81,6 +81,7 @@ VNDB（Visual Novel Database）的 Android 第三方客户端。基于 **Vue 3 +
 - **首屏加载失败自动重试**：偶发网络抖动导致 WebView 白屏时会重试一次，不再直接甩去系统浏览器
 - **工具栏「用外部浏览器打开」**：内置浏览器右上角一键把当前页交给系统浏览器（遵守「自选浏览器 / 每次询问」设置，可在「设置 → 跳转」里关掉）
 - **TouchGal 专用开关**：「设置 → 跳转」里默认开启，TouchGal 一律用内置浏览器打开，页面正常加载后再决定是否转外部浏览器
+- **TouchGal 过渡页自动跳过**：TouchGal 点外链会先进「即将离开本站…5 秒」的中转页，现在会直接跳过（点链接时就解析真实地址，已落到中转页时立刻跳走）
 
 ### 其他
 
@@ -188,6 +189,7 @@ src/
     ├── crossSearch.js       跨站搜索站点表与链接构造
     ├── linkOpener.js        外链打开策略（内置 / 系统浏览器 + 全局拦截）
     ├── touchgalSearch.js    TouchGal 自动填词注入脚本
+    ├── redirectSkip.js      TouchGal 外链过渡页自动跳过
     ├── vndbTranslator.js    中文化脚本注入
     ├── imagePrefetch.js     图片预热队列
     ├── releaseImage.js      版本封面回退到关联作品
@@ -261,8 +263,9 @@ git push origin v1.0.6
 | [VNDB优先原文和中文化](https://greasyfork.org/zh-CN/scripts/442355) v5.0.1 | 在内置浏览器里把 VNDB 页面中文化 | [Greasy Fork #442355](https://greasyfork.org/zh-CN/scripts/442355) |
 | [VNDBTranslatorLib](https://greasyfork.org/scripts/445990-vndbtranslatorlib) v5.0.0 | 上者的翻译词典（其 `@require` 依赖） | [Greasy Fork #445990](https://greasyfork.org/scripts/445990) |
 | [VNDB跨站搜索](https://greasyfork.org/zh-CN/scripts/600569) v2.6.1 | 跨站搜索站点表来源 | [Greasy Fork #600569](https://greasyfork.org/zh-CN/scripts/600569) |
+| [TouchGal 自动跳转](https://github.com/isTurn/vndbest/blob/main/src/utils/redirectSkip.js) v2.2 | TouchGal 外链过渡页跳过 | 本地脚本，逻辑已移植进 `src/utils/redirectSkip.js` |
 
-两个油猴脚本以源码形式固化在仓库中（`scripts/vendor/`、`VNDB优先原文和中文化.js`、`VNDB跨站搜索.js`），由 `scripts/build-vndb-translator.cjs` 拼接成可注入的 IIFE。感谢以上脚本作者的劳动，版权归原作者所有；若原作者有异议，请联系移除。
+三个油猴脚本以源码形式固化在仓库中（`scripts/vendor/`、`VNDB优先原文和中文化.js`、`VNDB跨站搜索.js`），由 `scripts/build-vndb-translator.cjs` 拼接成可注入的 IIFE；TouchGal 过渡页跳过移植进 `src/utils/redirectSkip.js`。感谢以上脚本作者的劳动，版权归原作者所有；若原作者有异议，请联系移除。
 
 界面数据来自 [VNDB](https://vndb.org/) 的公开 Kana API。本项目与 VNDB 官方无关。
 

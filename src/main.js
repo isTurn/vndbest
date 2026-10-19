@@ -8,6 +8,7 @@ import { installLinkInterceptor } from './utils/linkOpener'
 import { installCookieKeeper } from './utils/cookieKeeper'
 import { installTranslatorForInAppBrowser } from './utils/vndbTranslator'
 import { installExternalButtonWatcher } from './utils/inAppBrowserTools'
+import { installRedirectSkipWatcher } from './utils/redirectSkip'
 import './style.css'
 
 registerAppIcons()
@@ -19,6 +20,8 @@ installCookieKeeper()
 installTranslatorForInAppBrowser()
 // 内置浏览器工具栏上的「用外部浏览器打开」按钮（点击后把当前页交给系统/自选浏览器）
 installExternalButtonWatcher()
+// TouchGal 的外链过渡页（「即将离开…5 秒」）自动跳过
+installRedirectSkipWatcher()
 
 // 根据 .env 中的 VITE_VCONSOLE 环境变量决定是否启用 vConsole 调试面板
 if (import.meta.env.VITE_VCONSOLE === 'true') {
