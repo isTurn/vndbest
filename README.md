@@ -19,9 +19,13 @@ VNDB（Visual Novel Database）的 Android 第三方客户端。基于 **Vue 3 +
 | --- | --- | --- |
 | ![](docs/screenshots/home.jpg) | ![](docs/screenshots/vn-detail.jpg) | ![](docs/screenshots/cross-search.jpg) |
 
-| 全局搜索 | 角色详情 | 版本详情 | 设置 |
+| 全局搜索 | 搜索历史 | 角色详情 | 版本详情 |
 | --- | --- | --- | --- |
-| ![](docs/screenshots/search.jpg) | ![](docs/screenshots/character-detail.jpg) | ![](docs/screenshots/release-detail.jpg) | ![](docs/screenshots/settings.jpg) |
+| ![](docs/screenshots/search.jpg) | ![](docs/screenshots/search-history.jpg) | ![](docs/screenshots/character-detail.jpg) | ![](docs/screenshots/release-detail.jpg) |
+
+| 版本列表（语言旗帜 + 标题上下互换） | 设置 |
+| --- | --- |
+| ![](docs/screenshots/release-list.jpg) | ![](docs/screenshots/settings.jpg) |
 
 ---
 
@@ -29,12 +33,14 @@ VNDB（Visual Novel Database）的 Android 第三方客户端。基于 **Vue 3 +
 
 ### 数据浏览
 
-- **作品（VN）**：封面、简介、标签、角色、职员、版本、评分分布、游玩时长
+- **作品（VN）**：封面、简介、标签、角色、职员、版本、游玩时长
+- **评分统计选项卡**：评分分布横向柱状图（10 分在上）、票数 / 平均分 / 中位数 / 排名与最近投票。Kana API 不提供分布数据，改为在内置 WebView 里解析 vndb.org 作品页的 `article#stats`，结果缓存 6 小时
 - **角色**：立绘、特征、出演作品、生日、三围
-- **会社 / 职员**：作品列表、参与角色
-- **版本（Release）**：发售日期、平台、语言、引擎、分辨率、外部链接
+- **会社 / 职员**：作品列表、参与角色；会社页另有**关联会社**弹卡（子公司、品牌等）与简介折叠
+- **版本（Release）**：发售日期、平台、语言、引擎、分辨率、外部链接；语言用**国旗 SVG** 标识，列表按语言**折叠分组**（中文优先、日语其次）
 - 六个维度的搜索页（作品 / 版本 / 角色 / 职员 / 会社 / 标签），支持标签与特征的多级筛选、剧透等级过滤、性内容过滤
 - **已保存搜索**：把常用筛选条件存下来，在仪表盘一键复用
+- **收藏状态可视化**：每种状态配独立图标与颜色（游玩中绿 `play`、已通关蓝 `check-circle`、搁置中琥珀 `pause`、已弃坑灰 `x-circle`、想玩紫 `star`、黑名单红 `ban`、已评分琥珀 `award`），列表、瀑布流、紧凑列表、标签页与详情页统一
 
 ### 全局搜索
 
@@ -50,6 +56,8 @@ VNDB（Visual Novel Database）的 Android 第三方客户端。基于 **Vue 3 +
 | 标签 / 特征 | 直接命中时出现 |
 
 中文名搜索通过「先用 `search` 命中 VN，再用 VN id 反查角色 / 职员」两层查询实现，因此「幸福噩梦」这类中文译名也能定位到 `v10957` 及其会社 `Purple software`。
+
+输入框下方还会展示**搜索历史**（最近 20 条，`vndb_search_history`），点一下即填入并重新搜索。
 
 ### 跨站搜索
 
@@ -78,12 +86,26 @@ VNDB（Visual Novel Database）的 Android 第三方客户端。基于 **Vue 3 +
 - **深浅色主题**、可自定义背景图、可自定义标题显示顺序（原文 / 罗马音 / 中译）
 - **隐私与过滤**：18+ 内容、截图过滤、剧透等级
 - **本地收藏**与 VNDB 账号同步（API Token 登录）
-- **游玩时长投票**：本地弹窗填写，直接同步到 VNDB
+- **游玩时长投票**：本地弹窗填写，直接同步到 VNDB；打开前先读取你已有的投票记录回填，另有「大家的投票」页签可看其他人的时长、速度与备注。设置页提供「刷新我的游玩时长」，一次性把 VNDB 上的记录同步到本地
 - **图片加载优化**：缩略图优先 + 6 并发预热队列 + 缩略图 404 自动回退原图 + 15s 超时兜底
+- **两级缓存**：内存缓存 + IndexedDB 持久化（`vndbest_cache_db`），接口响应按 TTL 复用，同一请求并发时合并为一次
 - **搜索历史**：「搜索」页记住最近 20 条关键词，可单条删除或一键清空
 - **版本封面回退**：release 自己没有封面时（免费 / 补丁 / 同人作品），自动改用关联作品的封面，不再只显示占位图标
 - **跳转设置**：跨站搜索与版本外链的浏览器打开方式分别配置
-- **离线提示**、返回键双击退出、错误态与重试
+- **离线提示**、返回键双击退出、错误态与重试、加载骨架屏
+
+### 隐私
+
+应用只与你主动访问的服务通信：
+
+| 目标 | 时机 |
+| --- | --- |
+| `api.vndb.org` | 浏览作品、角色、版本等数据；登录后同步收藏与时长投票 |
+| `t.vndb.org` | 加载封面与立绘图片 |
+| `workers.hekinyan.vip/v1/translate` | **仅在你主动点击「翻译」按钮时**，把该段日文简介发去机器翻译 |
+| 跨站搜索目标站点 | 仅在你点击对应站点时打开 |
+
+**没有**任何埋点、崩溃上报或匿名统计。此前的启动上报（`workers.hekinyan.vip/v1/active`）已在 1.0.5 开发分支中移除，`vndb_install_id` / `vndb_active_report_date` 也不再写入本地存储。
 
 ---
 
@@ -95,7 +117,10 @@ VNDB（Visual Novel Database）的 Android 第三方客户端。基于 **Vue 3 +
 - 包名 `com.vndb`
 - release 包已开启 R8 混淆与资源裁剪，体积约 **3 MB**
 
-> **从旧版升级**：1.0.3 之前的版本包名是 `com.cyancat.vndbest`，与当前包名不同，需要先卸载旧版再安装。
+> **从旧版升级**
+>
+> - **包名变更**：1.0.3 及更早版本的包名是 `com.cyancat.vndbest`，与当前 `com.vndb` 不同，必须卸载旧版再装。
+> - **签名变更**：1.0.5 及更早版本的 APK 由 CI runner 的临时密钥签名，与当前随仓库携带的固定密钥不同，从这些版本升级到 1.0.6+ 也需要先卸载。装过 1.0.6 之后，后续版本可正常覆盖升级。
 
 ---
 
@@ -152,7 +177,7 @@ npx cap open ios
 src/
 ├── api/vndb.js              VNDB Kana API 封装（超时、429 限流、错误映射）
 ├── components/              可复用组件（列表、筛选面板、骨架屏、错误态、年龄标识…）
-├── composables/             组合式函数（主题、隐私、收藏、图片加载、剪贴板、已保存搜索…）
+├── composables/             组合式函数（主题、隐私、收藏、图片加载、剪贴板、已保存搜索、搜索历史、收藏状态…）
 ├── i18n/locales/            中 / 英 / 日 语言包 + 标签与特征词典
 ├── icons/                   Iconify 图标注册与名称映射
 ├── pages/                   页面（仪表盘、搜索、详情、设置…）
@@ -163,7 +188,11 @@ src/
     ├── touchgalSearch.js    TouchGal 自动填词注入脚本
     ├── vndbTranslator.js    中文化脚本注入
     ├── imagePrefetch.js     图片预热队列
+    ├── releaseImage.js      版本封面回退到关联作品
+    ├── cacheManager.js      内存 + IndexedDB 两级缓存
     ├── lengthVote.js        游玩时长投票
+    ├── vnStats.js           评分分布抓取（隐藏 WebView 解析 vndb.org）
+    ├── producerInfo.js      会社关联会社抓取（同上）
     ├── cookieKeeper.js      登录态持久化
     ├── errorMessage.js      API 错误消息本地化
     └── ulistLabels.js       收藏标签本地化

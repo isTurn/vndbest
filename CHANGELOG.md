@@ -2,6 +2,19 @@
 
 本文件记录本 fork（[isTurn/vndbest](https://github.com/isTurn/vndbest)）相对上游的功能演进。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [未发布]
+
+### 移除
+
+- **匿名使用统计上报**：此前每次启动会向第三方 Worker（`workers.hekinyan.vip/v1/active`）POST 安装 ID、设备型号、系统版本、UA 等信息，且没有开关。现已彻底删除上报逻辑与相关常量，`vndb_install_id`、`vndb_active_report_date` 两个 `localStorage` 键也不再写入。应用不再有任何联网行为发生在 VNDB API 之外
+
+### 文档
+
+- README 补齐 1.0.5 / 1.0.6 新增功能的说明：评分统计选项卡、收藏状态图标与配色、会社关联会社、版本语言旗帜与折叠分组、游玩时长投票回填与「大家的投票」、两级缓存
+- README 新增**隐私**章节，逐项列出应用会连接的服务与触发时机
+- README「从旧版升级」补充签名变更说明（1.0.5 及更早的 APK 由 CI 临时密钥签名，升级到 1.0.6+ 需先卸载）
+- 截图重拍并新增两张：搜索历史、版本列表；`docs/screenshots/README.md` 补充拍摄脚本骨架与五条踩坑记录
+
 ## [1.0.6] - 2026-10-19
 
 签名对齐修复版。1.0.5 虽然把 keystore 放进了仓库，但 CI 实际仍用 runner 自带的 `~/.android/debug.keystore` 签名，发布包的证书指纹与本地包不同。本版把 CI 的签名来源改成显式指定仓库内 keystore，并让构建在指纹不符时直接失败。
@@ -60,8 +73,6 @@
 - **设置页「VNDB 页面中文化」开关的圆点跑到轨道外**：圆点用 `position:absolute` 却没给 `left`，浏览器按按钮的默认 `text-align:center` 定位（约 12px），再叠加 `translate-x-[22px]` 后右边缘约 52px，超出 44px 宽的轨道；改为 `left-0.5` 锚定 + `translate-x-[20px]`
 - **截图大图查看器打开时会从第一张快速翻页到目标张**：容器带 `scroll-smooth`，CSS `scroll-behavior:smooth` 对直接赋值 `scrollLeft` 同样生效；且弹层刚挂载时 `clientWidth` 可能为 0，导致首次定位停在第一张。改为瞬时定位 + 容器宽度未就绪时按帧重试
 
-> 注：匿名使用统计上报（`src/pages/Home.vue` 的 `ACTIVE_REPORT_URL`）目前仍在代码中，尚无开关，计划在下个版本移除。
-
 ---
 
 ## [1.0.3] - 2026-10-17
@@ -81,11 +92,6 @@
 - 描述 BBCode 未转义导致的 XSS
 - i18n 键断链、路由缺少 catch-all
 - 图片加载优化：缩略图优先 + 低并发预热队列 + 超时回退原图
-
-### 已知问题
-
-- 角色与职员立绘在 VNDB 侧没有缩略图变体（`ch/`、`st/` 路径的 `.t` 后缀返回 404），只能走原图
-- 顶栏在部分 Android 15+ 机型上仍可能被状态栏遮挡
 
 ---
 
