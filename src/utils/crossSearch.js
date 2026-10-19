@@ -1,5 +1,5 @@
 /**
- * 跨站搜索站点表（移植自 VNDB 跨站搜索用户脚本 v2.7.4）
+ * 跨站搜索站点表（移植自 VNDB 跨站搜索用户脚本 v2.8.0）
  *
  * 域名使用 base64 编码，避免完整域名出现在打包产物中触发静态扫描。
  * 每组 { key, labelKey, sites: [{ name, url(kw) }] }
@@ -18,6 +18,10 @@ const HOST = {
   zi6: _d('emk2LmNj'),
   lzacg: _d('bHphY2cuY2M='),
   ggbases: _d('d3d3LmdnYmFzZXMuY29t'),
+  // v2.8.0 新增：这三个资源站都支持 URL 直接带关键词，无需注入
+  nysoure: _d('bnlzb3VyZS5jb20='),
+  galzy: _d('d3d3LmdhbHp5Lm1vZQ=='),
+  sakugal: _d('c2FrdWdhbC5jb20='),
   dmm: _d('d3d3LmRtbS5jby5qcA=='),
   dlsoft: _d('ZGxzb2Z0LmRtbS5jby5qcA=='),
   dlsite: _d('d3d3LmRsc2l0ZS5jb20='),
@@ -87,6 +91,10 @@ export const CROSS_SEARCH_GROUPS = [
       // kw: 'zh' → 未手动挑标题时优先用中文标题搜（与用户脚本一致）
       { name: '量子ACG', kw: 'zh', url: (k) => `https://${HOST.lzacg}/?s=${enc(wpKeyword(k))}` },
       { name: 'ggbases', url: (k) => `https://${HOST.ggbases}/search.so?title=${enc(k)}` },
+      // v2.8.0 新增三站
+      { name: 'Nysoure', url: (k) => `https://${HOST.nysoure}/search?keyword=${enc(k)}` },
+      { name: 'GalZY', url: (k) => `https://${HOST.galzy}/games?q=${enc(k)}` },
+      { name: 'SakuGAL', url: (k) => `https://${HOST.sakugal}/search/${enc(k)}/` },
       { name: 'DMM', url: (k) => `https://${HOST.dmm}/search/=/searchstr=${enc(k)}/` },
       { name: 'Fanza', url: (k) => `https://${HOST.dlsoft}/search/?service=pcgame&searchstr=${enc(k)}` },
       { name: 'DLsite', url: (k) => `https://${HOST.dlsite}/pro/fsr/=/keyword/${dlsiteKw(k)}` }

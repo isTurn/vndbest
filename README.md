@@ -62,16 +62,16 @@ VNDB（Visual Novel Database）的 Android 第三方客户端。基于 **Vue 3 +
 
 ### 跨站搜索
 
-作品详情页内置 **35 个** Galgame 相关站点的跨站搜索，分四组：
+作品详情页内置 **38 个** Galgame 相关站点的跨站搜索，分四组：
 
 | 分组 | 站点 |
 | --- | --- |
-| **资源站**（12） | TouchGal、失落小站、一起萌、稻荷、书音的图书馆、SearchGal、梓澪、量子ACG、ggbases、DMM、Fanza、DLsite |
+| **资源站**（15） | TouchGal、失落小站、一起萌、稻荷、书音的图书馆、SearchGal、梓澪、量子ACG、ggbases、Nysoure、GalZY、SakuGAL、DMM、Fanza、DLsite |
 | **攻略 / 存档 / 补丁**（6） | 誠也の部屋、誠也存档、Sagaoz攻略、2DFan、Ai2、Moyu |
 | **数据库**（8） | VNDB、bangumi、批评空间、月幕、kyara、Moepedia、VGMdb、Bishogedb |
 | **社区 / 18+**（9） | 绯月、鲲galgame、animeShare、nyaa、Sukebei、F95、eHentai、ExHentai、Hitomi |
 
-支持两种搜索模式：**按标题搜**（自动挑选最合适的标题，含别名 / 罗马音 / 中译）与**按 VN 编号搜**。TouchGal 在「内置浏览器」模式下会自动填入关键词并触发搜索；SearchGal 的 `?s=` 只会填框不会自动搜，应用会补一次回车（`src/utils/siteSearchInject.js`），稻荷迁到 `inarigal.com` 后 `?search=` 直接出结果页。
+支持两种搜索模式：**按标题搜**（自动挑选最合适的标题，含别名 / 罗马音 / 中译）与**按 VN 编号搜**。TouchGal 在「内置浏览器」模式下会自动填入关键词并触发搜索；SearchGal 的 `?s=` 只会填框不会自动搜，应用会补一次回车（`src/utils/siteSearchInject.js`），稻荷迁到 `inarigal.com` 后 `?search=` 直接出结果页。v2.8.0 新增的 Nysoure / GalZY / SakuGAL 都支持 URL 直接带关键词，不需要注入。
 
 ### 内置浏览器
 
@@ -264,7 +264,7 @@ git push origin v1.0.6
 | --- | --- | --- |
 | [VNDB优先原文和中文化](https://greasyfork.org/zh-CN/scripts/442355) v5.0.1 | 在内置浏览器里把 VNDB 页面中文化 | [Greasy Fork #442355](https://greasyfork.org/zh-CN/scripts/442355) |
 | [VNDBTranslatorLib](https://greasyfork.org/scripts/445990-vndbtranslatorlib) v5.0.0 | 上者的翻译词典（其 `@require` 依赖） | [Greasy Fork #445990](https://greasyfork.org/scripts/445990) |
-| [VNDB跨站搜索](https://greasyfork.org/zh-CN/scripts/600569) v2.7.4 | 跨站搜索站点表来源 | [Greasy Fork #600569](https://greasyfork.org/zh-CN/scripts/600569) |
+| [VNDB跨站搜索](https://greasyfork.org/zh-CN/scripts/600569) v2.8.0 | 跨站搜索站点表来源 | [Greasy Fork #600569](https://greasyfork.org/zh-CN/scripts/600569) |
 
 以上油猴脚本以源码形式固化在仓库中（`scripts/vendor/`、`VNDB优先原文和中文化.js`、`VNDB跨站搜索.js`），由 `scripts/build-vndb-translator.cjs` 拼接成可注入的 IIFE。TouchGal 过渡页跳过的逻辑参考了同类脚本的思路，已重写并移植进 `src/utils/redirectSkip.js`。感谢以上脚本作者的劳动，版权归原作者所有；若原作者有异议，请联系移除。
 

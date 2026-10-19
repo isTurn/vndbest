@@ -2,7 +2,7 @@
  * TouchGal 外链过渡页（广告 / 5 秒等待页）自动跳过。
  *
  * 背景：在 TouchGal 里点外链，站点会先跳到 `/redirect?url=<目标>` 的等待页
- * （「即将离开本站…5 秒」），再跳真实地址。用户脚本 `VNDB跨站搜索.js` v2.7.4
+ * （「即将离开本站…5 秒」），再跳真实地址。用户脚本 `VNDB跨站搜索.js` v2.8.0
  * 用 `initRedirectSkip()` 解决（另有独立的 `TouchGal 自动跳转` v2.2 脚本等价）。
  *
  * 内置浏览器原来只移植了该脚本的「搜索填入」分支，没有这段跳过逻辑，
@@ -129,7 +129,7 @@ export function buildRedirectSkipCode() {
     return '';
   }
 
-  /* 轮询里每 50ms 读一次 body 全文太重，加一层 800ms 缓存（对应用户脚本 v2.7.4）。
+  /* 轮询里每 50ms 读一次 body 全文太重，加一层 800ms 缓存（对应用户脚本 v2.8.0）。
      长页面（>6000 字符）若前 4000 字符没有「秒后」就基本不是等待页，直接短路。 */
   var waitCache = { at: 0, value: false };
 
@@ -186,7 +186,7 @@ export function buildRedirectSkipCode() {
     return scanParams(url.searchParams);
   }
 
-  /* 直接把中转链接的 href 改写成真实地址（对应用户脚本 v2.7.4 的 rewriteRedirectLinks）。
+  /* 直接把中转链接的 href 改写成真实地址（对应用户脚本 v2.8.0 的 rewriteRedirectLinks）。
      好处：即使点击被站点自己的 JS 拦走、或者走了键盘/长按打开，
      href 本身也已经是真实地址，不会再落进过渡页。 */
   var LINK_SEL = 'a[href*="redirect"],a[href*="url="],a[href*="target="],a[href*="goto="],a[href*="jump="]';

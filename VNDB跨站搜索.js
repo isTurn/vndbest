@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNDB跨站搜索
 // @namespace    http://tampermonkey.net/
-// @version      2.7.4
+// @version      2.8.0
 // @description  VNDB跨站搜索，可自选标题或id；TouchGal 外链跳转自动跳过等待
 // @author       Hatsube
 // @match        https://vndb.org/*
@@ -71,6 +71,9 @@
         { key: 'zi0', name: '梓澪', group: 'res', url: () => 'https://zi6.cc' },
         { key: 'lzacg', name: '量子ACG', group: 'res', kw: 'zh', url: k => 'https://lzacg.cc/?s=' + enc(wpKeyword(k)) },
         { key: 'ggbases', name: 'ggbases', group: 'res', url: k => 'https://www.ggbases.com/search.so?title=' + enc(k) },
+        { key: 'nysoure', name: 'Nysoure', group: 'res', url: k => 'https://nysoure.com/search?keyword=' + enc(k) },
+        { key: 'galzy', name: 'GalZY', group: 'res', url: k => 'https://www.galzy.moe/games?q=' + enc(k) },
+        { key: 'sakugal', name: 'SakuGAL', group: 'res', url: k => 'https://sakugal.com/search/' + enc(k) + '/' },
         { key: 'dmm', name: 'DMM', group: 'res', url: k => 'https://www.dmm.co.jp/search/=/searchstr=' + enc(k) + '/' },
         { key: 'fanza', name: 'Fanza', group: 'res', url: k => 'https://dlsoft.dmm.co.jp/search/?service=pcgame&searchstr=' + enc(k) },
         { key: 'dlsite', name: 'DLsite', group: 'res', url: k => 'https://www.dlsite.com/pro/fsr/=/keyword/' + encodeURIComponent(String(k).replace(/[!！?？*＊~～]/g, ' ').replace(/\s+/g, ' ').trim()).replace(/%20/g, '+') },

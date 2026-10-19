@@ -4,19 +4,20 @@
 
 ## [1.0.8] - 2026-10-19
 
-搜索页的分类浏览补上了作品入口，作品图标统一成手柄，跨站搜索脚本同步到上游 v2.7.4（稻荷迁域、SearchGal 自动补搜索、TouchGal 外链改写）。
+搜索页的分类浏览补上了作品入口，作品图标统一成手柄，跨站搜索脚本同步到上游 v2.8.0（新增 Nysoure / GalZY / SakuGAL 三个资源站，站点数 35 → 38；含此前 v2.7.4 的稻荷迁域、SearchGal 自动补搜索、TouchGal 外链改写）。
 
 ### 新增
 
 - **搜索页「分类浏览」补上作品入口**：分类卡片原本只有版本 / 会社 / 人物 / 角色 / 标签 / 特征六项，作品得靠首页或全局搜索进；现在「作品」是分类里的第一张卡片，指向 `/browse/vn`，和其余分类同尺寸排列
 - **作品页排序可按链接指定**：支持 `?sort=rating&reverse=1` 这样的参数直接落到指定排序（票数 / 相关度 / 评分 / 发售日 / 标题，升降序）；排序本身不做记忆，每次从分类卡进来仍是默认的票数倒序
 - **SearchGal 搜索自动补一次回车**：SearchGal 会读 `?s=` 把关键词填进搜索框，但**不会自己发起搜索**，页面停在空白结果（已核对站点 bundle：`?s=` 只赋值给搜索框的 ref）。新增 `src/utils/siteSearchInject.js`，内置浏览器加载完 `searchgal.top` 后注入「填值 + 回车 + 兜底提交表单」，与用户脚本 v2.7.4 的 searchgal 分支等价
+- **跨站搜索新增三个资源站**：Nysoure（`/search?keyword=`）、GalZY（`/games?q=`）、SakuGAL（`/search/<关键词>/`），三站都支持 URL 直接带关键词、服务端渲染结果，不需要注入脚本。资源站从 12 个增到 15 个
 
 ### 变更
 
 - **作品图标统一为 `lucide:gamepad-2`**：分类卡、全局搜索的「作品」分组头、作品搜索页页头三处从 `lucide:file-text` 换成手柄，与 `SEARCH_TYPE_ICONS.vn` / `PLACEHOLDER_ICONS.vn` 的既有约定一致；`file-text` 只留给「列表 / 简介」这类语义
-- **跨站搜索用户脚本同步到 v2.7.4**：`VNDB跨站搜索.js` 从 v2.6.1 升级（+347 / −98 行），站点表与 App 侧不再有差异
-- **「关于」的第三方脚本版本号更新**：VNDB跨站搜索 v2.6.1 → v2.7.4；源码注释里的旧版本号同步（`touchgalSearch.js`、`VnDetail.vue`）
+- **跨站搜索用户脚本同步到 v2.8.0**：`VNDB跨站搜索.js` 从 v2.6.1 一路升到 v2.8.0（v2.7.4 为 +347 / −98 行，v2.8.0 再新增三个资源站），站点表与 App 侧完全一致
+- **「关于」的第三方脚本版本号更新**：VNDB跨站搜索 v2.6.1 → v2.8.0；源码注释里的旧版本号同步（`touchgalSearch.js`、`VnDetail.vue`、`redirectSkip.js`、`siteSearchInject.js`）
 
 ### 修复
 
@@ -24,6 +25,7 @@
 - **「忧郁的弟弟」条目点了报证书错误**：`ttloli.com` 证书已过期（`CERT_HAS_EXPIRED`），用户脚本 v2.7.4 也已移除该站，应用内一并删除
 - **TouchGal 外链仍可能落到过渡页**：补上 v2.7.4 的 `rewriteRedirectLinks`——把中转链接的 `href` 直接改写成真实地址（MutationObserver 跟踪动态节点），这样即使站点的 JS 抢走点击、或用户长按 / 键盘打开，`href` 本身也已是真实地址，不会再进等待页；轮询从 240 次降到 160 次，`hasWaitMarker` 加 800ms 缓存避免每 50ms 读一遍 body
 - **鲲galgame 关键词参数不对**：从 `?q=` 改回 `?keywords=`，与站点实际参数一致
+- **GalZY 一度被怀疑不消费 `?q=`**：核对站点 bundle 后确认 `/games` 用 `validateSearch` 声明了 `q` 字段并把它传给服务端 loader（无关关键词会返回「没有找到」），所以直接拼 URL 即可
 
 ---
 

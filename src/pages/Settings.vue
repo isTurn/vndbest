@@ -35,7 +35,7 @@ const THIRD_PARTY_CREDITS = [
   },
   {
     name: 'VNDB跨站搜索',
-    version: 'v2.7.4',
+    version: 'v2.8.0',
     desc: 'settings.about.credits_cross',
     url: 'https://greasyfork.org/zh-CN/scripts/600569'
   }
