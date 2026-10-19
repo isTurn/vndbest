@@ -58,6 +58,28 @@ export function getLabelIcon(id, fallback) {
   return fallback || 'lucide:tag'
 }
 
+/**
+ * 系统标签 id → 图标颜色（Tailwind 文字色类）
+ * 每种游玩状态一个色相，图标单独上色比整块徽章上色更清爽，
+ * 也能在「图标 + 灰字」的列表里一眼区分状态。
+ */
+const SYSTEM_LABEL_COLOR = {
+  1: 'text-emerald-500 dark:text-emerald-400', // 游玩中
+  2: 'text-sky-500 dark:text-sky-400', // 已通关
+  3: 'text-amber-500 dark:text-amber-400', // 搁置中
+  4: 'text-neutral-400 dark:text-neutral-500', // 已弃坑
+  5: 'text-violet-500 dark:text-violet-400', // 想玩
+  6: 'text-red-500 dark:text-red-400', // 黑名单
+  7: 'text-amber-500 dark:text-amber-400' // 已评分（奖章金）
+}
+
+/** 取得系统标签对应的图标颜色；自定义标签用中性灰 */
+export function getLabelColor(id, fallback) {
+  const color = SYSTEM_LABEL_COLOR[Number(id)]
+  if (color) return color
+  return fallback || 'text-neutral-400 dark:text-neutral-500'
+}
+
 /** 是否是预定义系统标签 */
 export function isSystemLabel(id) {
   const n = Number(id)

@@ -8,7 +8,7 @@ import { translateError } from '@/utils/errorMessage'
 import { Icon } from '@iconify/vue'
 import AppHeader from '@/components/AppHeader.vue'
 import { getUserList, getUserListLabels } from '@/api/vndb'
-import { getLabelName, getLabelIcon, isVotedLabel } from '@/utils/ulistLabels'
+import { getLabelName, getLabelIcon, getLabelColor, isVotedLabel } from '@/utils/ulistLabels'
 import VnList from '@/components/VnList.vue'
 import { IonPage, IonContent } from '@ionic/vue'
 
@@ -19,6 +19,8 @@ const { t } = useI18n()
 const labelText = (lbl) => getLabelName(lbl?.id, lbl?.label, t)
 // 系统标签配专属图标（游玩中/已通关/搁置中…），自定义标签用通用标签图标
 const labelIcon = (lbl) => getLabelIcon(lbl?.id, 'lucide:tag')
+// 图标单独上色，跟卡片徽章保持一致
+const labelColor = (lbl, active) => (active ? '' : getLabelColor(lbl?.id, 'text-neutral-400 dark:text-neutral-500'))
 
 // 登录状态
 const isLoggedIn = ref(false)
@@ -212,7 +214,7 @@ function goToLogin() {
             class="whitespace-nowrap pb-3 text-sm font-medium transition-all duration-200 border-b-2 shrink-0 flex items-center gap-1.5 focus:outline-none cursor-pointer"
             :class="activeLabelId === lbl.id ? 'border-neutral-900 dark:border-neutral-100 text-neutral-900 dark:text-neutral-100 font-semibold' : 'border-transparent text-neutral-500 hover:text-neutral-800 dark:hover:text-neutral-300'"
           >
-            <Icon :icon="labelIcon(lbl)" class="h-3.5 w-3.5 shrink-0" :class="activeLabelId === lbl.id ? '' : 'opacity-70'" />
+            <Icon :icon="labelIcon(lbl)" class="h-3.5 w-3.5 shrink-0" :class="labelColor(lbl, activeLabelId === lbl.id)" />
             <span>{{ labelText(lbl) }}</span>
             <span
               v-if="isVotedLabel(lbl.id)"

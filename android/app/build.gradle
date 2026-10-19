@@ -1,9 +1,15 @@
 apply plugin: 'com.android.application'
 
-// 发布签名：优先使用环境变量指定的正式 keystore，未配置时回退到 debug keystore，
-// 保证 CI 产出的 release APK 可以直接安装（未签名的 APK 无法安装）。
+// 发布签名：统一使用工程内固定的 debug keystore（android/app/debug.keystore），
+// 保证本地构建与 GitHub Actions 产出的 APK 签名一致，可以互相覆盖安装。
+// 该 keystore 由仓库携带，任何机器（含 CI）克隆后签名都完全相同。
+// 仍保留 ANDROID_KEYSTORE_PATH 环境变量作为可选覆盖（配置了正式 keystore 时优先用它）。
 def releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH")?.trim()
 def hasReleaseKeystore = releaseKeystorePath != null && !releaseKeystorePath.isEmpty() && file(releaseKeystorePath).exists()
+
+// 工程内置 debug keystore（随仓库提交，口令为 Android 约定的 android/android）
+def bundledDebugKeystore = file("debug.keystore")
+def useBundledDebugKeystore = bundledDebugKeystore.exists()
 
 // 版本号：优先取 CI 注入的环境变量；本地构建时按 CI 同一规则由 versionName 推导
 // （major*10000 + minor*100 + patch），避免本地包 versionCode 偏小导致
@@ -40,6 +46,16 @@ android {
                 storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
                 keyAlias System.getenv("ANDROID_KEY_ALIAS")
                 keyPassword System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
+        // 固定的 debug 签名：storeFile 显式指向工程内 keystore，
+        // 不再依赖 $ANDROID_USER_HOME/.android/debug.keystore（每台机器/每次 CI 都会重新生成，签名不一致）。
+        if (useBundledDebugKeystore) {
+            debug {
+                storeFile bundledDebugKeystore
+                storePassword "android"
+                keyAlias "androiddebugkey"
+                keyPassword "android"
             }
         }
     }

@@ -201,7 +201,12 @@ git push origin v1.0.4
 
 ## 签名配置
 
-CI 默认使用 **debug keystore** 签名 release APK，以便直接安装测试。如需正式签名，在仓库 Settings → Secrets 里配置：
+项目随仓库携带一个**固定的 debug keystore**（`android/app/debug.keystore`，口令 `android`，别名 `androiddebugkey`），`android/app/build.gradle` 里显式指定它给 `debug` signingConfig。release 变体默认就用这个签名，因此：
+
+- 本地 `./gradlew assembleRelease` 与 GitHub Actions 产出的 APK **签名完全一致**，可以互相覆盖安装；
+- 不再依赖 `$ANDROID_USER_HOME/.android/debug.keystore`（这个文件每台机器、每次 CI 都会重新生成，导致签名各不相同、本地包与发布包无法互相升级）。
+
+如需换成正式签名，在仓库 Settings → Secrets 里配置下面四项，CI 会优先使用它（本地也可用同名环境变量）：
 
 | Secret | 说明 |
 | --- | --- |
@@ -210,7 +215,9 @@ CI 默认使用 **debug keystore** 签名 release APK，以便直接安装测试
 | `ANDROID_KEY_ALIAS` | 密钥别名 |
 | `ANDROID_KEY_PASSWORD` | 密钥密码 |
 
-未配置时自动回退到 debug 签名。
+未配置时自动回退到内置 debug keystore。本地构建时若不想用正式签名，注意不要设置 `ANDROID_KEYSTORE_PATH` 环境变量。
+
+> 证书指纹（内置 debug keystore，SHA-256）：`D4:A2:28:CA:12:C8:0B:14:86:07:80:CC:8A:E5:8E:E8:2C:4F:F9:0D:85:18:9D:49:8B:CC:8E:80:D7:4E:F7:6E`
 
 ---
 

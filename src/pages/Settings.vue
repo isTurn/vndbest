@@ -7,6 +7,7 @@ import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
 import AppHeader from '@/components/AppHeader.vue'
 import BaseSelect from '@/components/BaseSelect.vue'
+import LanguageFlag from '@/components/LanguageFlag.vue'
 import { IonPage, IonContent, IonImg, IonSpinner } from '@ionic/vue'
 import { useTheme } from '@/composables/useTheme'
 import { useBackground } from '@/composables/useBackground'
@@ -164,9 +165,9 @@ const activeSectionMeta = computed(() => {
 const titleLangPriority = ref(JSON.parse(localStorage.getItem('vndb_title_lang_priority') || '["zh-Hans", "zh-Hant", "ja", "en"]'))
 
 const languageOptions = [
-  { value: 'zh', label: '简体中文' },
-  { value: 'en', label: 'English' },
-  { value: 'ja', label: '日本語' }
+  { value: 'zh', label: '简体中文', flag: 'zh-Hans' },
+  { value: 'en', label: 'English', flag: 'en' },
+  { value: 'ja', label: '日本語', flag: 'ja' }
 ]
 
 // 可选的标题语言
@@ -538,12 +539,20 @@ const themeOptions = [
               </div>
             </div>
 
-            <div class="flex items-center justify-between gap-2 py-2 border-t border-neutral-100 dark:border-neutral-700/50">
-              <label class="text-sm font-medium text-neutral-800 dark:text-neutral-200 whitespace-nowrap shrink-0">{{ t('settings.language') }}</label>
-              <BaseSelect
-                v-model="currentLang"
-                :options="languageOptions"
-              />
+            <div class="space-y-2 py-2 border-t border-neutral-100 dark:border-neutral-700/50">
+              <label class="block text-sm font-medium text-neutral-800 dark:text-neutral-200 whitespace-nowrap">{{ t('settings.language') }}</label>
+              <div class="flex rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 p-0.5 gap-0.5">
+                <button
+                  v-for="opt in languageOptions"
+                  :key="opt.value"
+                  @click="currentLang = opt.value"
+                  class="flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-md text-xs font-medium transition-all duration-200 whitespace-nowrap"
+                  :class="currentLang === opt.value ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 shadow-sm' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'"
+                >
+                  <LanguageFlag :lang="opt.flag" class="h-3.5 w-3.5" />
+                  <span>{{ opt.label }}</span>
+                </button>
+              </div>
             </div>
 
             <!-- 内置浏览器里的 VNDB 中文化 -->
@@ -561,8 +570,8 @@ const themeOptions = [
                 :class="translatorEnabled ? 'bg-sky-500' : 'bg-neutral-300 dark:bg-neutral-600'"
               >
                 <span
-                  class="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200"
-                  :class="translatorEnabled ? 'translate-x-[22px]' : 'translate-x-[2px]'"
+                  class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all duration-200"
+                  :class="translatorEnabled ? 'translate-x-[20px]' : 'translate-x-0'"
                 />
               </button>
             </div>
@@ -753,18 +762,25 @@ const themeOptions = [
                 <h3 class="text-sm font-semibold text-neutral-800 dark:text-neutral-200">{{ t('settings.privacy.card_list') }}</h3>
                 <p class="text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('settings.privacy.card_list_desc') }}</p>
               </div>
-              <div class="space-y-2">
+              <div class="space-y-3">
                 <div
                   v-for="key in ['sexual_vn', 'sexual_release', 'nsfw_cover_vn', 'nsfw_cover_release']"
                   :key="'card-' + key"
-                  class="flex items-center justify-between gap-2 py-2 px-3 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50"
+                  class="space-y-1.5"
                 >
-                  <span class="w-20 text-xs font-medium text-neutral-700 dark:text-neutral-300 whitespace-nowrap shrink-0">{{ t(`settings.privacy.label_${key}`) }}</span>
-                  <BaseSelect
-                    v-model="privacyCardList[key]"
-                    :options="cardListOptions"
-                    :label-renderer="(l) => t(l)"
-                  />
+                  <span class="block text-xs font-medium text-neutral-700 dark:text-neutral-300 whitespace-nowrap">{{ t(`settings.privacy.label_${key}`) }}</span>
+                  <div class="flex rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 p-0.5 gap-0.5">
+                    <button
+                      v-for="opt in cardListOptions"
+                      :key="opt.value"
+                      type="button"
+                      @click="privacyCardList[key] = opt.value"
+                      class="flex-1 flex items-center justify-center py-1.5 px-1 rounded-md text-[11px] font-medium leading-tight transition-all duration-200"
+                      :class="privacyCardList[key] === opt.value ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 shadow-sm' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'"
+                    >
+                      {{ t(opt.label) }}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -774,18 +790,25 @@ const themeOptions = [
                 <h3 class="text-sm font-semibold text-neutral-800 dark:text-neutral-200">{{ t('settings.privacy.detail_page') }}</h3>
                 <p class="text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('settings.privacy.detail_page_desc') }}</p>
               </div>
-              <div class="space-y-2">
+              <div class="space-y-3">
                 <div
                   v-for="key in ['sexual_vn', 'sexual_release', 'nsfw_cover_vn', 'nsfw_cover_release']"
                   :key="'detail-' + key"
-                  class="flex items-center justify-between gap-2 py-2 px-3 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50"
+                  class="space-y-1.5"
                 >
-                  <span class="w-20 text-xs font-medium text-neutral-700 dark:text-neutral-300 whitespace-nowrap shrink-0">{{ t(`settings.privacy.label_${key}`) }}</span>
-                  <BaseSelect
-                    v-model="privacyDetail[key]"
-                    :options="detailOptions"
-                    :label-renderer="(l) => t(l)"
-                  />
+                  <span class="block text-xs font-medium text-neutral-700 dark:text-neutral-300 whitespace-nowrap">{{ t(`settings.privacy.label_${key}`) }}</span>
+                  <div class="flex rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 p-0.5 gap-0.5">
+                    <button
+                      v-for="opt in detailOptions"
+                      :key="opt.value"
+                      type="button"
+                      @click="privacyDetail[key] = opt.value"
+                      class="flex-1 flex items-center justify-center py-1.5 px-1 rounded-md text-[11px] font-medium leading-tight transition-all duration-200"
+                      :class="privacyDetail[key] === opt.value ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 shadow-sm' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'"
+                    >
+                      {{ t(opt.label) }}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -795,18 +818,25 @@ const themeOptions = [
                 <h3 class="text-sm font-semibold text-neutral-800 dark:text-neutral-200">{{ t('settings.privacy.screenshots') }}</h3>
                 <p class="text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('settings.privacy.screenshots_desc') }}</p>
               </div>
-              <div class="space-y-2">
+              <div class="space-y-3">
                 <div
                   v-for="key in ['sexual_screenshot', 'nsfw_screenshot']"
                   :key="'screenshot-' + key"
-                  class="flex items-center justify-between gap-2 py-2 px-3 rounded-lg border border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-800/50"
+                  class="space-y-1.5"
                 >
-                  <span class="w-20 text-xs font-medium text-neutral-700 dark:text-neutral-300 whitespace-nowrap shrink-0">{{ t(`settings.privacy.label_${key}`) }}</span>
-                  <BaseSelect
-                    v-model="privacyScreenshots[key]"
-                    :options="screenshotOptions"
-                    :label-renderer="(l) => t(l)"
-                  />
+                  <span class="block text-xs font-medium text-neutral-700 dark:text-neutral-300 whitespace-nowrap">{{ t(`settings.privacy.label_${key}`) }}</span>
+                  <div class="flex rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 p-0.5 gap-0.5">
+                    <button
+                      v-for="opt in screenshotOptions"
+                      :key="opt.value"
+                      type="button"
+                      @click="privacyScreenshots[key] = opt.value"
+                      class="flex-1 flex items-center justify-center py-1.5 px-1 rounded-md text-[11px] font-medium leading-tight transition-all duration-200"
+                      :class="privacyScreenshots[key] === opt.value ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 shadow-sm' : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300'"
+                    >
+                      {{ t(opt.label) }}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

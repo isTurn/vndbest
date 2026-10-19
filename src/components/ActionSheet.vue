@@ -214,7 +214,7 @@ onUnmounted(() => {
                   v-if="opt.icon"
                   :icon="opt.icon"
                   class="h-4 w-4 shrink-0"
-                  :class="opt.destructive ? 'text-red-500 dark:text-red-400' : 'text-neutral-400 dark:text-neutral-500'"
+                  :class="opt.destructive ? 'text-red-500 dark:text-red-400' : (opt.color || 'text-neutral-400 dark:text-neutral-500')"
                 />
                 <div class="min-w-0 flex-1">
                   <div class="flex items-center gap-2">

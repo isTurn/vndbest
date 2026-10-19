@@ -16,7 +16,7 @@ import AgeRating from '@/components/AgeRating.vue'
 import { usePrivacy, getImageNsfwLevel } from '@/composables/usePrivacy'
 import { useTranslation } from '@/composables/useTranslation'
 import { useImageLoader } from '@/composables/useImageLoader'
-import { getLabelName, getLabelIcon, isVotedLabel, SYSTEM_LABEL_MAX_ID } from '@/utils/ulistLabels'
+import { getLabelName, getLabelIcon, getLabelColor, isVotedLabel, SYSTEM_LABEL_MAX_ID } from '@/utils/ulistLabels'
 import { PLATFORM_ICON_NAMES, APP_ICON_NAMES } from '@/icons/icon-names'
 import { buildCrossSearchLinks, buildCrossSearchTitles, pickDefaultTitle, openCrossSearchSite } from '@/utils/crossSearch'
 import { openExternalUrl, getReleaseLinkBrowserMode, getCrossSearchBrowserMode } from '@/utils/linkOpener'
@@ -224,7 +224,13 @@ const currentSelectedLabels = computed(() => {
     const entryLbl = collectionEntry.value?.labels?.find(l => l.id === id)
     const rawName = userLbl?.label || entryLbl?.label || entryLbl?.name || LABEL_NAMES[id] || ''
     const name = getLabelI18n(id, rawName)
-    return { id, name, isSystem: id <= SYSTEM_LABEL_MAX_ID, icon: getLabelIcon(id, 'lucide:tag') }
+    return {
+      id,
+      name,
+      isSystem: id <= SYSTEM_LABEL_MAX_ID,
+      icon: getLabelIcon(id, 'lucide:tag'),
+      color: getLabelColor(id, 'text-neutral-400 dark:text-neutral-500')
+    }
   })
 })
 
@@ -243,6 +249,7 @@ const currentStatusLabel = computed(() => {
       return {
         id: found.id,
         icon: found.icon,
+        color: found.color,
         name: `${found.name} (+${currentSelectedLabels.value.length - 1})`
       }
     }
@@ -251,6 +258,7 @@ const currentStatusLabel = computed(() => {
   return {
     id: first.id,
     icon: first.icon,
+    color: first.color,
     name: `${first.name} (+${currentSelectedLabels.value.length - 1})`
   }
 })
@@ -283,6 +291,7 @@ const statusOptions = computed(() => {
         label: labelText,
         count: lbl.count,
         icon: getLabelIcon(lbl.id, 'lucide:tag'),
+        color: getLabelColor(lbl.id, null),
         description: lbl.private ? t('vn.status.private') : ''
       })
     }
@@ -299,7 +308,8 @@ const statusOptions = computed(() => {
       options.push({
         value: l.id,
         label: labelText,
-        icon: getLabelIcon(l.id, 'lucide:tag')
+        icon: getLabelIcon(l.id, 'lucide:tag'),
+        color: getLabelColor(l.id, null)
       })
       existingSet.add(l.id)
     }
@@ -312,7 +322,8 @@ const statusOptions = computed(() => {
       options.push({
         value: id,
         label: getLabelI18n(id, defaultName),
-        icon: getLabelIcon(id, 'lucide:tag')
+        icon: getLabelIcon(id, 'lucide:tag'),
+        color: getLabelColor(id, null)
       })
     }
   }
@@ -969,20 +980,40 @@ const saveImageToPhone = async () => {
 }
 
 // 将容器滚动到对应的图片索引
-const scrollToIndex = (index, behavior = 'smooth') => {
+// 注意：弹层刚挂载时容器可能还没有布局（clientWidth 为 0），此时滚动会被
+// 忽略，画面停在第一张，等布局完成后再滚动就会看到「从第一张快速翻页过去」
+// 的动画。所以这里用 rAF 轮询等布局就绪，并且用直接赋值 scrollLeft 的方式
+// 做无动画跳转（容器上的 scroll-smooth 会让 scrollTo({behavior:'auto'}) 也走动画）。
+let pendingScrollRaf = 0
+const scrollToIndex = (index, behavior = 'smooth', attempt = 0) => {
   if (!scrollContainer.value) return
-  const containerWidth = scrollContainer.value.clientWidth
-  
+  const el = scrollContainer.value
+  const containerWidth = el.clientWidth
+
+  if (containerWidth <= 0) {
+    // 最多等约 30 帧（约 0.5s），避免异常情况下无限重试
+    if (attempt > 30) return
+    cancelAnimationFrame(pendingScrollRaf)
+    pendingScrollRaf = requestAnimationFrame(() => scrollToIndex(index, behavior, attempt + 1))
+    return
+  }
+
   isProgrammaticScroll = true
-  
-  scrollContainer.value.scrollTo({
-    left: index * containerWidth,
-    behavior: behavior
-  })
-  
+
   if (behavior === 'auto') {
-    isProgrammaticScroll = false
+    // 容器带 scroll-smooth，CSS 的 scroll-behavior 会连 scrollLeft 直接赋值
+    // 也走动画，所以这里临时把 scroll-behavior 关掉做真正的瞬时跳转。
+    const prevBehavior = el.style.scrollBehavior
+    el.style.scrollBehavior = 'auto'
+    el.scrollLeft = index * containerWidth
+    // 强制读一次布局，确保跳转已经生效
+    void el.scrollLeft
+    el.style.scrollBehavior = prevBehavior
+    requestAnimationFrame(() => {
+      isProgrammaticScroll = false
+    })
   } else {
+    el.scrollTo({ left: index * containerWidth, behavior })
     setTimeout(() => {
       isProgrammaticScroll = false
     }, 350)
@@ -2050,7 +2081,7 @@ watch(
                       <Icon
                         :icon="currentSelectedLabels.length === 0 ? 'lucide:bookmark-plus' : (currentStatusLabel?.icon || 'lucide:tag')"
                         class="h-3.5 w-3.5 shrink-0"
-                        :class="currentSelectedLabels.length === 0 ? 'text-neutral-400 dark:text-neutral-500' : 'text-amber-500 dark:text-amber-400'"
+                        :class="currentSelectedLabels.length === 0 ? 'text-neutral-400 dark:text-neutral-500' : (currentStatusLabel?.color || 'text-amber-500 dark:text-amber-400')"
                       />
                       <span class="truncate">{{ currentStatusLabel?.name || t('vn.status.none') }}</span>
                       <Icon icon="lucide:chevron-down" class="h-3 w-3 text-neutral-400 dark:text-neutral-500 shrink-0 ml-0.5" />
@@ -2068,7 +2099,7 @@ watch(
                       :key="lbl.id"
                       class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-200/60 dark:border-neutral-700/60 font-medium"
                     >
-                      <Icon :icon="lbl.icon" class="h-2.5 w-2.5" />
+                      <Icon :icon="lbl.icon" class="h-2.5 w-2.5" :class="lbl.color" />
                       {{ lbl.name }}
                     </span>
                   </div>
@@ -2221,7 +2252,7 @@ watch(
               :aria-checked="showDoujin"
             >
               <span
-                class="inline-block h-3 w-3 transform rounded-full bg-white transition-transform"
+                class="inline-block h-3 w-3 transform rounded-full bg-white transition-all"
                 :class="showDoujin ? 'translate-x-3.5' : 'translate-x-0.5'"
               />
             </button>
@@ -3184,7 +3215,7 @@ watch(
         <div 
           ref="scrollContainer"
           @scroll="handleScroll"
-          class="flex w-full h-[80vh] overflow-x-hidden snap-x snap-mandatory scroll-smooth no-scrollbar"
+          class="flex w-full h-[80vh] overflow-x-hidden snap-x snap-mandatory no-scrollbar"
           @click.stop
         >
           <div
@@ -3290,7 +3321,7 @@ watch(
                       :class="[
                         (opt.value === 0 ? editForm.selectedLabelIds.length === 0 : editForm.selectedLabelIds.includes(opt.value))
                           ? 'text-white dark:text-neutral-900'
-                          : (opt.destructive ? 'text-red-400' : 'text-neutral-400 dark:text-neutral-500')
+                          : (opt.destructive ? 'text-red-400' : (opt.color || 'text-neutral-400 dark:text-neutral-500'))
                       ]"
                     />
                     <span class="text-xs truncate flex-1">{{ opt.label }}</span>

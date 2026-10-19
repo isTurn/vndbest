@@ -9,7 +9,7 @@ import { IonImg, IonSpinner } from '@ionic/vue'
 import { usePrivacy, getImageNsfwLevel } from '@/composables/usePrivacy'
 import { useImageLoader } from '@/composables/useImageLoader'
 import { prefetchFromItems } from '@/utils/imagePrefetch'
-import { getLabelName, getLabelIcon } from '@/utils/ulistLabels'
+import { getLabelName, getLabelIcon, getLabelColor } from '@/utils/ulistLabels'
 import SkeletonCard from './SkeletonCard.vue'
 import ErrorState from './ErrorState.vue'
 import { useUlistStatus } from '@/composables/useUlistStatus'
@@ -374,6 +374,13 @@ function statusIcon(item) {
   return getLabelIcon(lbl.id, null)
 }
 
+// 图标单独上色：徽章底色保持中性，靠图标色区分游玩中/已通关/搁置中…
+function statusIconColor(item) {
+  const lbl = getStatusLabel(item)
+  if (!lbl) return ''
+  return getLabelColor(lbl.id, null)
+}
+
 // 收藏列表的条目自带全部 labels（系统标签 + 自定义标签），而标题行已经用
 // 状态徽章显示了其中优先级最高的那个系统标签。这里把它排掉，避免同一个
 // 「游玩中」在卡片上出现两次。
@@ -578,7 +585,7 @@ function toggleReverse() {
                       class="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border"
                       :class="statusStyle(item)"
                     >
-                      <Icon v-if="statusIcon(item)" :icon="statusIcon(item)" class="h-2.5 w-2.5 shrink-0" />
+                      <Icon v-if="statusIcon(item)" :icon="statusIcon(item)" class="h-2.5 w-2.5 shrink-0" :class="statusIconColor(item)" />
                       {{ labelText(getStatusLabel(item)) }}
                     </span>
                   </div>
@@ -598,7 +605,7 @@ function toggleReverse() {
                   :key="lbl.id"
                   class="inline-flex items-center gap-1 text-[10px] text-neutral-600 dark:text-neutral-400 bg-neutral-100/80 dark:bg-neutral-800/80 px-2 py-0.5 rounded-md border border-neutral-200/50 dark:border-neutral-700/50"
                 >
-                  <Icon :icon="getLabelIcon(lbl.id, 'lucide:tag')" class="h-3 w-3 text-neutral-400 shrink-0" />
+                  <Icon :icon="getLabelIcon(lbl.id, 'lucide:tag')" class="h-3 w-3 shrink-0" :class="getLabelColor(lbl.id, 'text-neutral-400 dark:text-neutral-500')" />
                   <span>{{ labelText(lbl) }}</span>
                 </div>
               </div>
@@ -714,7 +721,7 @@ function toggleReverse() {
                   class="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border"
                   :class="statusStyle(item)"
                 >
-                  <Icon v-if="statusIcon(item)" :icon="statusIcon(item)" class="h-2.5 w-2.5 shrink-0" />
+                  <Icon v-if="statusIcon(item)" :icon="statusIcon(item)" class="h-2.5 w-2.5 shrink-0" :class="statusIconColor(item)" />
                   {{ labelText(getStatusLabel(item)) }}
                 </span>
                 <span
@@ -799,7 +806,7 @@ function toggleReverse() {
                   class="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border"
                   :class="statusStyle(item)"
                 >
-                  <Icon v-if="statusIcon(item)" :icon="statusIcon(item)" class="h-2.5 w-2.5 shrink-0" />
+                  <Icon v-if="statusIcon(item)" :icon="statusIcon(item)" class="h-2.5 w-2.5 shrink-0" :class="statusIconColor(item)" />
                   {{ labelText(getStatusLabel(item)) }}
                 </span>
                 <span
@@ -846,7 +853,7 @@ function toggleReverse() {
                 class="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 scale-90 origin-left border"
                 :class="statusStyle(item)"
               >
-                <Icon v-if="statusIcon(item)" :icon="statusIcon(item)" class="h-2.5 w-2.5 shrink-0" />
+                <Icon v-if="statusIcon(item)" :icon="statusIcon(item)" class="h-2.5 w-2.5 shrink-0" :class="statusIconColor(item)" />
                 {{ labelText(getStatusLabel(item)) }}
               </span>
             </div>
