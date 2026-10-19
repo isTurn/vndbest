@@ -183,11 +183,10 @@
       "maintainer": "Maintainer",
       "upstream": "Original Project",
       "credits": "Third-party scripts",
-      "credits_note": "The in-app browser localization, cross-site search site table and TouchGal redirect-page skipping are based on the following open-source userscripts. All rights belong to their original authors.",
+      "credits_note": "The in-app browser localization and cross-site search site table are based on the following open-source userscripts. All rights belong to their original authors.",
       "credits_translator": "In-app browser translation script",
       "credits_lib": "Translation dictionary",
-      "credits_cross": "Cross-site search sites + TouchGal redirect skip",
-      "credits_touchgal": "TouchGal redirect-page skipping"
+      "credits_cross": "Cross-site search site table"
     },
     "theme": "Appearance",
     "theme_follow_system": "System",

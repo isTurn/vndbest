@@ -183,11 +183,10 @@
       "maintainer": "完善者",
       "upstream": "上游原项目",
       "credits": "第三方脚本",
-      "credits_note": "内置浏览器中文化、跨站搜索站点表与 TouchGal 外链过渡页跳过逻辑来源于以下开源油猴脚本，版权归原作者所有。",
+      "credits_note": "内置浏览器中文化与跨站搜索站点表来源于以下开源油猴脚本，版权归原作者所有。",
       "credits_translator": "内置浏览器中文化脚本",
       "credits_lib": "中文化翻译词典",
-      "credits_cross": "跨站搜索站点表 + TouchGal 过渡页跳过",
-      "credits_touchgal": "TouchGal 外链过渡页跳过"
+      "credits_cross": "跨站搜索站点表"
     },
     "theme": "外观主题",
     "theme_follow_system": "跟随系统",

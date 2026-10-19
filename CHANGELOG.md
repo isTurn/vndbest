@@ -16,7 +16,7 @@
 ### 变更
 
 - **跨站搜索用户脚本同步到 v2.6.1**：`VNDB跨站搜索.js` 从 v2.5.14 升级，`@run-at` 改为 `document-start`、`@match` 扩大到 TouchGal 全站，新增外链跳转页自动跳过等待（解析 `url` / `target` / `go` 等参数、`meta refresh` 与「继续访问」链接）；站点表 41 项未变，应用内跨站搜索的站点数据不受影响
-- **「关于」的第三方脚本版本号更新**：VNDB跨站搜索 v2.5.14 → v2.6.1，并补登 TouchGal 自动跳转 v2.2
+- **「关于」的第三方脚本版本号更新**：VNDB跨站搜索从 v2.5.14 更正为 v2.6.1（列表仍只保留原有的三个脚本，过渡页跳过作为应用内置能力呈现）
 - `scripts/build-vndb-translator.cjs` 的 banner 版本号改为从源脚本的 `@version` 读取，不再写死（此前写死 v5.0.1 / v5.0.0，容易与实际脚本脱节）；源码注释里的过时版本号同步（`touchgalSearch.js` v2.5.6 → v2.6.1、`VnDetail.vue` v2.5.14 → v2.6.1）
 - README 的内置浏览器章节补充工具栏按钮、TouchGal 开关与过渡页跳过
 

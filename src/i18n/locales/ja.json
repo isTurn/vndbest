@@ -183,11 +183,10 @@
       "maintainer": "メンテナー",
       "upstream": "オリジナルプロジェクト",
       "credits": "サードパーティスクリプト",
-      "credits_note": "アプリ内ブラウザの中国語化・横断検索サイト表・TouchGal 外部リンク中継ページのスキップは、以下のオープンソースユーザースクリプトを元にしています。著作権は原作者に帰属します。",
+      "credits_note": "アプリ内ブラウザの中国語化・横断検索サイト表は、以下のオープンソースユーザースクリプトを元にしています。著作権は原作者に帰属します。",
       "credits_translator": "アプリ内ブラウザ中国語化スクリプト",
       "credits_lib": "中国語化辞書",
-      "credits_cross": "横断検索サイト表 + TouchGal リダイレクトスキップ",
-      "credits_touchgal": "TouchGal 中継ページのスキップ"
+      "credits_cross": "横断検索サイト表"
     },
     "theme": "外観",
     "theme_follow_system": "システムに従う",

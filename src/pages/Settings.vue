@@ -38,12 +38,6 @@ const THIRD_PARTY_CREDITS = [
     version: 'v2.6.1',
     desc: 'settings.about.credits_cross',
     url: 'https://greasyfork.org/zh-CN/scripts/600569'
-  },
-  {
-    name: 'TouchGal 自动跳转',
-    version: 'v2.2',
-    desc: 'settings.about.credits_touchgal',
-    url: `${REPO_URL}/blob/main/src/utils/redirectSkip.js`
   }
 ]
 

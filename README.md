@@ -263,9 +263,8 @@ git push origin v1.0.6
 | [VNDB优先原文和中文化](https://greasyfork.org/zh-CN/scripts/442355) v5.0.1 | 在内置浏览器里把 VNDB 页面中文化 | [Greasy Fork #442355](https://greasyfork.org/zh-CN/scripts/442355) |
 | [VNDBTranslatorLib](https://greasyfork.org/scripts/445990-vndbtranslatorlib) v5.0.0 | 上者的翻译词典（其 `@require` 依赖） | [Greasy Fork #445990](https://greasyfork.org/scripts/445990) |
 | [VNDB跨站搜索](https://greasyfork.org/zh-CN/scripts/600569) v2.6.1 | 跨站搜索站点表来源 | [Greasy Fork #600569](https://greasyfork.org/zh-CN/scripts/600569) |
-| [TouchGal 自动跳转](https://github.com/isTurn/vndbest/blob/main/src/utils/redirectSkip.js) v2.2 | TouchGal 外链过渡页跳过 | 本地脚本，逻辑已移植进 `src/utils/redirectSkip.js` |
 
-三个油猴脚本以源码形式固化在仓库中（`scripts/vendor/`、`VNDB优先原文和中文化.js`、`VNDB跨站搜索.js`），由 `scripts/build-vndb-translator.cjs` 拼接成可注入的 IIFE；TouchGal 过渡页跳过移植进 `src/utils/redirectSkip.js`。感谢以上脚本作者的劳动，版权归原作者所有；若原作者有异议，请联系移除。
+以上油猴脚本以源码形式固化在仓库中（`scripts/vendor/`、`VNDB优先原文和中文化.js`、`VNDB跨站搜索.js`），由 `scripts/build-vndb-translator.cjs` 拼接成可注入的 IIFE。TouchGal 过渡页跳过的逻辑参考了同类脚本的思路，已重写并移植进 `src/utils/redirectSkip.js`。感谢以上脚本作者的劳动，版权归原作者所有；若原作者有异议，请联系移除。
 
 界面数据来自 [VNDB](https://vndb.org/) 的公开 Kana API。本项目与 VNDB 官方无关。
 
