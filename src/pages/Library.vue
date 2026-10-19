@@ -28,7 +28,7 @@ const libraryItems = computed(() => [
   {
     id: 'vn',
     title: t('library.vn'),
-    icon: 'lucide:file-text',
+    icon: 'lucide:gamepad-2',
     color: 'text-blue-500',
     bgColor: 'bg-blue-50',
     path: '/browse/vn'
@@ -267,7 +267,7 @@ async function runSearch(keyword) {
     result.push({
       key: 'vns',
       labelKey: 'library.vn',
-      icon: 'lucide:file-text',
+      icon: 'lucide:gamepad-2',
       color: 'text-sky-500',
       hasMore: Boolean(vnSettled.value?.more),
       items: vnItems.map((it) => normalizeItem('vns', it))
