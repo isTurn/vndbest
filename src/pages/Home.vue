@@ -51,7 +51,6 @@ const loadingSections = ref({
   birthday: true
 })
 
-// ============ 已保存搜索结果预览 ============
 const savedSearchResults = ref({})
 const savedSearchLoading = ref({})
 
@@ -60,7 +59,6 @@ function getTodayStr() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-// 从保存的搜索条件重建 API 过滤器
 function buildFiltersFromSaved(item) {
   const f = item.filters || {}
   const filters = []
@@ -163,7 +161,6 @@ function buildFiltersFromSaved(item) {
   return { filters: finalFilters, sort, reverse }
 }
 
-// 获取已保存搜索的结果预览
 async function fetchSavedSearchResults() {
   const searches = displayedSavedSearches.value
   if (!searches.length) return
@@ -204,7 +201,6 @@ async function fetchSavedSearchResults() {
   }
 }
 
-// 获取结果项的显示信息
 function getResultDisplay(search, item) {
   const type = search.type
   if (type === 'releases') {
@@ -262,7 +258,6 @@ function getResultDisplay(search, item) {
   return { image: null, title: '', subtitle: '', badges: [], blur: false, placeholderIcon: PLACEHOLDER_ICONS.fallback }
 }
 
-// 点击结果项跳转
 function handleSavedSearchItemClick(search, item) {
   const routes = {
     releases: '/release/',
@@ -299,7 +294,6 @@ function deduplicateCharacters(chars) {
 onMounted(async () => {
   const today = new Date().toISOString().split('T')[0]
 
-  // 1. 获取统计数据
   getStats().then(res => {
     stats.value = res
     loadingSections.value.stats = false
@@ -308,8 +302,7 @@ onMounted(async () => {
     loadingSections.value.stats = false
   })
 
-  // 2. 获取发布信息
-  // 刚刚发布: 时间倒序排行今天及之前的 Release
+  // 刚刚发布：按发售日倒序取今天及以前
   getReleaseList(['released', '<=', today], { sort: 'released', reverse: true, results: 5 })
     .then(res => {
       justReleased.value = res.results
@@ -320,7 +313,7 @@ onMounted(async () => {
       loadingSections.value.releases = false
     })
 
-  // 即将发布: 时间正序排行今天之后的 Release
+  // 即将发布：按发售日正序取今天以后
   getReleaseList(['released', '>', today], { sort: 'released', reverse: false, results: 5 })
     .then(res => {
       upcomingReleases.value = res.results
@@ -329,7 +322,6 @@ onMounted(async () => {
       console.error('获取即将发布失败:', err)
     })
 
-  // 2.5 获取今日和明日生日角色
   const [todayMonth, todayDay] = getBirthdayParams(0)
   const [tomorrowMonth, tomorrowDay] = getBirthdayParams(1)
 
@@ -347,10 +339,8 @@ onMounted(async () => {
     loadingSections.value.birthday = false
   })
 
-  // 3. 获取已保存搜索的结果预览
   fetchSavedSearchResults()
 
-  // 4. 检查版本更新（静默检查）
   checkForUpdate().then((res) => {
     if (res?.hasUpdate && res.version && res.version !== ignoredVersion.value) {
       showUpdateModal.value = true
@@ -383,12 +373,10 @@ function handleReleaseClick(release) {
   router.push(`/release/${release.id}`)
 }
 
-// 角色生日点击跳转
 function handleCharacterClick(character) {
   router.push(`/character/${character.id}`)
 }
 
-// 跳转到角色搜索页（带生日筛选）
 function navigateToBirthdaySearch(month, day) {
   router.push({ path: '/browse/characters', query: { birthday: `${month},${day}` } })
 }
@@ -422,7 +410,6 @@ function isReleaseHidden(item) {
   return action === 'hide'
 }
 
-// 过滤后的列表
 const filteredJustReleased = computed(() => {
   return justReleased.value.filter(item => !isReleaseHidden(item))
 })
@@ -431,15 +418,12 @@ const filteredUpcomingReleases = computed(() => {
   return upcomingReleases.value.filter(item => !isReleaseHidden(item))
 })
 
-// ============ Bottom Sheet 状态 ============
 const showBottomSheet = ref(false)
 const bottomSheetSearch = ref(null)
 
-// ============ 删除确认弹窗状态 ============
 const showDeleteConfirm = ref(false)
 const deleteConfirmSearch = ref(null)
 
-// 刷新单个已保存搜索的结果
 async function refreshSingleSearch(search) {
   savedSearchLoading.value[search.id] = true
   try {
@@ -472,18 +456,15 @@ async function refreshSingleSearch(search) {
   }
 }
 
-// 打开更多操作菜单
 function openMoreActions(search) {
   bottomSheetSearch.value = search
   showBottomSheet.value = true
 }
 
-// 关闭 bottom sheet
 function closeBottomSheet() {
   showBottomSheet.value = false
 }
 
-// 处理 bottom sheet 操作
 async function handleBottomSheetAction(action) {
   const search = bottomSheetSearch.value
   showBottomSheet.value = false
@@ -498,13 +479,11 @@ async function handleBottomSheetAction(action) {
   bottomSheetSearch.value = null
 }
 
-// 关闭删除确认弹窗
 function closeDeleteConfirm() {
   showDeleteConfirm.value = false
   deleteConfirmSearch.value = null
 }
 
-// 确认删除
 function confirmDelete() {
   const search = deleteConfirmSearch.value
   if (search) {
@@ -515,7 +494,6 @@ function confirmDelete() {
   closeDeleteConfirm()
 }
 
-// 确认更新
 function handleUpdateConfirm(options) {
   if (options?.ignore && latestVersion.value) {
     setIgnoredVersion(latestVersion.value)
@@ -523,7 +501,6 @@ function handleUpdateConfirm(options) {
   showUpdateModal.value = false
 }
 
-// 取消更新
 function handleUpdateCancel(options) {
   if (options?.ignore && latestVersion.value) {
     setIgnoredVersion(latestVersion.value)
@@ -532,7 +509,6 @@ function handleUpdateCancel(options) {
   showToast(t('update.manual_check_tip'), 'info', 3000)
 }
 
-// 已保存搜索：最多显示前 5 个
 const displayedSavedSearches = computed(() => {
   return savedSearches.value.slice(0, 5)
 })
@@ -544,7 +520,6 @@ function navigateToSavedSearch(item) {
   }
 }
 
-// 获取保存搜索的筛选条件摘要
 function getFilterSummary(item) {
   const parts = []
   const f = item.filters || {}
@@ -569,37 +544,47 @@ function getFilterSummary(item) {
   <div class="page-container pb-24 space-y-6">
     <AppHeader mode="page" icon="lucide:home" :title="t('home.title')" :subtitle="t('home.subtitle')" />
 
-    <!-- 统计区块：标题在左（与其他卡片标题同字号、不换行），四项数据在右侧排成 2×2 -->
-    <div class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 shadow-xs">
-      <div class="flex items-center gap-3">
-        <h2 class="text-sm font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2 shrink-0 whitespace-nowrap">
-          <Icon icon="lucide:info" class="h-4 w-4 shrink-0 text-neutral-500 dark:text-neutral-400" />
-          <span>{{ t('home.stats_short', '平台数据') }}</span>
-        </h2>
+    <div class="flex items-stretch gap-2">
+      <div class="h-12 min-w-0 flex-1 overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-1.5 shadow-xs">
+        <div class="flex h-full items-center gap-3">
+          <h2 class="text-sm font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2 shrink-0 whitespace-nowrap">
+            <Icon icon="lucide:info" class="h-4 w-4 shrink-0 text-neutral-500 dark:text-neutral-400" />
+            <span>{{ t('home.stats_short', '平台数据') }}</span>
+          </h2>
 
-        <div v-if="loadingSections.stats" class="ml-auto grid grid-cols-2 gap-1 min-w-0">
-          <div v-for="i in 4" :key="i" class="animate-pulse rounded-md bg-neutral-100 dark:bg-neutral-800 h-5"></div>
-        </div>
+          <div v-if="loadingSections.stats" class="ml-auto grid grid-cols-2 gap-0.5 min-w-0">
+            <div v-for="i in 4" :key="i" class="animate-pulse rounded-md bg-neutral-100 dark:bg-neutral-800 h-[15px]"></div>
+          </div>
 
-        <div v-else-if="stats" class="ml-auto grid grid-cols-2 gap-1 min-w-0">
-          <div class="flex items-baseline justify-between gap-1 rounded-md bg-neutral-50 dark:bg-neutral-800/50 px-1.5 py-0.5 min-w-0">
-            <span class="truncate text-[10px] leading-none text-neutral-500 dark:text-neutral-400">{{ t('home.vn') }}</span>
-            <span class="shrink-0 text-[11px] font-bold leading-none text-neutral-950 dark:text-neutral-50 tabular-nums">{{ stats.vn?.toLocaleString() || '0' }}</span>
-          </div>
-          <div class="flex items-baseline justify-between gap-1 rounded-md bg-neutral-50 dark:bg-neutral-800/50 px-1.5 py-0.5 min-w-0">
-            <span class="truncate text-[10px] leading-none text-neutral-500 dark:text-neutral-400">{{ t('home.releases') }}</span>
-            <span class="shrink-0 text-[11px] font-bold leading-none text-neutral-950 dark:text-neutral-50 tabular-nums">{{ stats.releases?.toLocaleString() || '0' }}</span>
-          </div>
-          <div class="flex items-baseline justify-between gap-1 rounded-md bg-neutral-50 dark:bg-neutral-800/50 px-1.5 py-0.5 min-w-0">
-            <span class="truncate text-[10px] leading-none text-neutral-500 dark:text-neutral-400">{{ t('home.producers') }}</span>
-            <span class="shrink-0 text-[11px] font-bold leading-none text-neutral-950 dark:text-neutral-50 tabular-nums">{{ stats.producers?.toLocaleString() || '0' }}</span>
-          </div>
-          <div class="flex items-baseline justify-between gap-1 rounded-md bg-neutral-50 dark:bg-neutral-800/50 px-1.5 py-0.5 min-w-0">
-            <span class="truncate text-[10px] leading-none text-neutral-500 dark:text-neutral-400">{{ t('home.staff') }}</span>
-            <span class="shrink-0 text-[11px] font-bold leading-none text-neutral-950 dark:text-neutral-50 tabular-nums">{{ stats.staff?.toLocaleString() || '0' }}</span>
+          <div v-else-if="stats" class="ml-auto grid grid-cols-2 gap-0.5 min-w-0">
+            <div class="flex items-baseline justify-between gap-1 rounded-md bg-neutral-50 dark:bg-neutral-800/50 px-1.5 py-0.5 min-w-0">
+              <span class="truncate text-[10px] leading-none text-neutral-500 dark:text-neutral-400">{{ t('home.vn') }}</span>
+              <span class="shrink-0 text-[11px] font-bold leading-none text-neutral-950 dark:text-neutral-50 tabular-nums">{{ stats.vn?.toLocaleString() || '0' }}</span>
+            </div>
+            <div class="flex items-baseline justify-between gap-1 rounded-md bg-neutral-50 dark:bg-neutral-800/50 px-1.5 py-0.5 min-w-0">
+              <span class="truncate text-[10px] leading-none text-neutral-500 dark:text-neutral-400">{{ t('home.releases') }}</span>
+              <span class="shrink-0 text-[11px] font-bold leading-none text-neutral-950 dark:text-neutral-50 tabular-nums">{{ stats.releases?.toLocaleString() || '0' }}</span>
+            </div>
+            <div class="flex items-baseline justify-between gap-1 rounded-md bg-neutral-50 dark:bg-neutral-800/50 px-1.5 py-0.5 min-w-0">
+              <span class="truncate text-[10px] leading-none text-neutral-500 dark:text-neutral-400">{{ t('home.producers') }}</span>
+              <span class="shrink-0 text-[11px] font-bold leading-none text-neutral-950 dark:text-neutral-50 tabular-nums">{{ stats.producers?.toLocaleString() || '0' }}</span>
+            </div>
+            <div class="flex items-baseline justify-between gap-1 rounded-md bg-neutral-50 dark:bg-neutral-800/50 px-1.5 py-0.5 min-w-0">
+              <span class="truncate text-[10px] leading-none text-neutral-500 dark:text-neutral-400">{{ t('home.staff') }}</span>
+              <span class="shrink-0 text-[11px] font-bold leading-none text-neutral-950 dark:text-neutral-50 tabular-nums">{{ stats.staff?.toLocaleString() || '0' }}</span>
+            </div>
           </div>
         </div>
       </div>
+
+      <button
+        @click="handleRandomClick"
+        :disabled="loadingSections.random"
+        class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-purple-600 dark:text-purple-400 transition hover:bg-purple-50 dark:hover:bg-purple-900/20 active:bg-purple-100 dark:active:bg-purple-900/40 shadow-xs cursor-pointer disabled:opacity-50"
+        :aria-label="t('home.random_vn')"
+      >
+        <Icon :icon="loadingSections.random ? 'eos-icons:loading' : 'lucide:dices'" class="h-5 w-5" />
+      </button>
     </div>
 
     <!-- 角色生日板块 -->
@@ -879,23 +864,6 @@ function getFilterSummary(item) {
       </div>
     </div>
 
-    <!-- 随机作品 (Button Style) -->
-    <button
-      @click="handleRandomClick"
-      :disabled="loadingSections.random"
-      class="flex items-center justify-between rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 text-left transition hover:bg-neutral-50 dark:hover:bg-neutral-800 active:bg-neutral-100 dark:active:bg-neutral-700 shadow-xs w-full cursor-pointer disabled:opacity-50"
-    >
-      <div class="flex items-center gap-3">
-        <div class="grid h-10 w-10 place-items-center rounded-lg bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
-          <Icon :icon="loadingSections.random ? 'eos-icons:loading' : 'lucide:dices'" class="h-5 w-5" />
-        </div>
-        <div>
-          <span class="text-sm font-semibold text-neutral-800 dark:text-neutral-200 block">{{ t('home.random_vn') }}</span>
-          <span class="text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('home.random_vn_tip') }}</span>
-        </div>
-      </div>
-      <Icon icon="lucide:chevron-right" class="h-4 w-4 text-neutral-400 dark:text-neutral-500" />
-    </button>
 
     <!-- 已保存的搜索结果预览 -->
     <template v-for="search in displayedSavedSearches" :key="search.id">

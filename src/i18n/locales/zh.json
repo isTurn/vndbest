@@ -209,7 +209,21 @@
     "release_link_browser": "版本外链打开方式",
     "release_link_browser_desc": "只影响版本详情里的 VNDB 官方外链。",
     "vndb_translator": "VNDB 页面中文化",
-    "vndb_translator_desc": "在内置浏览器里打开 vndb.org 时自动注入中文化脚本（内置「VNDB优先原文和中文化」）"
+    "vndb_translator_desc": "在内置浏览器里打开 vndb.org 时自动注入中文化脚本（内置「VNDB优先原文和中文化」）",
+    "browser_custom": "自选浏览器",
+    "browser_pick_title": "选择浏览器",
+    "browser_pick_desc": "选中后所有用「系统浏览器」打开的外链都会交给这个应用。",
+    "browser_default": "系统默认",
+    "browser_none": "未检测到可用的浏览器",
+    "browser_unavailable": "仅 Android 客户端可用",
+    "browser_current": "当前：{name}",
+    "browser_desc_custom": "外链由指定的浏览器应用打开，不再弹出系统选择框。",
+    "browser_ask": "每次询问",
+    "browser_ask_desc": "每次都弹出系统的「打开方式」选择框",
+    "inapp_external_button": "内置浏览器跳转外部浏览器",
+    "inapp_external_button_desc": "在内置浏览器顶部工具栏右侧显示一个按钮，点一下把当前页面交给系统浏览器（或自选浏览器）打开。",
+    "touchgal_inapp": "TouchGal 用内置浏览器打开",
+    "touchgal_inapp_desc": "打开后不管上面怎么选，TouchGal 都固定在内置浏览器里打开，页面加载完成后可再用工具栏按钮甩给外部浏览器。"
   },
   "nav": {
     "home": "主页",

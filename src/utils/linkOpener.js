@@ -11,21 +11,95 @@
  * - 非原生平台（浏览器里跑 dev）一律走默认行为，内置浏览器只在 App 里可用。
  */
 
-import { Capacitor } from '@capacitor/core'
+import { Capacitor, registerPlugin } from '@capacitor/core'
+
+const ExternalBrowser = registerPlugin('ExternalBrowser')
 
 export const LINK_BROWSER_KEY = 'vndb_link_browser'
 // 跨站搜索单独设置（和「版本外链」分开管理）
 export const LINK_BROWSER_CROSS_KEY = 'vndb_link_browser_cross'
 // 版本详情里 VNDB 提供的外链单独设置
 export const LINK_BROWSER_RELEASE_KEY = 'vndb_link_browser_release'
+
 export const LINK_BROWSER_INAPP = 'inapp'
 export const LINK_BROWSER_SYSTEM = 'system'
+export const LINK_BROWSER_CUSTOM = 'custom'
+// 每次点击都弹系统「打开方式」选择框
+export const LINK_BROWSER_CHOOSER = 'chooser'
+
+// 传给原生插件的特殊标记：让系统弹选择框
+export const CHOOSER_MARKER = '__chooser__'
+
+// 自选浏览器（Android 包名），空字符串表示跟随系统默认浏览器
+const CUSTOM_BROWSER_KEY = 'vndb_custom_browser_pkg'
+
+// TouchGal 单独开关：打开后不管「跨站搜索打开方式」怎么设，都用内置浏览器打开，
+// 页面正常加载完成后再用内置浏览器工具栏的按钮甩给外部浏览器。
+const TOUCHGAL_INAPP_KEY = 'vndb_touchgal_inapp'
+
+function isNative() {
+  try {
+    return Capacitor.isNativePlatform()
+  } catch (e) {
+    return false
+  }
+}
+
+/** TouchGal 是否固定用内置浏览器打开（默认关） */
+export function getTouchGalInAppEnabled() {
+  try {
+    return localStorage.getItem(TOUCHGAL_INAPP_KEY) === '1'
+  } catch (e) {
+    return false
+  }
+}
+
+export function setTouchGalInAppEnabled(on) {
+  try {
+    localStorage.setItem(TOUCHGAL_INAPP_KEY, on ? '1' : '0')
+  } catch (e) {
+    /* 忽略隐私模式下的写入失败 */
+  }
+}
+
+/** 读取自选浏览器包名，未设置时返回空串 */
+export function getCustomBrowserPackage() {
+  try {
+    return localStorage.getItem(CUSTOM_BROWSER_KEY) || ''
+  } catch (e) {
+    return ''
+  }
+}
+
+export function setCustomBrowserPackage(pkg) {
+  try {
+    const v = pkg || ''
+    if (v && v !== LINK_BROWSER_CHOOSER) localStorage.setItem(CUSTOM_BROWSER_KEY, v)
+    else localStorage.removeItem(CUSTOM_BROWSER_KEY)
+  } catch (e) {
+    /* 忽略隐私模式下的写入失败 */
+  }
+}
+
+/** 列出手机上能打开网页的应用；非原生平台返回空数组 */
+export async function listInstalledBrowsers() {
+  if (!isNative()) return []
+  try {
+    const res = await ExternalBrowser.listBrowsers()
+    return Array.isArray(res?.browsers) ? res.browsers : []
+  } catch (e) {
+    console.warn('[linkOpener] listBrowsers failed:', e)
+    return []
+  }
+}
 
 function readMode(key) {
   try {
     const v = localStorage.getItem(key)
     if (v === LINK_BROWSER_SYSTEM) return LINK_BROWSER_SYSTEM
     if (v === LINK_BROWSER_INAPP) return LINK_BROWSER_INAPP
+    // 自选浏览器没有实际选定包名时视为未设置，避免选了又没装任何浏览器导致点不动
+    if (v === LINK_BROWSER_CUSTOM && getCustomBrowserPackage()) return LINK_BROWSER_CUSTOM
     return ''
   } catch (e) {
     return ''
@@ -34,7 +108,10 @@ function readMode(key) {
 
 function writeMode(key, mode) {
   try {
-    localStorage.setItem(key, mode === LINK_BROWSER_SYSTEM ? LINK_BROWSER_SYSTEM : LINK_BROWSER_INAPP)
+    localStorage.setItem(
+      key,
+      mode === LINK_BROWSER_SYSTEM || mode === LINK_BROWSER_CUSTOM ? mode : LINK_BROWSER_INAPP
+    )
   } catch (e) {
     /* 忽略隐私模式下的写入失败 */
   }
@@ -71,11 +148,23 @@ export function setReleaseLinkBrowserMode(mode) {
 /**
  * 系统浏览器打开（Capacitor 会把非 app 域名的跳转交给 Intent.ACTION_VIEW）。
  *
+ * 设置了「自选浏览器」时改走原生插件，用指定包名的应用打开；否则退化成 <a> 点击。
+ *
  * 注意：这里必须打上 data-native 标记，否则下面 installLinkInterceptor 的
  * 全局捕获监听会把我们自己这次程序化点击又拦下来、再开一次内置浏览器
  * —— 表现就是「切到系统浏览器还是用内置浏览器」。
  */
-export function openWithSystemBrowser(url) {
+export async function openWithSystemBrowser(url) {
+  const customPkg = getCustomBrowserPackage()
+  if (customPkg && isNative()) {
+    try {
+      await ExternalBrowser.open({ url, packageName: customPkg })
+      return
+    } catch (e) {
+      console.warn('[linkOpener] custom browser failed, fallback to default:', e)
+    }
+  }
+
   const a = document.createElement('a')
   a.href = url
   a.target = '_blank'
@@ -91,6 +180,8 @@ export function openWithSystemBrowser(url) {
 /** 内置 WebView 打开 */
 async function openWithInAppBrowser(url) {
   const { InAppBrowser, ToolBarType } = await import('@capgo/inappbrowser')
+  // 工具栏上的「用外部浏览器打开」按钮（可在设置里关掉）
+  const { buildExternalButtonOption, noteBrowserUrl } = await import('./inAppBrowserTools')
   const { id } = await InAppBrowser.openWebView({
     url,
     // 导航栏自带标题与前进/后退/刷新，站内跳转不用回到 App
@@ -98,7 +189,8 @@ async function openWithInAppBrowser(url) {
     activeNativeNavigationForWebview: true,
     // 立即弹出，页面在可见的 WebView 里加载，避免用户以为点了没反应
     isPresentAfterPageLoad: false,
-    backgroundColor: 'white'
+    backgroundColor: 'white',
+    ...buildExternalButtonOption()
   })
   // 先把初始 URL 记下来：首次 browserPageLoaded 可能早于 urlChangeEvent，
   // 中文化注入要靠这个 URL 判断是不是 vndb.org
@@ -109,6 +201,8 @@ async function openWithInAppBrowser(url) {
     } catch (e) {
       /* 中文化模块不可用时忽略 */
     }
+    // 记下初始地址：工具栏按钮点击时事件不带 url，靠这里缓存
+    noteBrowserUrl(id, url)
   }
 }
 
@@ -157,7 +251,7 @@ export async function openExternalUrl(url, opts = {}) {
       console.error('[linkOpener] in-app browser failed, fallback to system:', e)
     }
   }
-  openWithSystemBrowser(href)
+  openWithSystemBrowser(href).catch(() => {})
 }
 
 /**

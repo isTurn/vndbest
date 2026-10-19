@@ -445,6 +445,9 @@ export async function openTouchGalSearch(keyword) {
   }
 
   try {
+    // 工具栏上的「用外部浏览器打开」按钮：TouchGal 页面经常有 Cloudflare 挑战、
+    // 资源加载不全，用户需要一个「页面能看但功能不对」时的出口。
+    const { buildExternalButtonOption, noteBrowserUrl } = await import('./inAppBrowserTools')
     const res = await InAppBrowser.openWebView({
       url: TG_SEARCH_URL,
       title: 'TouchGal',
@@ -453,10 +456,13 @@ export async function openTouchGalSearch(keyword) {
       // 立即弹出 WebView（页面在里面加载），否则要等整页加载完才出现，
       // 用户会以为点了没反应。注入仍然等 browserPageLoaded 之后再做。
       isPresentAfterPageLoad: false,
-      backgroundColor: 'white'
+      backgroundColor: 'white',
+      ...buildExternalButtonOption()
     })
     webviewId = res?.id ?? null
     state.webviewId = webviewId
+    // 按钮点击事件不带 url，先把入口地址记下来
+    noteBrowserUrl(webviewId, TG_SEARCH_URL)
   } catch (e) {
     console.error('[touchgal] openWebView failed:', e)
     if (active === state) active = null

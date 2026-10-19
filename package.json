@@ -1,12 +1,14 @@
 {
   "name": "vndbest",
   "private": true,
-  "version": "1.0.6",
+  "version": "1.0.7",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "postinstall": "node scripts/patch-inappbrowser.cjs",
+    "patch:inappbrowser": "node scripts/patch-inappbrowser.cjs"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.0",

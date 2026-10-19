@@ -1,5 +1,5 @@
 /**
- * 跨站搜索站点表（移植自 VNDB 跨站搜索用户脚本 v2.5.14）
+ * 跨站搜索站点表（移植自 VNDB 跨站搜索用户脚本 v2.6.1）
  *
  * 域名使用 base64 编码，避免完整域名出现在打包产物中触发静态扫描。
  * 每组 { key, labelKey, sites: [{ name, url(kw) }] }
@@ -231,11 +231,15 @@ export function pickDefaultTitle(titles) {
 }
 
 /**
- * 点击跨站搜索站点的统一入口。所有站点（含 TouchGal）都完全跟随
- * 「跨站搜索打开方式」设置，不做任何站点特殊化：
+ * 点击跨站搜索站点的统一入口。默认所有站点（含 TouchGal）都跟随
+ * 「跨站搜索打开方式」设置：
  * - 内置浏览器模式：TouchGal 在内嵌 WebView 里注入脚本自动填词回车，
  *   其余站点直接在内置浏览器里打开搜索页；
  * - 系统浏览器模式：一律交给系统浏览器打开搜索页。
+ *
+ * 例外：设置里的「TouchGal 用内置浏览器打开」开关打开后，
+ * 不管上面那个设置怎么选，TouchGal 都固定用内置浏览器打开
+ * ——因为只有内置浏览器里才有工具栏上的「用外部浏览器打开」按钮。
  *
  * @param {{name:string,url:string,native?:string|null}} site
  * @param {string} keyword
@@ -243,10 +247,16 @@ export function pickDefaultTitle(titles) {
  */
 export async function openCrossSearchSite(site, keyword) {
   if (!site) return
-  const { getCrossSearchBrowserMode, LINK_BROWSER_INAPP, openExternalUrl } = await import('./linkOpener')
+  const {
+    getCrossSearchBrowserMode,
+    getTouchGalInAppEnabled,
+    LINK_BROWSER_INAPP,
+    openExternalUrl
+  } = await import('./linkOpener')
   // 跨站搜索有独立设置（默认系统浏览器）
   const mode = getCrossSearchBrowserMode()
-  const preferInApp = mode === LINK_BROWSER_INAPP
+  const touchgalForced = site.native === 'touchgal' && getTouchGalInAppEnabled()
+  const preferInApp = mode === LINK_BROWSER_INAPP || touchgalForced
 
   if (site.native === 'touchgal' && preferInApp) {
     try {
@@ -257,5 +267,6 @@ export async function openCrossSearchSite(site, keyword) {
       console.error('[crossSearch] native open failed:', e)
     }
   }
-  await openExternalUrl(site.url, { mode })
+  // TouchGal 开关打开时即使回退也要进内置浏览器，否则用户会突然跳到外部浏览器
+  await openExternalUrl(site.url, { mode: touchgalForced ? LINK_BROWSER_INAPP : mode })
 }

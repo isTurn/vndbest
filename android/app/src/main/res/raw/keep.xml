@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  资源压缩白名单。
+
+  ic_open_external 是内置浏览器工具栏「用外部浏览器打开」按钮的图标，
+  由 @capgo/inappbrowser 在运行时用 getIdentifier("ic_open_external", "drawable", ...)
+  按名字查找，编译期没有任何静态引用 —— shrinkResources 会把它当成无用资源删掉，
+  结果就是按钮图标找不到、按钮被隐藏。
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_open_external" />

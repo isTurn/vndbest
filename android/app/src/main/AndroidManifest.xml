@@ -3,6 +3,103 @@
 
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 
+    <!--
+      Android 11+ 包可见性控制（自选浏览器用）。
+      只声明一个通用 intent 时，不少机型 queryIntentActivities 仍只返回
+      「系统默认浏览器」一个（实测只看到 Edge）。这里同时用
+      ① 通用 intent 匹配（scheme + BROWSABLE） ② 常见浏览器包名白名单
+      两条路径扩大可见范围，否则列表里只剩默认项。
+    -->
+    <queries>
+        <!-- 浏览器标准入口：ACTION_MAIN + CATEGORY_APP_BROWSER -->
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.APP_BROWSER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="http" />
+        </intent>
+
+        <!-- Google Chrome 系 -->
+        <package android:name="com.android.chrome" />
+        <package android:name="com.chrome.beta" />
+        <package android:name="com.chrome.dev" />
+        <package android:name="com.chrome.canary" />
+        <package android:name="org.chromium.chrome" />
+        <package android:name="org.cromite.cromite" />
+        <package android:name="com.kiwibrowser.browser" />
+        <package android:name="com.brave.browser" />
+        <package android:name="com.brave.browser_beta" />
+        <package android:name="com.vivaldi.browser" />
+        <package android:name="com.vivaldi.browser.snapshot" />
+
+        <!-- Firefox 系 -->
+        <package android:name="org.mozilla.firefox" />
+        <package android:name="org.mozilla.firefox_beta" />
+        <package android:name="org.mozilla.fenix" />
+        <package android:name="org.mozilla.focus" />
+        <package android:name="org.mozilla.fennec_fdroid" />
+        <package android:name="us.spotco.mull" />
+        <package android:name="org.ironfoxoss.ironfox" />
+
+        <!-- 其它国际浏览器 -->
+        <package android:name="com.microsoft.emmx" />
+        <package android:name="com.microsoft.emmx.canary" />
+        <package android:name="com.opera.browser" />
+        <package android:name="com.opera.mini.native" />
+        <package android:name="com.opera.gx" />
+        <package android:name="com.duckduckgo.mobile.android" />
+        <package android:name="com.ecosia.android" />
+        <package android:name="com.yandex.browser" />
+        <package android:name="mark.via.gp" />
+        <package android:name="com.xbrowser.play" />
+        <package android:name="com.alook.browser" />
+        <package android:name="com.cloudmosa.puffinFree" />
+        <package android:name="com.mycompany.android.soulbrowser" />
+        <package android:name="com.sec.android.app.sbrowser" />
+        <package android:name="com.sec.android.app.sbrowser.beta" />
+        <package android:name="com.samsung.android.browser" />
+
+        <!-- 国产浏览器 -->
+        <package android:name="com.tencent.mtt" />
+        <package android:name="com.tencent.mtt.x86" />
+        <package android:name="com.UCMobile" />
+        <package android:name="com.UCMobile.intl" />
+        <package android:name="com.uc.browser" />
+        <package android:name="com.ucmobile" />
+        <package android:name="com.quark.browser" />
+        <package android:name="com.baidu.browser.apps" />
+        <package android:name="com.baidu.searchbox" />
+        <package android:name="com.qihoo.browser" />
+        <package android:name="com.sohu.sohuvideo" />
+        <package android:name="com.android.browser" />
+
+        <!-- 厂商内置浏览器 -->
+        <package android:name="com.miui.browser" />
+        <package android:name="com.miui.browser.global" />
+        <package android:name="com.mi.globalbrowser" />
+        <package android:name="com.huawei.browser" />
+        <package android:name="com.hihonor.browser" />
+        <package android:name="com.heytap.browser" />
+        <package android:name="com.coloros.browser" />
+        <package android:name="com.oppo.browser" />
+        <package android:name="com.vivo.browser" />
+        <package android:name="com.bbk.browser" />
+        <package android:name="com.meizu.flyme.browser" />
+        <package android:name="com.lenovo.browser" />
+        <package android:name="com.zte.browser" />
+        <package android:name="com.transsion.phoenix" />
+        <package android:name="com.transsion.browser" />
+        <package android:name="com.android.htmlviewer" />
+    </queries>
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"

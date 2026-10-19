@@ -53,10 +53,21 @@ import {
   setCrossSearchBrowserMode,
   getReleaseLinkBrowserMode,
   setReleaseLinkBrowserMode,
+  getCustomBrowserPackage,
+  setCustomBrowserPackage,
+  getTouchGalInAppEnabled,
+  setTouchGalInAppEnabled,
+  listInstalledBrowsers,
   LINK_BROWSER_INAPP,
-  LINK_BROWSER_SYSTEM
+  LINK_BROWSER_SYSTEM,
+  LINK_BROWSER_CHOOSER,
+  CHOOSER_MARKER
 } from '@/utils/linkOpener'
 import { getTranslatorEnabled, setTranslatorEnabled } from '@/utils/vndbTranslator'
+import {
+  getInAppExternalButtonEnabled,
+  setInAppExternalButtonEnabled
+} from '@/utils/inAppBrowserTools'
 import { refreshAllMyLengthVotes } from '@/utils/lengthVote'
 
 const route = useRoute()
@@ -257,6 +268,8 @@ onMounted(() => {
   if (activeSection.value === 'storage') {
     loadStorageInfo()
   }
+  // 已经选过自选浏览器时也要拉一次列表，才能把包名显示成应用名
+  if (customBrowserPkg.value) loadInstalledBrowsers()
 })
 
 function openSection(sectionKey) {
@@ -387,10 +400,60 @@ watch(releaseLinkBrowserMode, (mode) => {
   setReleaseLinkBrowserMode(mode)
 })
 
+// ====== 自选浏览器 ======
+// 用户从已安装的浏览器应用里选一个，选中后凡是用「系统浏览器」打开的外链都交给它。
+const customBrowserPkg = ref(getCustomBrowserPackage())
+const installedBrowsers = ref([])
+const browserListLoading = ref(false)
+const showBrowserPicker = ref(false)
+
+const currentBrowserLabel = computed(() => {
+  if (!customBrowserPkg.value) return t('settings.browser_default')
+  if (customBrowserPkg.value === CHOOSER_MARKER) return t('settings.browser_ask')
+  const found = installedBrowsers.value.find((b) => b.packageName === customBrowserPkg.value)
+  return found ? found.label : customBrowserPkg.value
+})
+
+async function loadInstalledBrowsers() {
+  browserListLoading.value = true
+  try {
+    installedBrowsers.value = await listInstalledBrowsers()
+  } finally {
+    browserListLoading.value = false
+  }
+}
+
+async function openBrowserPicker() {
+  // 每次打开都重新列一遍，用户可能刚装了/卸载了浏览器
+  if (!installedBrowsers.value.length) await loadInstalledBrowsers()
+  showBrowserPicker.value = true
+}
+
+function pickBrowser(pkg) {
+  // 统一成「实际写进 localStorage 的值」，否则选中态比较（CHOOSER_MARKER）
+  // 和 ref 里存的 'chooser' 对不上，点完勾不显示
+  const stored = pkg === LINK_BROWSER_CHOOSER ? CHOOSER_MARKER : (pkg || '')
+  customBrowserPkg.value = stored
+  setCustomBrowserPackage(stored)
+  showBrowserPicker.value = false
+}
+
 // 内置浏览器里的 VNDB 中文化（等同内置了「VNDB优先原文和中文化」油猴脚本）
 const translatorEnabled = ref(getTranslatorEnabled())
 watch(translatorEnabled, (on) => {
   setTranslatorEnabled(on)
+})
+
+// 内置浏览器工具栏上的「用外部浏览器打开」按钮
+const inAppExternalEnabled = ref(getInAppExternalButtonEnabled())
+watch(inAppExternalEnabled, (on) => {
+  setInAppExternalButtonEnabled(on)
+})
+
+// TouchGal 固定用内置浏览器打开（方便页面加载好之后再用工具栏按钮甩给外部浏览器）
+const touchGalInApp = ref(getTouchGalInAppEnabled())
+watch(touchGalInApp, (on) => {
+  setTouchGalInAppEnabled(on)
 })
 
 function goToLogin() {
@@ -572,6 +635,27 @@ const themeOptions = [
                 <span
                   class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all duration-200"
                   :class="translatorEnabled ? 'translate-x-[20px]' : 'translate-x-0'"
+                />
+              </button>
+            </div>
+
+            <!-- 内置浏览器里的「用外部浏览器打开」工具栏按钮 -->
+            <div class="flex items-start justify-between gap-3 py-2 border-t border-neutral-100 dark:border-neutral-700/50">
+              <div class="min-w-0 flex-1">
+                <label class="block text-sm font-medium text-neutral-800 dark:text-neutral-200">{{ t('settings.inapp_external_button') }}</label>
+                <p class="mt-0.5 text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('settings.inapp_external_button_desc') }}</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                :aria-checked="inAppExternalEnabled"
+                @click="inAppExternalEnabled = !inAppExternalEnabled"
+                class="relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors duration-200"
+                :class="inAppExternalEnabled ? 'bg-sky-500' : 'bg-neutral-300 dark:bg-neutral-600'"
+              >
+                <span
+                  class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all duration-200"
+                  :class="inAppExternalEnabled ? 'translate-x-[20px]' : 'translate-x-0'"
                 />
               </button>
             </div>
@@ -1025,6 +1109,48 @@ const themeOptions = [
                 </button>
               </div>
             </div>
+
+            <!-- 自选浏览器：从已安装应用里挑一个，固定用它打开外链 -->
+            <div class="space-y-2 py-1 border-t border-neutral-100 dark:border-neutral-700/50">
+              <div>
+                <label class="block text-sm font-medium text-neutral-800 dark:text-neutral-200">{{ t('settings.browser_custom') }}</label>
+                <p class="mt-0.5 text-[10px] text-neutral-400 dark:text-neutral-500">
+                  {{ customBrowserPkg ? t('settings.browser_desc_custom') : t('settings.browser_pick_desc') }}
+                </p>
+              </div>
+              <button
+                type="button"
+                @click="openBrowserPicker"
+                class="flex w-full items-center justify-between gap-2 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 px-3 py-2 text-left transition hover:bg-neutral-100 dark:hover:bg-neutral-700/60 cursor-pointer"
+              >
+                <span class="flex min-w-0 items-center gap-2">
+                  <Icon icon="lucide:globe" class="h-4 w-4 shrink-0 text-neutral-500 dark:text-neutral-400" />
+                  <span class="truncate text-xs font-medium text-neutral-800 dark:text-neutral-200">{{ currentBrowserLabel }}</span>
+                </span>
+                <Icon icon="lucide:chevron-right" class="h-4 w-4 shrink-0 text-neutral-400 dark:text-neutral-500" />
+              </button>
+            </div>
+
+            <!-- TouchGal 单独开关：打开后固定用内置浏览器打开，方便页面加载好再甩给外部浏览器 -->
+            <div class="flex items-start justify-between gap-3 py-2 border-t border-neutral-100 dark:border-neutral-700/50">
+              <div class="min-w-0 flex-1">
+                <label class="block text-sm font-medium text-neutral-800 dark:text-neutral-200">{{ t('settings.touchgal_inapp') }}</label>
+                <p class="mt-0.5 text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('settings.touchgal_inapp_desc') }}</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                :aria-checked="touchGalInApp"
+                @click="touchGalInApp = !touchGalInApp"
+                class="relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors duration-200"
+                :class="touchGalInApp ? 'bg-sky-500' : 'bg-neutral-300 dark:bg-neutral-600'"
+              >
+                <span
+                  class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all duration-200"
+                  :class="touchGalInApp ? 'translate-x-[20px]' : 'translate-x-0'"
+                />
+              </button>
+            </div>
           </div>
         </template>
 
@@ -1248,5 +1374,92 @@ const themeOptions = [
         </template>
       </div>
     </ion-content>
+
+    <!-- 自选浏览器选择弹层 -->
+    <Teleport to="body">
+      <Transition name="actionsheet-fade">
+        <div
+          v-if="showBrowserPicker"
+          class="fixed inset-0 z-[250] flex items-end sm:items-center justify-center p-0 sm:p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div class="fixed inset-0 bg-black/50 backdrop-blur-xs" @click="showBrowserPicker = false"></div>
+          <div class="relative z-10 flex max-h-[75vh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl dark:bg-neutral-900 sm:max-w-md sm:rounded-2xl">
+            <div class="flex items-start justify-between gap-3 border-b border-neutral-100 px-5 pt-3 pb-2.5 dark:border-neutral-800">
+              <div class="min-w-0">
+                <h3 class="text-sm font-bold tracking-tight text-neutral-900 dark:text-neutral-100">{{ t('settings.browser_pick_title') }}</h3>
+                <p class="mt-0.5 text-xs text-neutral-500 dark:text-neutral-400">{{ t('settings.browser_pick_desc') }}</p>
+              </div>
+              <button
+                type="button"
+                @click="showBrowserPicker = false"
+                class="shrink-0 cursor-pointer rounded-full p-1 text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-600 dark:hover:bg-neutral-800 dark:hover:text-neutral-200"
+              >
+                <Icon icon="lucide:x" class="h-4 w-4" />
+              </button>
+            </div>
+
+            <div class="flex-1 space-y-1 overflow-y-auto px-2 py-2">
+              <!-- 系统默认 -->
+              <button
+                type="button"
+                @click="pickBrowser('')"
+                class="flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition"
+                :class="!customBrowserPkg ? 'bg-neutral-100 font-medium text-neutral-900 dark:bg-neutral-800/80 dark:text-neutral-100' : 'text-neutral-700 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800/50'"
+              >
+                <span class="flex min-w-0 items-center gap-3">
+                  <Icon icon="lucide:monitor" class="h-4 w-4 shrink-0 text-neutral-400 dark:text-neutral-500" />
+                  <span class="truncate text-sm">{{ t('settings.browser_default') }}</span>
+                </span>
+                <Icon v-if="!customBrowserPkg" icon="lucide:check" class="h-4 w-4 shrink-0 text-emerald-500" />
+              </button>
+
+              <!-- 每次询问：系统选择框不受包可见性限制，能列出全部浏览器 -->
+              <button
+                type="button"
+                @click="pickBrowser(LINK_BROWSER_CHOOSER)"
+                class="flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition"
+                :class="customBrowserPkg === CHOOSER_MARKER ? 'bg-neutral-100 font-medium text-neutral-900 dark:bg-neutral-800/80 dark:text-neutral-100' : 'text-neutral-700 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800/50'"
+              >
+                <span class="flex min-w-0 items-center gap-3">
+                  <Icon icon="lucide:layers" class="h-4 w-4 shrink-0 text-neutral-400 dark:text-neutral-500" />
+                  <span class="min-w-0">
+                    <span class="block truncate text-sm">{{ t('settings.browser_ask') }}</span>
+                    <span class="block truncate text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('settings.browser_ask_desc') }}</span>
+                  </span>
+                </span>
+                <Icon v-if="customBrowserPkg === CHOOSER_MARKER" icon="lucide:check" class="h-4 w-4 shrink-0 text-emerald-500" />
+              </button>
+
+              <div v-if="browserListLoading" class="flex items-center justify-center gap-2 py-6 text-xs text-neutral-400 dark:text-neutral-500">
+                <Icon icon="eos-icons:loading" class="h-4 w-4" />
+              </div>
+              <div v-else-if="!installedBrowsers.length" class="px-3 py-6 text-center text-xs text-neutral-400 dark:text-neutral-500">
+                {{ t('settings.browser_none') }}
+              </div>
+
+              <button
+                v-for="b in installedBrowsers"
+                :key="b.packageName"
+                type="button"
+                @click="pickBrowser(b.packageName)"
+                class="flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition"
+                :class="customBrowserPkg === b.packageName ? 'bg-neutral-100 font-medium text-neutral-900 dark:bg-neutral-800/80 dark:text-neutral-100' : 'text-neutral-700 hover:bg-neutral-50 dark:text-neutral-300 dark:hover:bg-neutral-800/50'"
+              >
+                <span class="flex min-w-0 items-center gap-3">
+                  <Icon icon="lucide:globe" class="h-4 w-4 shrink-0 text-neutral-400 dark:text-neutral-500" />
+                  <span class="min-w-0">
+                    <span class="block truncate text-sm">{{ b.label }}</span>
+                    <span class="block truncate text-[10px] text-neutral-400 dark:text-neutral-500">{{ b.packageName }}</span>
+                  </span>
+                </span>
+                <Icon v-if="customBrowserPkg === b.packageName" icon="lucide:check" class="h-4 w-4 shrink-0 text-emerald-500" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </ion-page>
 </template>

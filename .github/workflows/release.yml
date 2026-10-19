@@ -40,6 +40,11 @@ jobs:
       - name: Regenerate bundled translator script
         run: node scripts/build-vndb-translator.cjs
 
+      # 内置浏览器的工具栏按钮需要 @capgo/inappbrowser 的两处小补丁，
+      # npm ci 的 postinstall 已经跑过，这里再跑一次确认（幂等）。
+      - name: Patch @capgo/inappbrowser
+        run: node scripts/patch-inappbrowser.cjs
+
       - name: Build web app
         run: npm run build
 

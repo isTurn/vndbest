@@ -2,11 +2,28 @@
 
 本文件记录本 fork（[isTurn/vndbest](https://github.com/isTurn/vndbest)）相对上游的功能演进。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [未发布]
+## [1.0.7] - 2026-10-19
+
+内置浏览器跳转增强版：内置浏览器的工具栏上多了「用外部浏览器打开」按钮，跨站搜索脚本同步到上游 v2.6.1。
+
+### 新增
+
+- **内置浏览器工具栏「用外部浏览器打开」**：右上角一键把当前页交给系统浏览器，位置和前进 / 后退 / 刷新同一行（不是悬浮球）。遵守「设置 → 跳转」里的自选浏览器 / 每次询问规则；地址跟踪包含站内无刷新跳转，按钮可单独关闭
+- **TouchGal 专用开关**：「设置 → 跳转」里新增，打开后不管「跨站搜索打开方式」怎么设，TouchGal 一律用内置浏览器打开，等页面正常加载后再决定是否转外部浏览器
+- 为上述按钮放开 `@capgo/inappbrowser` 的两处原生限制（`scripts/patch-inappbrowser.cjs`，幂等，`postinstall` 与 CI 各跑一次）
+
+### 变更
+
+- **跨站搜索用户脚本同步到 v2.6.1**：`VNDB跨站搜索.js` 从 v2.5.14 升级，`@run-at` 改为 `document-start`、`@match` 扩大到 TouchGal 全站，新增外链跳转页自动跳过等待（解析 `url` / `target` / `go` 等参数、`meta refresh` 与「继续访问」链接）；站点表 41 项未变，应用内跨站搜索的站点数据不受影响
+- README 的内置浏览器章节补充工具栏按钮与 TouchGal 开关
 
 ### 移除
 
 - **匿名使用统计上报**：此前每次启动会向第三方 Worker（`workers.hekinyan.vip/v1/active`）POST 安装 ID、设备型号、系统版本、UA 等信息，且没有开关。现已彻底删除上报逻辑与相关常量，`vndb_install_id`、`vndb_active_report_date` 两个 `localStorage` 键也不再写入。应用不再有任何联网行为发生在 VNDB API 之外
+
+### 修复
+
+- **工具栏按钮图标被资源裁剪删除**：`ic_open_external` 只在运行时用 `getIdentifier()` 按名字查找，`shrinkResources` 会当成无用资源删掉，导致按钮不显示；新增 `res/raw/keep.xml` 白名单
 
 ### 文档
 
@@ -14,6 +31,8 @@
 - README 新增**隐私**章节，逐项列出应用会连接的服务与触发时机
 - README「从旧版升级」补充签名变更说明（1.0.5 及更早的 APK 由 CI 临时密钥签名，升级到 1.0.6+ 需先卸载）
 - 截图重拍并新增两张：搜索历史、版本列表；`docs/screenshots/README.md` 补充拍摄脚本骨架与五条踩坑记录
+
+---
 
 ## [1.0.6] - 2026-10-19
 
