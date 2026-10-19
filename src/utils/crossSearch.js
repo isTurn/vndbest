@@ -1,5 +1,5 @@
 /**
- * 跨站搜索站点表（移植自 VNDB 跨站搜索用户脚本 v2.6.1）
+ * 跨站搜索站点表（移植自 VNDB 跨站搜索用户脚本 v2.7.4）
  *
  * 域名使用 base64 编码，避免完整域名出现在打包产物中触发静态扫描。
  * 每组 { key, labelKey, sites: [{ name, url(kw) }] }
@@ -11,9 +11,9 @@ const HOST = {
   touchgal: _d('d3d3LnRvdWNoZ2FsLmluaw=='),
   shinnku: _d('d3d3LnNoaW5ua3UuY29t'),
   letmoe: _d('d3d3LmxldG1vZS5jb20='),
-  amoebi: _d('YW1vZWJpLmNvbQ=='),
+  // v2.7.4 起「稻荷」改用 inarigal.com，旧域 amoebi.com 仍会 301 过去
+  inarigal: _d('aW5hcmlnYWwuY29t'),
   shionlib: _d('c2hpb25saWIuY29t'),
-  ttloli: _d('d3d3LnR0bG9saS5jb20='),
   searchgal: _d('d3d3LnNlYXJjaGdhbC50b3A='),
   zi6: _d('emk2LmNj'),
   lzacg: _d('bHphY2cuY2M='),
@@ -76,12 +76,12 @@ export const CROSS_SEARCH_GROUPS = [
     key: 'res',
     labelKey: 'vn.links.resource_sites',
     sites: [
-      { name: 'TouchGal', native: 'touchgal', url: (k) => `https://${HOST.touchgal}/search?tgq=${enc(k)}` },
+      { name: 'TouchGal', native: 'touchgal', url: (k) => `https://${HOST.touchgal}/search#tgq=${enc(k)}` },
       { name: '失落小站', url: (k) => `https://${HOST.shinnku}/search?q=${enc(k)}` },
       { name: '一起萌', url: (k) => `https://${HOST.letmoe}/search?q=${enc(k)}` },
-      { name: '稻荷', url: () => `https://${HOST.amoebi}` },
+      // v2.7.4 起「稻荷」迁到 inarigal.com，并支持 ?search= 直接出结果（旧域 amoebi.com 已 301）
+      { name: '稻荷', url: (k) => `https://${HOST.inarigal}/?search=${enc(k)}` },
       { name: '书音的图书馆', url: (k) => `https://${HOST.shionlib}/zh/search/game?q=${enc(k)}` },
-      { name: '忧郁的弟弟', url: (k) => `https://${HOST.ttloli}/?s=${enc(k)}` },
       { name: 'SearchGal', url: (k) => `https://${HOST.searchgal}/?s=${enc(k)}` },
       { name: '梓澪', url: () => `https://${HOST.zi6}` },
       // kw: 'zh' → 未手动挑标题时优先用中文标题搜（与用户脚本一致）
@@ -123,7 +123,7 @@ export const CROSS_SEARCH_GROUPS = [
     labelKey: 'vn.links.cross_adult',
     sites: [
       { name: '绯月', url: (k) => `https://${HOST.kf}/index.php?search=${enc(k)}` },
-      { name: '鲲galgame', url: (k) => `https://${HOST.kungal}/search?q=${enc(k)}` },
+      { name: '鲲galgame', url: (k) => `https://${HOST.kungal}/search?keywords=${enc(k)}` },
       { name: 'animeShare', url: (k) => `https://${HOST.animeshare}/search/3528560/?q=${enc(k)}&o=relevance` },
       { name: 'nyaa', url: (k) => `https://${HOST.nyaa}/?f=0&c=0_0&q=${enc(k)}` },
       { name: 'Sukebei', url: (k) => `https://${HOST.sukebei}/?f=0&c=0_0&q=${enc(k)}` },

@@ -2,7 +2,7 @@
  * TouchGal 外链过渡页（广告 / 5 秒等待页）自动跳过。
  *
  * 背景：在 TouchGal 里点外链，站点会先跳到 `/redirect?url=<目标>` 的等待页
- * （「即将离开本站…5 秒」），再跳真实地址。用户脚本 `VNDB跨站搜索.js` v2.6.1
+ * （「即将离开本站…5 秒」），再跳真实地址。用户脚本 `VNDB跨站搜索.js` v2.7.4
  * 用 `initRedirectSkip()` 解决（另有独立的 `TouchGal 自动跳转` v2.2 脚本等价）。
  *
  * 内置浏览器原来只移植了该脚本的「搜索填入」分支，没有这段跳过逻辑，
@@ -30,8 +30,8 @@ export function isTouchGalUrl(url) {
   }
 }
 
-/** 过渡页特征：/redirect 一类路径，或带着 url= 目标参数 */
-const REDIRECT_ROUTE = /^\/(?:redirect|go|jump|out|away|goto|link)(?:\/|$)/i
+/** 过渡页特征：/redirect 一类路径（含 /zh-Hans/redirect 这种语言前缀），或带着 url= 目标参数 */
+const REDIRECT_ROUTE = /^\/(?:[a-z]{2}(?:-[a-z]{2,4})?\/)?(?:redirect|go|jump|out|away|goto|link)(?:\/|$)/i
 
 function looksLikeRedirectPage(url) {
   try {
@@ -55,12 +55,12 @@ export function buildRedirectSkipCode() {
   if (window.__vndbestTgRedirect) return;
   window.__vndbestTgRedirect = true;
 
-  var ROUTE = /^\/(?:redirect|go|jump|out|away|goto|link)(?:\/|$)/i;
+  var ROUTE = /^\/(?:[a-z]{2}(?:-[a-z]{2,4})?\/)?(?:redirect|go|jump|out|away|goto|link)(?:\/|$)/i;
   var KEYS = ['url', 'u', 'target', 'to', 'link', 'href', 'redirect',
     'redirect_url', 'redirecturl', 'out', 'go', 'jump', 'dest', 'destination'];
   var WAIT = /自动跳转|即将跳转|即将离开|正在跳转|跳转中|安全提示|继续访问|秒后/;
   var JUMP = /继续|前往|跳转|前往访问|点击这里|立即访问|continue|proceed/i;
-  var MAX_TICKS = 240;
+  var MAX_TICKS = 160;
 
   function decodeLoose(value) {
     try { return decodeURIComponent(value); } catch (e) { return value; }
@@ -129,11 +129,22 @@ export function buildRedirectSkipCode() {
     return '';
   }
 
+  /* 轮询里每 50ms 读一次 body 全文太重，加一层 800ms 缓存（对应用户脚本 v2.7.4）。
+     长页面（>6000 字符）若前 4000 字符没有「秒后」就基本不是等待页，直接短路。 */
+  var waitCache = { at: 0, value: false };
+
   function hasWaitMarker() {
+    var now = Date.now();
+    if (now - waitCache.at < 800) return waitCache.value;
     var body = document.body;
     if (!body) return false;
-    var text = String(body.textContent || '').slice(0, 4000);
-    return WAIT.test(text);
+    var text = String(body.textContent || '');
+    var head = text.slice(0, 4000);
+    var value = WAIT.test(head);
+    if (!value && text.length > 6000) value = false;
+    waitCache.at = now;
+    waitCache.value = value;
+    return value;
   }
 
   function isRedirectPage() {
@@ -172,10 +183,61 @@ export function buildRedirectSkipCode() {
     var sameOrigin = url.hostname === location.hostname;
     var onRoute = ROUTE.test(url.pathname);
     if (!sameOrigin && !onRoute) return '';
-    var target = scanParams(url.searchParams);
-    if (target) return target;
-    if (!onRoute) return '';
-    return '';
+    return scanParams(url.searchParams);
+  }
+
+  /* 直接把中转链接的 href 改写成真实地址（对应用户脚本 v2.7.4 的 rewriteRedirectLinks）。
+     好处：即使点击被站点自己的 JS 拦走、或者走了键盘/长按打开，
+     href 本身也已经是真实地址，不会再落进过渡页。 */
+  var LINK_SEL = 'a[href*="redirect"],a[href*="url="],a[href*="target="],a[href*="goto="],a[href*="jump="]';
+
+  function rewriteRedirectLinks(root) {
+    var scope = (root && root.querySelectorAll) ? root : document;
+    var links;
+    try { links = scope.querySelectorAll(LINK_SEL); } catch (e) { return; }
+    for (var i = 0; i < links.length; i++) {
+      var a = links[i];
+      var direct = a.getAttribute('data-vndbest-direct') || '';
+      if (!direct) {
+        try { direct = interceptedTarget(a.getAttribute('href')); } catch (e) { continue; }
+      }
+      if (!direct) continue;
+      if (a.getAttribute('href') !== direct) a.setAttribute('href', direct);
+      a.setAttribute('data-vndbest-direct', direct);
+    }
+  }
+
+  function watchRedirectLinks() {
+    var start = function () {
+      rewriteRedirectLinks(document);
+      var pending = [];
+      var queued = false;
+      var flush = function () {
+        queued = false;
+        var batch = pending;
+        pending = [];
+        for (var i = 0; i < batch.length; i++) {
+          var el = batch[i];
+          if (!el.isConnected || !el.querySelectorAll) continue;
+          rewriteRedirectLinks(el);
+        }
+        rewriteRedirectLinks(document);
+      };
+      var observer = new MutationObserver(function (records) {
+        for (var i = 0; i < records.length; i++) {
+          var added = records[i].addedNodes;
+          for (var k = 0; k < added.length; k++) {
+            if (added[k].nodeType === 1) pending.push(added[k]);
+          }
+        }
+        if (queued || !pending.length) return;
+        queued = true;
+        setTimeout(flush, 120);
+      });
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+    };
+    if (document.documentElement) start();
+    else document.addEventListener('DOMContentLoaded', start);
   }
 
   function onDocumentClick(event) {
@@ -213,6 +275,7 @@ export function buildRedirectSkipCode() {
 
   function init() {
     watchSpaRedirect();
+    watchRedirectLinks();
     maybeAutoRedirect();
     var ticks = 0;
     var timer = setInterval(function () {

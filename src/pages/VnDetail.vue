@@ -1646,7 +1646,7 @@ const isLoggedIn = computed(() => {
   return !!(token && token.trim())
 })
 
-// 外链跳转：跨站搜索（移植自 VNDB 跨站搜索脚本 v2.6.1）
+// 外链跳转：跨站搜索（移植自 VNDB 跨站搜索脚本 v2.7.4）
 // 候选标题：原名 / 各语言标题 / 拉丁转写，主标题排第一
 const crossSearchTitles = computed(() => buildCrossSearchTitles(vn.value))
 const crossSearchDefaultTitle = computed(() => pickDefaultTitle(crossSearchTitles.value))

@@ -9,6 +9,7 @@ import { installCookieKeeper } from './utils/cookieKeeper'
 import { installTranslatorForInAppBrowser } from './utils/vndbTranslator'
 import { installExternalButtonWatcher } from './utils/inAppBrowserTools'
 import { installRedirectSkipWatcher } from './utils/redirectSkip'
+import { installSiteSearchWatcher } from './utils/siteSearchInject'
 import './style.css'
 
 registerAppIcons()
@@ -22,6 +23,8 @@ installTranslatorForInAppBrowser()
 installExternalButtonWatcher()
 // TouchGal 的外链过渡页（「即将离开…5 秒」）自动跳过
 installRedirectSkipWatcher()
+// SearchGal 只把 ?s= 填进搜索框、不自动搜，内置浏览器里补一次回车
+installSiteSearchWatcher()
 
 // 根据 .env 中的 VITE_VCONSOLE 环境变量决定是否启用 vConsole 调试面板
 if (import.meta.env.VITE_VCONSOLE === 'true') {

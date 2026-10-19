@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         VNDB跨站搜索
 // @namespace    http://tampermonkey.net/
-// @version      2.6.1
+// @version      2.7.4
 // @description  VNDB跨站搜索，可自选标题或id；TouchGal 外链跳转自动跳过等待
 // @author       Hatsube
 // @match        https://vndb.org/*
@@ -13,6 +13,8 @@
 // @match        https://seiya-saiga.com/*
 // @match        https://www.seiya-saiga.com/*
 // @match        https://bbs.kfpromax.com/*
+// @match        https://www.searchgal.top/*
+// @match        https://searchgal.top/*
 // @grant        none
 // @run-at       document-start
 // @noframes
@@ -60,15 +62,13 @@
         { key: 'adult', label: '社区 / 18+' }
     ];
     const SITES = [
-        { key: 'touchgal', name: 'TouchGal', group: 'res', url: k => TOUCHGAL_ORIGIN + '/search?' + TG_QUERY_PARAM + '=' + enc(k) },
+        { key: 'touchgal', name: 'TouchGal', group: 'res', url: k => TOUCHGAL_ORIGIN + '/search#tgq=' + enc(k) },
         { key: 'shinnku', name: '失落小站', group: 'res', url: k => 'https://www.shinnku.com/search?q=' + enc(k) },
         { key: 'letmoe', name: '一起萌', group: 'res', url: k => 'https://www.letmoe.com/search?q=' + enc(k) },
-        { key: 'amoebi', name: '稻荷', group: 'res', url: () => 'https://amoebi.com' },
+        { key: 'amoebi', name: '稻荷', group: 'res', url: k => 'https://inarigal.com/?search=' + enc(k) },
         { key: 'shionlib', name: '书音的图书馆', group: 'res', url: k => 'https://shionlib.com/zh/search/game?q=' + enc(k) },
-        { key: 'ttloli', name: '忧郁的弟弟', group: 'res', url: k => 'https://www.ttloli.com/?s=' + enc(k) },
         { key: 'searchgal', name: 'SearchGal', group: 'res', url: k => 'https://www.searchgal.top/?s=' + enc(k) },
         { key: 'zi0', name: '梓澪', group: 'res', url: () => 'https://zi6.cc' },
-        { key: 'searchgal', name: 'SearchGal', group: 'res', url: k => 'https://www.searchgal.top/?s=' + enc(k) },
         { key: 'lzacg', name: '量子ACG', group: 'res', kw: 'zh', url: k => 'https://lzacg.cc/?s=' + enc(wpKeyword(k)) },
         { key: 'ggbases', name: 'ggbases', group: 'res', url: k => 'https://www.ggbases.com/search.so?title=' + enc(k) },
         { key: 'dmm', name: 'DMM', group: 'res', url: k => 'https://www.dmm.co.jp/search/=/searchstr=' + enc(k) + '/' },
@@ -99,7 +99,7 @@
         { key: 'hitomi', name: 'Hitomi', group: 'adult', url: k => 'https://hitomi.la/search.html?' + enc(k) }
     ];
     const PANEL_CSS = `
-        #${PANEL_ID}{position:fixed;right:16px;bottom:16px;z-index:2147483647;width:340px;
+        #${PANEL_ID}{position:fixed;right:16px;bottom:16px;z-index:2147483647;width:min(340px,calc(100vw - 32px));
         font:13px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
         background:#1f1d26;color:#e8e6ef;border:1px solid #3a3650;border-radius:10px;
         box-shadow:0 6px 24px rgba(0,0,0,.35);overflow:hidden;}
@@ -217,6 +217,20 @@
         }
         return list;
     }
+    const SITE_MAP = SITES.reduce(function (acc, site) {
+        if (!acc[site.key]) acc[site.key] = site;
+        return acc;
+    }, {});
+    const STATE_KEY = 'vndb-jump-panel-state';
+    function loadPanelState() {
+        try {
+            const raw = sessionStorage.getItem(STATE_KEY);
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) { return null; }
+    }
+    function savePanelState(state) {
+        try { sessionStorage.setItem(STATE_KEY, JSON.stringify(state)); } catch (e) { }
+    }
     function buildPanel(vnId, titles) {
         ensureStyle();
         const isJa = function (t) { return t.lang === 'ja'; };
@@ -268,8 +282,10 @@
             '<button class="vj-title" type="button">VNDB跨站搜索</button>',
             '</div>'
         ].join('');
-        let mode = MODE_TITLE;
-        let pickedTitle = '';
+        const saved = loadPanelState() || {};
+        let mode = saved.vn === vnId && saved.mode === MODE_VN ? MODE_VN : MODE_TITLE;
+        let pickedTitle = saved.vn === vnId && saved.mode === MODE_TITLE ? (saved.title || '') : '';
+        if (pickedTitle && !chipTitles.some(function (t) { return t.text === pickedTitle; })) pickedTitle = '';
         const kwEl = panel.querySelector('.vj-kw-val');
         const modeBtns = Array.from(panel.querySelectorAll('.vj-mode'));
         const chipEls = Array.from(panel.querySelectorAll('.vj-chip'));
@@ -289,7 +305,7 @@
                 chip.classList.toggle('active', active);
             });
             siteLinks.forEach(function (link) {
-                const site = SITES.find(function (s) { return s.key === link.getAttribute('data-site'); });
+                const site = SITE_MAP[link.getAttribute('data-site')];
                 if (!site) return;
                 let kw = keyword;
                 if (mode === MODE_TITLE && !pickedTitle && site.kw === 'zh' && zhTitle) {
@@ -298,10 +314,13 @@
                 link.href = site.url(kw);
                 link.title = (kw !== keyword ? '搜索（中文标题）：' + kw : '');
             });
+            savePanelState({ vn: vnId, mode: mode, title: pickedTitle, collapsed: panel.classList.contains('collapsed') });
         }
         function toggleCollapsed() {
             panel.classList.toggle('collapsed');
+            savePanelState({ vn: vnId, mode: mode, title: pickedTitle, collapsed: panel.classList.contains('collapsed') });
         }
+        if (saved.vn === vnId && saved.collapsed === false) panel.classList.remove('collapsed');
         panel.querySelector('.vj-title').addEventListener('click', toggleCollapsed);
         modeBtns.forEach(function (btn) {
             btn.addEventListener('click', function () {
@@ -329,94 +348,115 @@
         if (!titles.length) return;
         buildPanel(vnId, titles);
     }
+    function safeDecode(value) {
+        try { return decodeURIComponent(value); } catch (e) { return value; }
+    }
     function getSearchParam(paramName) {
         try {
-            const url = new URL(window.location.href);
-            const param = url.searchParams.get(paramName);
-            return param ? decodeURIComponent(param) : null;
-        } catch {
-            const regex = new RegExp(`[?&]${paramName}=([^&]+)`);
-            const match = window.location.href.match(regex);
-            return match ? decodeURIComponent(match[1]) : null;
+            const param = new URL(window.location.href).searchParams.get(paramName);
+            if (param) return param;
+            const match = window.location.href.match(new RegExp(`[?&]${paramName}=([^&]+)`));
+            return match ? safeDecode(match[1]) : null;
+        } catch (e) {
+            return null;
         }
+    }
+    function foldText(text) {
+        return String(text == null ? '' : text)
+            .replace(/[！-～]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
+            .toLowerCase();
     }
     function normalizeText(text) {
-        return text.trim()
-                  .replace(/\s+/g, ' ')
-                  .replace(/[！-～]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
-                  .toLowerCase();
+        return foldText(text).replace(/\s+/g, ' ').trim();
     }
-    function searchAndHighlight(node, keyword) {
-        if (!keyword) return;
+    const SKIP_TAGS = /^(SCRIPT|STYLE|NOSCRIPT|TEXTAREA|INPUT|SELECT|OPTION|CODE|PRE)$/;
+    function searchAndHighlight(root, keyword) {
+        if (!keyword || !root) return;
         const normalizedKeyword = normalizeText(keyword);
-        let isFirstMatch = true;
-        function processNode(node) {
-            if (node.nodeType === Node.TEXT_NODE) {
-                const text = node.textContent;
-                const normalizedText = normalizeText(text);
-                if (normalizedText.includes(normalizedKeyword)) {
-                    const span = document.createElement('span');
-                    span.textContent = text;
-                    span.className = 'keyword-highlight';
-                    span.style.backgroundColor = 'yellow';
-                    node.replaceWith(span);
-                    if (isFirstMatch) {
-                        span.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        isFirstMatch = false;
-                    }
-                    return true;
-                }
-            } else if (node.nodeType === Node.ELEMENT_NODE) {
-                const style = window.getComputedStyle(node);
-                if (style.display === 'none' || style.visibility === 'hidden') {
-                    return false;
-                }
-                Array.from(node.childNodes).forEach(child => processNode(child));
+        if (!normalizedKeyword) return;
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+            acceptNode: function (node) {
+                const parent = node.parentNode;
+                if (!parent || !parent.tagName) return NodeFilter.FILTER_REJECT;
+                if (SKIP_TAGS.test(parent.tagName)) return NodeFilter.FILTER_REJECT;
+                if (parent.closest('.vj-chip,.vj-site,#' + PANEL_ID)) return NodeFilter.FILTER_REJECT;
+                if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+                return NodeFilter.FILTER_ACCEPT;
             }
-            return false;
+        });
+        const hits = [];
+        let node = walker.nextNode();
+        while (node) {
+            if (normalizeText(node.nodeValue).includes(normalizedKeyword)) hits.push(node);
+            node = walker.nextNode();
         }
-        processNode(node);
+        let first = null;
+        hits.forEach(function (textNode) {
+            const text = textNode.nodeValue;
+            const folded = foldText(text);
+            const flat = folded.replace(/\s+/g, ' ');
+            const haystack = flat.length === folded.length ? flat : folded;
+            let index = haystack.indexOf(normalizedKeyword);
+            if (index === -1) return;
+            const frag = document.createDocumentFragment();
+            let cursor = 0;
+            let guard = 0;
+            while (index !== -1 && guard < 64) {
+                if (index > cursor) frag.appendChild(document.createTextNode(text.slice(cursor, index)));
+                const mark = document.createElement('mark');
+                mark.className = 'keyword-highlight';
+                mark.style.backgroundColor = 'yellow';
+                mark.style.color = 'inherit';
+                mark.textContent = text.slice(index, index + normalizedKeyword.length);
+                frag.appendChild(mark);
+                if (!first) first = mark;
+                cursor = index + normalizedKeyword.length;
+                index = haystack.indexOf(normalizedKeyword, cursor);
+                guard += 1;
+            }
+            if (cursor < text.length) frag.appendChild(document.createTextNode(text.slice(cursor)));
+            textNode.replaceWith(frag);
+        });
+        if (first && first.scrollIntoView) {
+            first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
     }
     function initSearchPage() {
         const keyword = getSearchParam('search');
         if (!keyword) return;
-        console.log('搜索关键词:', keyword);
-        if (document.body) {
+        const run = function () {
             searchAndHighlight(document.body, keyword);
-        } else {
-            document.addEventListener('DOMContentLoaded', () =>
-                searchAndHighlight(document.body, keyword)
-            );
-        }
-        const searchInput = document.querySelector('input[name="keyword"]');
-        const searchButton = document.querySelector('input[name="submit"]');
-        if (searchInput && searchButton) {
-            searchInput.value = keyword;
-            searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-            searchButton.click();
-            console.log(`搜索已触发，关键词: "${keyword}"，等待结果加载...`);
-            const observer = new MutationObserver(() => {
-                const searchResults = document.querySelector('.search-results');
-                if (searchResults) {
-                    console.log('搜索结果已加载:', searchResults);
-                    observer.disconnect();
-                }
-            });
-            observer.observe(document.body, { childList: true, subtree: true });
-        } else {
-            console.error('未找到搜索框或搜索按钮元素');
-        }
+            const input = document.querySelector('input[name="keyword"]');
+            const button = document.querySelector('input[name="submit"]');
+            if (!input || !button) return;
+            input.value = keyword;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            const results = document.querySelector('.search-results');
+            if (!results) {
+                button.click();
+                let ticks = 0;
+                const timer = setInterval(function () {
+                    ticks += 1;
+                    if (document.querySelector('.search-results') || ticks >= 60) {
+                        clearInterval(timer);
+                        searchAndHighlight(document.querySelector('.search-results') || document.body, keyword);
+                    }
+                }, 250);
+                return;
+            }
+            if (!results.querySelector('mark.keyword-highlight')) {
+                searchAndHighlight(results, keyword);
+            }
+        };
+        if (document.body) run();
+        else document.addEventListener('DOMContentLoaded', run);
     }
     function unlockTitleCopy() {
         if (!window.location.href.includes("vndb.org")) return;
         const titleElement1 = document.querySelector("#top_wrapper > ul > li:last-child");
         const titleElement2 = document.querySelector("body > main > article:nth-child(1) > div.vndetails > table > tbody > tr:nth-child(1) > td > details > summary > table > tbody > tr > td:nth-child(2) > span");
-        if (titleElement1) {
-            titleElement1.style = "user-select:auto";
-        }
-        if (titleElement2) {
-            titleElement2.style = "user-select:auto";
-        }
+        if (titleElement1) titleElement1.style.userSelect = 'auto';
+        if (titleElement2) titleElement2.style.userSelect = 'auto';
     }
     const REDIRECT_ROUTE = /^\/(?:redirect|go|jump|out|away|goto|link)(?:\/|$)/i;
     const REDIRECT_KEYS = ['url', 'u', 'target', 'to', 'link', 'href', 'redirect', 'redirect_url', 'redirecturl', 'out', 'go', 'jump', 'dest', 'destination'];
@@ -482,18 +522,106 @@
         }
         return '';
     }
+    function isRedirectPath(value) {
+        const cleaned = String(value || '').replace(/\/+$/, '') || '/';
+        if (REDIRECT_ROUTE.test(cleaned)) return true;
+        return REDIRECT_ROUTE.test(cleaned.replace(/^\/[a-z]{2}(?:-[a-z]{2})?\//i, '/'));
+    }
+    let markerCheckedAt = 0;
+    let markerResult = false;
     function hasWaitMarker() {
+        const now = Date.now();
+        if (now - markerCheckedAt < 800) return markerResult;
+        markerCheckedAt = now;
+        markerResult = false;
         const body = document.body;
-        if (!body) return false;
-        const text = String(body.textContent || '').slice(0, 4000);
-        return /自动跳转|即将跳转|即将离开|正在跳转|跳转中|安全提示|继续访问|秒后/.test(text);
+        if (!body || !body.firstChild) return markerResult;
+        const text = String(body.textContent || '');
+        if (text.length > 6000) {
+            markerResult = /自动跳转|即将跳转|即将离开|正在跳转|跳转中|安全提示|继续访问/.test(text);
+            return markerResult;
+        }
+        markerResult = /自动跳转|即将跳转|即将离开|正在跳转|跳转中|安全提示|继续访问|秒后/.test(text);
+        return markerResult;
     }
     function isRedirectPage() {
-        if (REDIRECT_ROUTE.test(location.pathname)) return true;
-        return !!paramTarget() && hasWaitMarker();
+        if (isRedirectPath(location.pathname)) return true;
+        return hasWaitMarker() && !!paramTarget();
     }
     function redirectTarget() {
         return paramTarget() || metaTarget() || anchorTarget();
+    }
+    function directTargetFromHref(href) {
+        if (!href) return '';
+        let url;
+        try { url = new URL(href, location.origin); } catch (e) { return ''; }
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') return '';
+        if (!isRedirectPath(url.pathname)) return '';
+        return scanParams(url.searchParams);
+    }
+    const REDIRECT_LINK_SELECTOR = 'a[href*="redirect"], a[href*="url="], a[href*="target="]';
+    function rewriteRedirectLinks(root) {
+        const scope = root && root.querySelectorAll ? root : document;
+        const links = scope.querySelectorAll(REDIRECT_LINK_SELECTOR);
+        for (let i = 0; i < links.length; i++) {
+            const a = links[i];
+            let target = '';
+            try { target = directTargetFromHref(a.getAttribute('href')); } catch (e) { continue; }
+            if (!target) continue;
+            if (a.getAttribute('href') !== target) a.setAttribute('href', target);
+            a.setAttribute('data-vj-direct', target);
+            if (a.getAttribute('target') === '_blank') a.setAttribute('rel', 'noopener');
+        }
+    }
+    function onRedirectLinkClick(ev) {
+        try { handleRedirectClick(ev); } catch (e) { }
+    }
+    function handleRedirectClick(ev) {
+        if (ev.defaultPrevented || ev.button !== 0) return;
+        const node = ev.target;
+        const a = node && node.closest ? node.closest('a[href]') : null;
+        if (!a) return;
+        const target = a.getAttribute('data-vj-direct') || directTargetFromHref(a.getAttribute('href'));
+        if (!target) return;
+        if (ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey) return;
+        if (a.getAttribute('target') === '_blank') return;
+        if (!/^https?:\/\//i.test(target)) return;
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        location.href = target;
+    }
+    function watchRedirectLinks() {
+        const start = function () {
+            rewriteRedirectLinks(document);
+            document.addEventListener('click', onRedirectLinkClick, true);
+            let pending = [];
+            let queued = false;
+            const flush = function () {
+                queued = false;
+                const batch = pending;
+                pending = [];
+                for (let i = 0; i < batch.length; i++) {
+                    const el = batch[i];
+                    if (!el.isConnected || !el.querySelectorAll) continue;
+                    rewriteRedirectLinks(el);
+                }
+                rewriteRedirectLinks(document);
+            };
+            const observer = new MutationObserver(function (records) {
+                for (let i = 0; i < records.length; i++) {
+                    const added = records[i].addedNodes;
+                    for (let k = 0; k < added.length; k++) {
+                        if (added[k].nodeType === 1) pending.push(added[k]);
+                    }
+                }
+                if (queued || !pending.length) return;
+                queued = true;
+                setTimeout(flush, 120);
+            });
+            observer.observe(document.documentElement, { childList: true, subtree: true });
+        };
+        if (document.documentElement) start();
+        else document.addEventListener('DOMContentLoaded', start);
     }
     let lastRedirectHref = '';
     let redirectLocked = false;
@@ -515,43 +643,65 @@
             if (typeof original !== 'function') return;
             history[method] = function () {
                 const result = original.apply(this, arguments);
-                setTimeout(maybeAutoRedirect, 50);
+                safeAutoRedirect();
+                setTimeout(safeAutoRedirect, 0);
                 return result;
             };
         });
     }
+    function safeAutoRedirect() {
+        try { maybeAutoRedirect(); } catch (e) { }
+    }
     function initRedirectSkip() {
+        watchRedirectLinks();
         watchSpaRedirect();
-        maybeAutoRedirect();
+        safeAutoRedirect();
         let ticks = 0;
         const timer = setInterval(function () {
             ticks += 1;
-            maybeAutoRedirect();
-            if (redirectLocked || ticks >= 240) clearInterval(timer);
+            safeAutoRedirect();
+            if (redirectLocked || ticks >= 160) clearInterval(timer);
         }, 50);
-        window.addEventListener('popstate', function () { setTimeout(maybeAutoRedirect, 80); });
-        window.addEventListener('hashchange', function () { setTimeout(maybeAutoRedirect, 80); });
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', maybeAutoRedirect);
-        }
+        window.addEventListener('popstate', safeAutoRedirect);
+        window.addEventListener('hashchange', safeAutoRedirect);
+        document.addEventListener('DOMContentLoaded', safeAutoRedirect);
+        window.addEventListener('load', safeAutoRedirect);
     }
     if (host === 'touchgal.top' || host === 'touchgal.ink') {
         initRedirectSkip();
     }
+    function watchRoute(onChange) {
+        let lastPath = location.pathname;
+        const fire = function () {
+            if (location.pathname === lastPath) return;
+            lastPath = location.pathname;
+            onChange(lastPath);
+        };
+        ['pushState', 'replaceState'].forEach(function (method) {
+            const original = history[method];
+            if (typeof original !== 'function') return;
+            history[method] = function () {
+                const result = original.apply(this, arguments);
+                fire();
+                setTimeout(fire, 0);
+                return result;
+            };
+        });
+        window.addEventListener('popstate', fire);
+        window.addEventListener('hashchange', fire);
+        document.addEventListener('visibilitychange', fire);
+    }
     function bootPageFeatures() {
-        if (host === 'vndb.org' && /^\/v\d+(?:\/|$)/.test(path)) {
-            initVndbPanel();
-            let lastPath = path;
-            setInterval(function () {
-                if (location.pathname === lastPath) return;
-                lastPath = location.pathname;
-                const old = document.getElementById(PANEL_ID);
-                if (old) old.remove();
-                initVndbPanel();
-            }, 800);
-        }
         initSearchPage();
         unlockTitleCopy();
+        if (host !== 'vndb.org') return;
+        const syncPanel = function () {
+            const old = document.getElementById(PANEL_ID);
+            if (old) old.remove();
+            if (/^\/v\d+(?:\/|$)/.test(location.pathname)) initVndbPanel();
+        };
+        if (/^\/v\d+(?:\/|$)/.test(path)) initVndbPanel();
+        watchRoute(syncPanel);
     }
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', bootPageFeatures);
@@ -736,8 +886,22 @@
       setTimeout(poll, 100);
     })();
   }
+  function tgReadKeyword() {
+    try {
+      const search = new URLSearchParams(location.search).get(TG_QUERY_PARAM);
+      if (search) return search;
+    } catch (e) { }
+    try {
+      if (location.hash.length > 1) {
+        const hash = location.hash.slice(1);
+        const index = hash.indexOf('?');
+        return new URLSearchParams(index === -1 ? hash : hash.slice(index + 1)).get(TG_QUERY_PARAM) || '';
+      }
+    } catch (e) { }
+    return '';
+  }
   function initTouchgalSearch() {
-    const keyword = new URLSearchParams(location.search).get(TG_QUERY_PARAM);
+    const keyword = tgReadKeyword();
     if (!keyword) return;
     const existing = document.querySelector(TG_INPUT_SELECTOR);
     if (existing) {
@@ -761,7 +925,7 @@
       tgApiFallback(keyword);
     }, 15000);
   }
-  if (host === 'touchgal.ink' && path.indexOf(TG_SEARCH_PATH) === 0) {
+  if (host === 'touchgal.ink' && (path.indexOf(TG_SEARCH_PATH) === 0 || tgReadKeyword())) {
     if (document.readyState === 'loading' && !document.documentElement) {
       document.addEventListener('DOMContentLoaded', initTouchgalSearch);
     } else {
@@ -769,4 +933,89 @@
     }
   }
   window.__VNDB_TG__ = { tgSearchUrl: tgSearchUrl };
+})();
+(function () {
+  'use strict';
+  const host = location.hostname.replace(/^www\./, '');
+  if (host !== 'searchgal.top') return;
+  const params = new URLSearchParams(location.search);
+  const KEY_PARAMS = ['s', 'q', 'keyword', 'search', 'wd'];
+  let keyword = '';
+  for (let i = 0; i < KEY_PARAMS.length; i++) {
+    const value = params.get(KEY_PARAMS[i]);
+    if (value) { keyword = value; break; }
+  }
+  if (!keyword) return;
+  const INPUT_SELECTOR = 'input[type="search"],input[role="combobox"],input[name="s"],input[name="q"],input[name="keyword"],input[name="search"],input[placeholder*="搜索"],input[placeholder*="Search"],input[placeholder*="search"]';
+  let done = false;
+  function visible(el) {
+    if (!el || !el.getClientRects) return false;
+    return el.getClientRects().length > 0;
+  }
+  function pickInput() {
+    const list = document.querySelectorAll(INPUT_SELECTOR);
+    for (let i = 0; i < list.length; i++) {
+      const el = list[i];
+      if (!visible(el) || el.disabled || el.readOnly) continue;
+      return el;
+    }
+    return null;
+  }
+  function setValue(input, value) {
+    const desc = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+    if (desc && desc.set) desc.set.call(input, value);
+    else input.value = value;
+    let sent = false;
+    try {
+      const InputEv = window.InputEvent || Event;
+      input.dispatchEvent(new InputEv('input', { bubbles: true, cancelable: false, data: value, inputType: 'insertText' }));
+      sent = true;
+    } catch (e) { }
+    if (!sent) input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  function pressEnter(input) {
+    const init = { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true };
+    input.dispatchEvent(new KeyboardEvent('keydown', init));
+    input.dispatchEvent(new KeyboardEvent('keypress', init));
+    input.dispatchEvent(new KeyboardEvent('keyup', init));
+  }
+  function submitForm(input) {
+    const form = input.form || input.closest('form');
+    if (form) {
+      if (typeof form.requestSubmit === 'function') {
+        try { form.requestSubmit(); return true; } catch (e) { }
+      }
+      try { form.submit(); return true; } catch (e) { }
+    }
+    const scope = form || input.closest('form') || document;
+    const btn = scope.querySelector('button[type="submit"],button[aria-label*="搜索"],button[aria-label*="Search"]');
+    if (btn) { try { btn.click(); return true; } catch (e) { } }
+    return false;
+  }
+  function attempt() {
+    if (done) return true;
+    const input = pickInput();
+    if (!input) return false;
+    if (input.value !== keyword) {
+      try { input.focus(); } catch (e) { }
+      setValue(input, keyword);
+    }
+    if (input.value !== keyword) return false;
+    const startHref = location.href;
+    pressEnter(input);
+    done = true;
+    setTimeout(function () {
+      if (location.href === startHref) submitForm(input);
+    }, 500);
+    return true;
+  }
+  if (!attempt()) {
+    let ticks = 0;
+    const timer = setInterval(function () {
+      ticks += 1;
+      if (attempt() || ticks >= 50) clearInterval(timer);
+    }, 200);
+    document.addEventListener('DOMContentLoaded', attempt);
+  }
 })();

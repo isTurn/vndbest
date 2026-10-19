@@ -6,7 +6,7 @@
  * 跳到系统浏览器后无法注入脚本，所以这里改用 @capgo/inappbrowser 的内嵌 WebView，
  * 页面加载完成后通过 executeScript 注入等价逻辑。
  *
- * 注入脚本与用户脚本 v2.6.1 的 TouchGal 分支保持一致：
+ * 注入脚本与用户脚本 v2.7.4 的 TouchGal 分支保持一致：
  * tgOnInputReady（等 React hydrate）→ tgFillAndSubmit（填入 + 校验 + 回车 + 观察）
  * → 失败重试 → tgApiFallback（调站内搜索 API 渲染浮层）。
  */
