@@ -2,9 +2,9 @@
 
 本文件记录本 fork（[isTurn/vndbest](https://github.com/isTurn/vndbest)）相对上游的功能演进。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [未发布]
+## [1.0.5] - 2026-10-19
 
-自 `v1.0.3` 之后的改动，尚未打 tag 发布。
+签名统一版本：从本版起，本地构建与 GitHub Actions 产出的 APK 使用同一份随仓库携带的 keystore，可互相覆盖安装。此前 1.0.4 的 APK 由 CI runner 临时的 debug 密钥签名，私钥无法复现，因此从 1.0.4 升级到本版需要先卸载。
 
 ### 新增
 

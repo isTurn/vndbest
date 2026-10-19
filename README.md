@@ -1,7 +1,7 @@
 # VNDBest
 
 [![Build and Release APK](https://github.com/isTurn/vndbest/actions/workflows/release.yml/badge.svg)](https://github.com/isTurn/vndbest/actions/workflows/release.yml)
-[![Version](https://img.shields.io/badge/version-1.0.4-blue.svg)](https://github.com/isTurn/vndbest/releases)
+[![Version](https://img.shields.io/badge/version-1.0.5-blue.svg)](https://github.com/isTurn/vndbest/releases)
 [![Platform](https://img.shields.io/badge/platform-Android-3DDC84.svg)](https://www.android.com/)
 [![Vue](https://img.shields.io/badge/Vue-3.5-42b883.svg)](https://vuejs.org/)
 [![Capacitor](https://img.shields.io/badge/Capacitor-8-119EFF.svg)](https://capacitorjs.com/)
@@ -183,8 +183,8 @@ docs/
 推送到 `v*` 标签会触发 GitHub Actions 构建 Release APK 并创建 GitHub Release：
 
 ```bash
-git tag v1.0.4
-git push origin v1.0.4
+git tag v1.0.5
+git push origin v1.0.5
 ```
 
 也可以在 Actions 页面手动 `workflow_dispatch`，指定版本号（留空则取 `package.json` 的 version）。
