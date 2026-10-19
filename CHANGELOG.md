@@ -2,6 +2,20 @@
 
 本文件记录本 fork（[isTurn/vndbest](https://github.com/isTurn/vndbest)）相对上游的功能演进。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.0.6] - 2026-10-19
+
+签名对齐修复版。1.0.5 虽然把 keystore 放进了仓库，但 CI 实际仍用 runner 自带的 `~/.android/debug.keystore` 签名，发布包的证书指纹与本地包不同。本版把 CI 的签名来源改成显式指定仓库内 keystore，并让构建在指纹不符时直接失败。
+
+> 升级提示：1.0.5 的发布包（CI 签名）与本版签名不同，从 1.0.5 升级到本版需先卸载旧应用（本地数据不迁移）。
+
+### 修复
+
+- **CI 产物与本地产物签名不一致**：`release.yml` 不再依赖 `signingConfigs.debug` 的默认行为，改为把 `ANDROID_KEYSTORE_PATH` 指向仓库内 `android/app/debug.keystore`（同时注入口令与别名），走 `signingConfigs.release` 分支
+- CI 构建前打印 `gradlew :app:signingReport`，日志里可直接看到实际使用的 keystore 路径与证书 SHA-256
+- CI 在 `apksigner verify --print-certs` 后强制比对证书 SHA-256（期望 `d4a228ca…ef76e`），不一致则 `::error::` 并让任务失败，避免再发出签名不符的包；比对结果写入 `signature.txt` 一并上传为制品
+
+---
+
 ## [1.0.5] - 2026-10-19
 
 签名统一版本：从本版起，本地构建与 GitHub Actions 产出的 APK 使用同一份随仓库携带的 keystore，可互相覆盖安装。此前 1.0.4 的 APK 由 CI runner 临时的 debug 密钥签名，私钥无法复现，因此从 1.0.4 升级到本版需要先卸载。

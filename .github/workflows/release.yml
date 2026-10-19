@@ -95,31 +95,33 @@ jobs:
           echo "version_code=$CODE" >> "$GITHUB_OUTPUT"
           echo "Resolved version: $VERSION (versionCode $CODE)"
 
-      - name: Prepare signing keystore
-        id: keystore
-        env:
-          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      # 签名固定为仓库内置的 android/app/debug.keystore：
+      # 1) 校验文件存在并打印证书指纹（写入日志，便于和本地包比对）
+      # 2) 通过 ANDROID_KEYSTORE_PATH 显式指向它（走 signingConfigs.release 分支），
+      #    不依赖 runner 上 ~/.android/debug.keystore 这种每台机器都不同的密钥。
+      - name: Verify bundled signing keystore
         run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
-            echo "path=$RUNNER_TEMP/release.keystore" >> "$GITHUB_OUTPUT"
-            echo "Using release keystore from secrets"
-          else
-            echo "path=" >> "$GITHUB_OUTPUT"
-            echo "::warning::ANDROID_KEYSTORE_BASE64 未配置，release APK 将使用 debug keystore 签名"
-          fi
+          set -e
+          KS="$GITHUB_WORKSPACE/android/app/debug.keystore"
+          test -f "$KS" || { echo "::error::缺少 android/app/debug.keystore"; exit 1; }
+          echo "bundled debug.keystore OK ($(wc -c < "$KS") bytes)"
+          echo "ANDROID_KEYSTORE_PATH in env: ${ANDROID_KEYSTORE_PATH:-<unset>}"
+          "$JAVA_HOME/bin/keytool" -list -v -keystore "$KS" -storepass android \
+            | grep -E "Alias name|SHA-256|SHA-1|Owner:" || true
 
       - name: Build APK (Release)
         working-directory: android
         env:
-          ANDROID_KEYSTORE_PATH: ${{ steps.keystore.outputs.path }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          # 显式指向仓库内置 keystore，签名因此与本地构建完全一致
+          ANDROID_KEYSTORE_PATH: ${{ github.workspace }}/android/app/debug.keystore
+          ANDROID_KEYSTORE_PASSWORD: 'android'
+          ANDROID_KEY_ALIAS: 'androiddebugkey'
+          ANDROID_KEY_PASSWORD: 'android'
           VNDB_VERSION_NAME: ${{ steps.version.outputs.version }}
           VNDB_VERSION_CODE: ${{ steps.version.outputs.version_code }}
         run: |
           chmod +x gradlew
+          ./gradlew :app:signingReport --console=plain
           ./gradlew assembleRelease
 
       - name: Rename and verify APK
@@ -134,13 +136,30 @@ jobs:
           OUT="vndbest-${{ steps.version.outputs.version }}.apk"
           cp "$SRC" "$OUT"
           ls -l "$OUT"
-          # 确认已签名（未签名 APK 无法安装）
+          # 确认已签名（未签名 APK 无法安装），并强制校验用的是仓库内置 keystore：
+          # 证书 SHA-256 必须等于 android/app/debug.keystore 的指纹，否则直接失败，
+          # 避免再次发出与本地签名不一致、无法覆盖安装的包。
+          EXPECTED_SHA256="d4a228ca12c80b14860780cc8ae58ee82c4ff90d85189d498bcc8e80d74ef76e"
           APKSIGNER="${ANDROID_HOME}/build-tools/36.0.0/apksigner"
           if [ -x "$APKSIGNER" ]; then
             "$APKSIGNER" verify --print-certs "$OUT"
+            ACTUAL=$("$APKSIGNER" verify --print-certs "$OUT" \
+              | grep -i "certificate SHA-256 digest" | head -1 | awk '{print $NF}')
+            echo "APK cert SHA-256: $ACTUAL"
+            echo "Expected        : $EXPECTED_SHA256"
+            if [ "$ACTUAL" != "$EXPECTED_SHA256" ]; then
+              echo "::error::APK 签名不是仓库内置 keystore（实际 $ACTUAL）"
+              printf 'MISMATCH\nactual=%s\nexpected=%s\n' "$ACTUAL" "$EXPECTED_SHA256" > signature.txt
+              exit 1
+            fi
+            echo "Signature matches bundled keystore OK"
+            printf 'OK\nactual=%s\nexpected=%s\n' "$ACTUAL" "$EXPECTED_SHA256" > signature.txt
           else
             echo "::warning::apksigner not found, skipping signature verification"
+            printf 'UNKNOWN\n' > signature.txt
           fi
+          cat signature.txt
+          echo "signature_file=signature.txt" >> "$GITHUB_OUTPUT"
           echo "apk_path=$OUT" >> "$GITHUB_OUTPUT"
           echo "apk_name=$OUT" >> "$GITHUB_OUTPUT"
 
@@ -148,7 +167,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: vndbest-apk
-          path: ${{ steps.find-apk.outputs.apk_path }}
+          path: |
+            ${{ steps.find-apk.outputs.apk_path }}
+            ${{ steps.find-apk.outputs.signature_file }}
           retention-days: 14
 
       - name: Create GitHub Release
