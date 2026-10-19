@@ -177,14 +177,33 @@ jobs:
             ${{ steps.find-apk.outputs.signature_file }}
           retention-days: 14
 
+      - name: Resolve release notes
+        id: notes
+        run: |
+          FILE="docs/release-notes/${GITHUB_REF_NAME#v}.md"
+          if [ -f "$FILE" ]; then
+            echo "Using hand-written notes: $FILE"
+            # 多行内容经 GITHUB_OUTPUT 用分隔符写法传给下一步
+            {
+              echo "body<<VNDB_RELEASE_NOTES_EOF"
+              cat "$FILE"
+              echo "VNDB_RELEASE_NOTES_EOF"
+            } >> "$GITHUB_OUTPUT"
+            echo "has_body=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No $FILE, will fall back to auto-generated notes"
+            echo "has_body=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: VNDBest ${{ steps.version.outputs.version }}
+          body: ${{ steps.notes.outputs.body }}
           draft: false
           prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'rc') }}
-          generate_release_notes: true
+          generate_release_notes: ${{ steps.notes.outputs.has_body != 'true' }}
           files: |
             ${{ steps.find-apk.outputs.apk_path }}

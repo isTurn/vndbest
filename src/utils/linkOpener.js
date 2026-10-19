@@ -45,12 +45,14 @@ function isNative() {
   }
 }
 
-/** TouchGal 是否固定用内置浏览器打开（默认关） */
+/** TouchGal 是否固定用内置浏览器打开（默认开：只有显式存过 '0' 才关） */
 export function getTouchGalInAppEnabled() {
   try {
-    return localStorage.getItem(TOUCHGAL_INAPP_KEY) === '1'
+    const saved = localStorage.getItem(TOUCHGAL_INAPP_KEY)
+    if (saved === null) return true
+    return saved !== '0'
   } catch (e) {
-    return false
+    return true
   }
 }
 

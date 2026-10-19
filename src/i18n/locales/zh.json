@@ -223,7 +223,7 @@
     "inapp_external_button": "内置浏览器跳转外部浏览器",
     "inapp_external_button_desc": "在内置浏览器顶部工具栏右侧显示一个按钮，点一下把当前页面交给系统浏览器（或自选浏览器）打开。",
     "touchgal_inapp": "TouchGal 用内置浏览器打开",
-    "touchgal_inapp_desc": "打开后不管上面怎么选，TouchGal 都固定在内置浏览器里打开，页面加载完成后可再用工具栏按钮甩给外部浏览器。"
+    "touchgal_inapp_desc": "默认开启。打开时不管上面怎么选，TouchGal 都固定在内置浏览器里打开，页面加载完成后可再用工具栏按钮甩给外部浏览器。"
   },
   "nav": {
     "home": "主页",

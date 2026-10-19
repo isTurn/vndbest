@@ -223,7 +223,7 @@
     "inapp_external_button": "Open in external browser",
     "inapp_external_button_desc": "Shows a button at the right of the in-app browser toolbar; tap it to hand the current page over to the system browser (or your custom browser).",
     "touchgal_inapp": "Open TouchGal in the in-app browser",
-    "touchgal_inapp_desc": "When enabled, TouchGal always opens in the in-app browser regardless of the setting above, so you can load the page first and then hand it to an external browser from the toolbar."
+    "touchgal_inapp_desc": "On by default. When enabled, TouchGal always opens in the in-app browser regardless of the setting above, so you can load the page first and then hand it to an external browser from the toolbar."
   },
   "nav": {
     "home": "Home",
