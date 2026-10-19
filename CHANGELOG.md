@@ -1,4 +1,4 @@
-# 更新日志
+﻿# 更新日志
 
 本文件记录本 fork（[isTurn/vndbest](https://github.com/isTurn/vndbest)）相对上游的功能演进。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
@@ -13,6 +13,8 @@
 - 为上述按钮放开 `@capgo/inappbrowser` 的两处原生限制（`scripts/patch-inappbrowser.cjs`，幂等，`postinstall` 与 CI 各跑一次）
 - **TouchGal 过渡页自动跳过**：在 TouchGal 点外链会先进「即将离开本站…5 秒」的中转页，现在会直接跳过。两层机制：①在 TouchGal 页面里点外链时**先**把 `href` 解析成真实地址并直接跳转，根本不进中转页（绝大多数场景走这条）；②已经落到中转页时立刻解析 `url` / `target` / `go` 等参数、`meta refresh` 与「继续访问」链接并 `location.replace` 跳走，不再干等。新增 `src/utils/redirectSkip.js`，在 `main.js` 挂载一次，只在 `touchgal.ink` / `touchgal.top` 上注入
 
+- **搜索页「分类浏览」补上作品入口**：此前分类卡片只有版本 / 会社 / 人物 / 角色 / 标签 / 特征六项，作品只能靠首页或全局搜索进；现在第一张卡片就是「作品」（`/browse/vn`），和其余分类同尺寸排列
+- **作品页排序会被记住**：从分类卡进作品页后选的排序字段与升降序会存到本地（`vndb_vn_search_sort`），下次进来沿用；也支持 URL 参数 `?sort=rating&reverse=1` 直接指定。此前每次进来都会退回「投票数 + 倒序」
 ### 变更
 
 - **跨站搜索用户脚本同步到 v2.6.1**：`VNDB跨站搜索.js` 从 v2.5.14 升级，`@run-at` 改为 `document-start`、`@match` 扩大到 TouchGal 全站，新增外链跳转页自动跳过等待（解析 `url` / `target` / `go` 等参数、`meta refresh` 与「继续访问」链接）；站点表 41 项未变，应用内跨站搜索的站点数据不受影响

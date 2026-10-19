@@ -23,8 +23,16 @@ import {
 const router = useRouter()
 const { t } = useI18n()
 
-// 分类入口（作品不在分类里，作品走首页/全局搜索）
+// 分类入口（第一项是作品/视觉小说，其余为 VNDB 其他数据库分类）
 const libraryItems = computed(() => [
+  {
+    id: 'vn',
+    title: t('library.vn'),
+    icon: 'lucide:file-text',
+    color: 'text-blue-500',
+    bgColor: 'bg-blue-50',
+    path: '/browse/vn'
+  },
   {
     id: 'releases',
     title: t('library.releases'),

@@ -35,9 +35,42 @@ const hasMore = ref(false)
 const page = ref(1)
 const resultsPerPage = 20
 
-// 筛选和排序状态
-const sortBy = ref('votecount')
-const reverse = ref(true)
+// 排序状态：URL 参数 > 本地记忆 > 默认（票数倒序）
+// 从搜索页「分类浏览 → 作品」进来时保持上次选择的排序，不重置
+const SORT_STORAGE_KEY = 'vndb_vn_search_sort'
+const SORT_VALUES = ['votecount', 'searchrank', 'rating', 'released', 'title']
+
+function readSavedSort() {
+  try {
+    const raw = localStorage.getItem(SORT_STORAGE_KEY)
+    if (!raw) return null
+    const obj = JSON.parse(raw)
+    if (!obj || typeof obj !== 'object') return null
+    return obj
+  } catch {
+    return null
+  }
+}
+
+function persistSort() {
+  try {
+    localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify({ sortBy: sortBy.value, reverse: reverse.value }))
+  } catch {
+    /* 隐私模式等写入失败可忽略 */
+  }
+}
+
+const savedSort = readSavedSort()
+const urlSortRaw = typeof route.query.sort === 'string' ? route.query.sort : ''
+const urlSort = SORT_VALUES.includes(urlSortRaw) ? urlSortRaw : ''
+const urlReverse = typeof route.query.reverse === 'string' ? route.query.reverse : ''
+const savedSortBy = savedSort && SORT_VALUES.includes(savedSort.sortBy) ? savedSort.sortBy : ''
+const sortBy = ref(urlSort || savedSortBy || 'votecount')
+const reverse = ref(
+  urlReverse
+    ? urlReverse !== '0'
+    : (savedSort && typeof savedSort.reverse === 'boolean' ? savedSort.reverse : true)
+)
 const selectedLang = ref('all')
 const selectedPlatform = ref('all')
 const selectedTags = ref([])
@@ -317,11 +350,13 @@ function handleLoadMore() {
 
 function handleSortChange(val) {
   sortBy.value = val
+  persistSort()
   fetchData()
 }
 
 function handleReverseChange(val) {
   reverse.value = val
+  persistSort()
   fetchData()
 }
 
@@ -431,6 +466,8 @@ function applyFilters(filters) {
   // 保留 'today' 特殊状态，不转换为具体日期
   if (filters.selectedDateFrom !== undefined) selectedDateFrom.value = filters.selectedDateFrom || ''
   if (filters.selectedDateTo !== undefined) selectedDateTo.value = filters.selectedDateTo || ''
+  // 保存的搜索条件里带了排序时，同步记忆下来
+  if (filters.sortBy !== undefined || filters.reverse !== undefined) persistSort()
 }
 
 function handleRefresh() {
@@ -448,6 +485,8 @@ function setTodayDateFrom() {
 }
 
 onMounted(async () => {
+  // URL 显式指定了排序时，记进本地，下次从分类入口进来沿用
+  if (urlSort || urlReverse) persistSort()
   const savedId = route.query.savedId
   if (savedId) {
     const saved = getById(savedId)
