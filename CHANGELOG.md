@@ -2,6 +2,21 @@
 
 本文件记录本 fork（[isTurn/vndbest](https://github.com/isTurn/vndbest)）相对上游的功能演进。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.0.8] - 2026-10-19
+
+搜索页补齐作品入口，作品页排序会记住，作品图标统一成手柄。功能与 1.0.7 相同，仅是这两处改动的正式发版。
+
+### 新增
+
+- **搜索页「分类浏览」补上作品入口**：分类卡片原本只有版本 / 会社 / 人物 / 角色 / 标签 / 特征六项，作品得靠首页或全局搜索进；现在「作品」是分类里的第一张卡片，指向 `/browse/vn`，和其余分类同尺寸排列
+- **作品页排序会被记住**：在作品页选过的排序字段与升降序（票数 / 相关度 / 评分 / 发售日 / 标题）会存进 `localStorage`（`vndb_vn_search_sort`），下次从分类卡进来沿用；也支持 `?sort=rating&reverse=1` 直接指定。此前每次进来都会退回「投票数 + 倒序」
+
+### 变更
+
+- **作品图标统一为 `lucide:gamepad-2`**：分类卡、全局搜索的「作品」分组头、作品搜索页页头三处从 `lucide:file-text` 换成手柄，与 `SEARCH_TYPE_ICONS.vn` / `PLACEHOLDER_ICONS.vn` 的既有约定一致；`file-text` 只留给「列表 / 简介」这类语义
+
+---
+
 ## [1.0.7] - 2026-10-19
 
 内置浏览器跳转增强版：工具栏上多了「用外部浏览器打开」按钮，TouchGal 外链中转页（广告 / 5 秒等待）会自动跳过，跨站搜索脚本同步到上游 v2.6.1。
@@ -12,9 +27,6 @@
 - **TouchGal 专用开关**：「设置 → 跳转」里新增，**默认开启**；打开后不管「跨站搜索打开方式」怎么设，TouchGal 一律用内置浏览器打开，等页面正常加载后再决定是否转外部浏览器（只有手动关掉才会走外部浏览器）
 - 为上述按钮放开 `@capgo/inappbrowser` 的两处原生限制（`scripts/patch-inappbrowser.cjs`，幂等，`postinstall` 与 CI 各跑一次）
 - **TouchGal 过渡页自动跳过**：在 TouchGal 点外链会先进「即将离开本站…5 秒」的中转页，现在会直接跳过。两层机制：①在 TouchGal 页面里点外链时**先**把 `href` 解析成真实地址并直接跳转，根本不进中转页（绝大多数场景走这条）；②已经落到中转页时立刻解析 `url` / `target` / `go` 等参数、`meta refresh` 与「继续访问」链接并 `location.replace` 跳走，不再干等。新增 `src/utils/redirectSkip.js`，在 `main.js` 挂载一次，只在 `touchgal.ink` / `touchgal.top` 上注入
-
-- **搜索页「分类浏览」补上作品入口**：此前分类卡片只有版本 / 会社 / 人物 / 角色 / 标签 / 特征六项，作品只能靠首页或全局搜索进；现在第一张卡片就是「作品」（`/browse/vn`），和其余分类同尺寸排列
-- **作品页排序会被记住**：从分类卡进作品页后选的排序字段与升降序会存到本地（`vndb_vn_search_sort`），下次进来沿用；也支持 URL 参数 `?sort=rating&reverse=1` 直接指定。此前每次进来都会退回「投票数 + 倒序」
 
 ### 变更
 
