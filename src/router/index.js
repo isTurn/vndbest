@@ -19,7 +19,9 @@ const StaffSearch = () => import('@/pages/StaffSearch.vue')
 const StaffDetail = () => import('@/pages/StaffDetail.vue')
 const CharacterSearch = () => import('@/pages/CharacterSearch.vue')
 const TagSearch = () => import('@/pages/TagSearch.vue')
+const TagDetail = () => import('@/pages/TagDetail.vue')
 const TraitSearch = () => import('@/pages/TraitSearch.vue')
+const TraitDetail = () => import('@/pages/TraitDetail.vue')
 const ReleaseDetail = () => import('@/pages/ReleaseDetail.vue')
 
 const routes = [
@@ -156,10 +158,22 @@ const routes = [
     meta: { showTabBar: true }
   },
   {
+    path: '/tag/:id',
+    name: 'TagDetail',
+    component: TagDetail,
+    meta: { showTabBar: false }
+  },
+  {
     path: '/browse/traits',
     name: 'TraitSearch',
     component: TraitSearch,
     meta: { showTabBar: true }
+  },
+  {
+    path: '/trait/:id',
+    name: 'TraitDetail',
+    component: TraitDetail,
+    meta: { showTabBar: false }
   },
   // 兜底：未匹配的路径重定向回首页，避免白屏
   {

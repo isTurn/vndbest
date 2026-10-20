@@ -345,7 +345,7 @@ function handleRemoveTrait(trait) {
 }
 
 function handleTraitDetail(trait) {
-  router.push(`/browse/characters?trait=${trait.id}`)
+  router.push(`/trait/${trait.id}`)
 }
 
 function handleTraitModalConfirm(traits) {

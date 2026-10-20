@@ -136,7 +136,7 @@ function handleClear() {
 }
 
 function goToDetail(id) {
-  router.push(`/browse/vn?tag=${id}`)
+  router.push(`/tag/${id}`)
 }
 
 /**

@@ -24,7 +24,8 @@
     "count_vn": "{count} VNs",
     "count_char": "{count} characters",
     "count_vn_short": "{count} VNs",
-    "count_char_short": "{count} chars"
+    "count_char_short": "{count} chars",
+    "clear": "Clear"
   },
   "settings": {
     "title": "Settings",
@@ -259,7 +260,14 @@
     "no_birthday": "No characters have birthdays today",
     "birthday_age": "Age {age}",
     "random_vn_tip": "Feeling lucky? Jump to a random visual novel",
-    "stats_short": "Platform stats"
+    "stats_short": "Platform stats",
+    "recent_views": "Recently Viewed",
+    "recent_cleared": "Recent history cleared",
+    "recent_type_vn": "VN",
+    "recent_type_character": "Character",
+    "recent_type_release": "Release",
+    "recent_type_producer": "Producer",
+    "recent_type_staff": "Staff"
   },
   "library": {
     "title": "Search",
@@ -338,7 +346,9 @@
       "started": "Date Started",
       "finished": "Date Finished",
       "vote": "Rating",
-      "title": "Title"
+      "title": "Title",
+      "votecount": "Vote Count",
+      "released": "Release Date"
     },
     "expand_n": "Expand all {count} items",
     "collapse": "Collapse",
@@ -403,7 +413,8 @@
       "reviews": "Reviews",
       "quotes": "Quotes",
       "links": "Links",
-      "stats": "Stats"
+      "stats": "Stats",
+      "similar": "Similar"
     },
     "links": {
       "resource_sites": "Resource Sites",
@@ -649,7 +660,9 @@
       "user_vote": "Your vote",
       "count": "{count} votes",
       "percent": "{percent}%"
-    }
+    },
+    "similar_hint": "Recommended by shared tags, for reference only",
+    "similar_empty": "No similar titles found"
   },
   "release": {
     "title": "Release Details",
@@ -913,6 +926,11 @@
       "co": "Company",
       "in": "Individual",
       "ng": "Doujin"
+    },
+    "tag_category": {
+      "cont": "Content",
+      "tech": "Technical",
+      "ero": "Erotic"
     }
   },
   "favorites": {
@@ -984,11 +1002,15 @@
     "view_related_vns": "View related VNs",
     "no_results": "No tags found",
     "translation_match": "Translation match",
-    "translation_badge": "Translated"
+    "translation_badge": "Translated",
+    "detail": "Tag",
+    "related_vns": "Related VNs"
   },
   "trait": {
     "view_related_chars": "View related characters",
-    "no_results": "No traits found"
+    "no_results": "No traits found",
+    "detail": "Trait",
+    "related_chars": "Related Characters"
   },
   "character": {
     "no_results": "No characters found",

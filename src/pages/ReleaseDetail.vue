@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useRecentViews } from '@/composables/useRecentViews'
 import { translateError } from '@/utils/errorMessage'
 import { Icon } from '@iconify/vue'
 import AppHeader from '@/components/AppHeader.vue'
@@ -42,6 +43,7 @@ const releaseId = ref(route.params.id)
 const release = ref(null)
 const loading = ref(true)
 const error = ref(null)
+const { record: recordRecent } = useRecentViews()
 
 const fetchReleaseDetail = async () => {
   loading.value = true
@@ -50,6 +52,13 @@ const fetchReleaseDetail = async () => {
     const data = await getReleaseDetail(releaseId.value)
     if (data && data.results && data.results.length > 0) {
       release.value = data.results[0]
+      recordRecent({
+        id: release.value.id,
+        type: 'release',
+        title: release.value.alttitle || release.value.title || '',
+        subtitle: release.value.title || '',
+        image: getReleaseImageUrl(release.value) || ''
+      })
     } else {
       error.value = t('vn.not_found')
     }

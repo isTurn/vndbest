@@ -13,6 +13,7 @@ import { useImageLoader } from '@/composables/useImageLoader'
 import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
 import { useFavorites } from '@/composables/useFavorites'
+import { useRecentViews } from '@/composables/useRecentViews'
 import { IonPage, IonContent, IonImg, IonSpinner } from '@ionic/vue'
 import { CapacitorHttp } from '@capacitor/core'
 
@@ -47,6 +48,7 @@ const translationError = ref('')
 const translationSourceText = ref('')
 
 const { isFavorite, toggleFavorite } = useFavorites()
+const { record: recordRecent } = useRecentViews()
 
 const isCurrentCharFavorite = computed(() => {
   return isFavorite(character.value?.id)
@@ -305,6 +307,13 @@ async function fetchCharacterInfo() {
     const res = await getCharacterDetail(characterId.value)
     if (res && res.results && res.results.length > 0) {
       character.value = res.results[0]
+      recordRecent({
+        id: character.value.id,
+        type: 'character',
+        title: character.value.name || '',
+        subtitle: character.value.original || '',
+        image: character.value.image?.url || ''
+      })
       resetDescriptionTranslation()
       resetQuoteTranslations()
       // 自动加载台词

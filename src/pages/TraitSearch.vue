@@ -138,7 +138,7 @@ function handleClear() {
 }
 
 function goToDetail(id) {
-  router.push(`/browse/characters?trait=${id}`)
+  router.push(`/trait/${id}`)
 }
 
 /**

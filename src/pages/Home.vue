@@ -16,6 +16,7 @@ import { prefetchFromItems } from '@/utils/imagePrefetch'
 import { getReleaseImage, getReleaseImageUrl } from '@/utils/releaseImage'
 import { useToast } from '@/composables/useToast'
 import { useAppUpdate } from '@/composables/useAppUpdate'
+import { useRecentViews } from '@/composables/useRecentViews'
 import UpdateDialog from '@/components/UpdateDialog.vue'
 
 const router = useRouter()
@@ -23,6 +24,7 @@ const { t } = useI18n()
 const { showToast } = useToast()
 const { getCardAction } = usePrivacy()
 const { list: savedSearches, remove: removeSavedSearch } = useSavedSearches()
+const { list: recentViews, isEmpty: recentEmpty, clear: clearRecentViews, toPath: recentViewPath } = useRecentViews()
 const imageLoader = useImageLoader()
 const {
   updateState,
@@ -377,6 +379,24 @@ function handleCharacterClick(character) {
   router.push(`/character/${character.id}`)
 }
 
+// 「最近浏览」卡片类型图标（无封面时用作占位）
+const RECENT_TYPE_ICONS = {
+  vn: 'lucide:book-open',
+  character: 'lucide:user-round',
+  release: 'lucide:package',
+  producer: 'lucide:building-2',
+  staff: 'lucide:users-round'
+}
+
+function openRecentView(item) {
+  router.push(recentViewPath(item))
+}
+
+function clearRecentViewsConfirm() {
+  clearRecentViews()
+  showToast(t('home.recent_cleared'), 'info')
+}
+
 function navigateToBirthdaySearch(month, day) {
   router.push({ path: '/browse/characters', query: { birthday: `${month},${day}` } })
 }
@@ -585,6 +605,58 @@ function getFilterSummary(item) {
       >
         <Icon :icon="loadingSections.random ? 'eos-icons:loading' : 'lucide:dices'" class="h-5 w-5" />
       </button>
+    </div>
+
+    <!-- 最近浏览：横向卡片条，点卡片回到对应详情页 -->
+    <div v-if="!recentEmpty" class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 shadow-xs">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+          <Icon icon="lucide:history" class="h-4 w-4 text-sky-500" />
+          {{ t('home.recent_views') }}
+          <span class="text-[10px] font-normal text-neutral-400 dark:text-neutral-500 tabular-nums">{{ recentViews.length }}</span>
+        </h2>
+        <button
+          @click="clearRecentViewsConfirm"
+          class="flex items-center gap-1 text-[10px] text-neutral-400 hover:text-red-500 dark:text-neutral-500 dark:hover:text-red-400 transition"
+        >
+          <Icon icon="lucide:trash-2" class="h-3 w-3" />
+          {{ t('common.clear') }}
+        </button>
+      </div>
+
+      <div class="flex gap-3 overflow-x-auto pb-1 -mb-1">
+        <button
+          v-for="item in recentViews"
+          :key="`${item.type}-${item.id}`"
+          @click="openRecentView(item)"
+          class="w-[84px] shrink-0 text-left group"
+        >
+          <div class="relative aspect-[3/4] w-full overflow-hidden rounded-lg border border-neutral-200/60 dark:border-neutral-700/60 bg-neutral-100 dark:bg-neutral-800">
+            <ion-img
+              v-if="item.image"
+              :key="`rv-${item.type}-${item.id}`"
+              :src="imageLoader.resolveSrc(`rv-${item.type}-${item.id}`, item.image)"
+              :alt="item.title || 'cover'"
+              class="h-full w-full object-cover"
+              @ionImgWillLoad="imageLoader.onWillLoad(`rv-${item.type}-${item.id}`)"
+              @ionImgDidLoad="imageLoader.onLoad(`rv-${item.type}-${item.id}`)"
+              @ionError="imageLoader.onError(`rv-${item.type}-${item.id}`)"
+            />
+            <div v-else class="absolute inset-0 flex items-center justify-center">
+              <Icon :icon="RECENT_TYPE_ICONS[item.type] || 'lucide:file-text'" class="h-6 w-6 text-neutral-300 dark:text-neutral-600" />
+            </div>
+            <span
+              v-if="item.type !== 'vn'"
+              class="absolute left-1 top-1 rounded bg-black/55 px-1 py-0.5 text-[8px] leading-none text-white backdrop-blur-sm"
+            >
+              {{ t(`home.recent_type_${item.type}`) }}
+            </span>
+          </div>
+          <div class="mt-1 line-clamp-2 text-[11px] leading-tight font-medium text-neutral-700 dark:text-neutral-300 group-hover:text-neutral-950 dark:group-hover:text-neutral-100">
+            {{ item.title || item.id }}
+          </div>
+        </button>
+      </div>
     </div>
 
     <!-- 角色生日板块 -->

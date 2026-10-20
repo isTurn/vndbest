@@ -2,6 +2,7 @@
 import { ref, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useRecentViews } from '@/composables/useRecentViews'
 import { Icon } from '@iconify/vue'
 import AppHeader from '@/components/AppHeader.vue'
 import { getStaffDetail, getVnListByStaff } from '@/api/vndb'
@@ -47,6 +48,8 @@ const page = ref(1)
 const resultsPerPage = 20
 
 // 排序状态
+const { record: recordRecent } = useRecentViews()
+
 const sortBy = ref('released')
 const reverse = ref(true)
 
@@ -56,6 +59,13 @@ async function fetchStaffInfo() {
     const res = await getStaffDetail(staffId.value)
     if (res && res.results && res.results.length > 0) {
       staff.value = res.results[0]
+      recordRecent({
+        id: staff.value.id,
+        type: 'staff',
+        title: staff.value.name || '',
+        subtitle: staff.value.original || '',
+        image: ''
+      })
     }
   } catch (err) {
     console.error('获取人物详情失败:', err)

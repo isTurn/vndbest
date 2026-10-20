@@ -24,7 +24,8 @@
     "count_vn": "{count} 部作品",
     "count_char": "{count} 位角色",
     "count_vn_short": "{count} 作品",
-    "count_char_short": "{count} 角色"
+    "count_char_short": "{count} 角色",
+    "clear": "清空"
   },
   "settings": {
     "title": "设置",
@@ -258,7 +259,14 @@
     "no_birthday": "暂无角色过生日",
     "birthday_age": "{age}岁",
     "random_vn_tip": "试试手气，随机跳转到一个作品页面",
-    "stats_short": "平台数据"
+    "stats_short": "平台数据",
+    "recent_views": "最近浏览",
+    "recent_cleared": "已清空最近浏览",
+    "recent_type_vn": "作品",
+    "recent_type_character": "角色",
+    "recent_type_release": "版本",
+    "recent_type_producer": "会社",
+    "recent_type_staff": "人物"
   },
   "library": {
     "title": "搜索",
@@ -337,7 +345,9 @@
       "started": "开始时间",
       "finished": "完成时间",
       "vote": "评分",
-      "title": "标题"
+      "title": "标题",
+      "votecount": "投票数",
+      "released": "发售日期"
     },
     "expand_n": "展开全部 {count} 项",
     "collapse": "收起",
@@ -402,7 +412,8 @@
       "reviews": "评论",
       "quotes": "摘录",
       "links": "外链",
-      "stats": "统计"
+      "stats": "统计",
+      "similar": "相似"
     },
     "links": {
       "resource_sites": "资源站",
@@ -648,7 +659,9 @@
       "user_vote": "你的评分",
       "count": "{count} 人",
       "percent": "{percent}%"
-    }
+    },
+    "similar_hint": "按共同标签推荐，仅供参考",
+    "similar_empty": "没有找到足够相似的作品"
   },
   "release": {
     "title": "版本详情",
@@ -913,6 +926,11 @@
       "co": "会社",
       "in": "个人",
       "ng": "同人"
+    },
+    "tag_category": {
+      "cont": "内容",
+      "tech": "技术",
+      "ero": "性内容"
     }
   },
   "favorites": {
@@ -984,11 +1002,15 @@
     "view_related_vns": "查看相关作品",
     "no_results": "未找到相关标签",
     "translation_match": "翻译匹配",
-    "translation_badge": "翻译"
+    "translation_badge": "翻译",
+    "detail": "标签详情",
+    "related_vns": "相关作品"
   },
   "trait": {
     "view_related_chars": "查看相关角色",
-    "no_results": "未找到相关特征"
+    "no_results": "未找到相关特征",
+    "detail": "特征详情",
+    "related_chars": "相关角色"
   },
   "character": {
     "no_results": "未找到相关角色",

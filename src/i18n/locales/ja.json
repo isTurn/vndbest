@@ -24,7 +24,8 @@
     "count_vn": "{count} 作品",
     "count_char": "{count} キャラ",
     "count_vn_short": "{count} 作品",
-    "count_char_short": "{count} キャラ"
+    "count_char_short": "{count} キャラ",
+    "clear": "クリア"
   },
   "settings": {
     "title": "設定",
@@ -259,7 +260,14 @@
     "no_birthday": "今日誕生日のキャラクターはいません",
     "birthday_age": "{age}歳",
     "random_vn_tip": "ランダムに作品ページへ移動します",
-    "stats_short": "データ概要"
+    "stats_short": "データ概要",
+    "recent_views": "最近見た項目",
+    "recent_cleared": "最近見た項目をクリアしました",
+    "recent_type_vn": "作品",
+    "recent_type_character": "キャラ",
+    "recent_type_release": "リリース",
+    "recent_type_producer": "ブランド",
+    "recent_type_staff": "スタッフ"
   },
   "library": {
     "title": "検索",
@@ -338,7 +346,9 @@
       "started": "開始日",
       "finished": "終了日",
       "vote": "評価",
-      "title": "タイトル"
+      "title": "タイトル",
+      "votecount": "投票数",
+      "released": "発売日"
     },
     "expand_n": "{count} 件をすべて展開",
     "collapse": "折りたたむ",
@@ -403,7 +413,8 @@
       "reviews": "レビュー",
       "quotes": "引用",
       "links": "リンク",
-      "stats": "統計"
+      "stats": "統計",
+      "similar": "類似"
     },
     "links": {
       "resource_sites": "リソースサイト",
@@ -649,7 +660,9 @@
       "user_vote": "あなたの得点",
       "count": "{count} 票",
       "percent": "{percent}%"
-    }
+    },
+    "similar_hint": "共通タグによる推薦です（参考程度）",
+    "similar_empty": "類似作品が見つかりません"
   },
   "release": {
     "title": "リリース詳細",
@@ -913,6 +926,11 @@
       "co": "会社",
       "in": "個人",
       "ng": "同人"
+    },
+    "tag_category": {
+      "cont": "内容",
+      "tech": "技術",
+      "ero": "性的"
     }
   },
   "favorites": {
@@ -984,11 +1002,15 @@
     "view_related_vns": "関連作品を見る",
     "no_results": "タグが見つかりません",
     "translation_match": "翻訳一致",
-    "translation_badge": "翻訳"
+    "translation_badge": "翻訳",
+    "detail": "タグ詳細",
+    "related_vns": "関連作品"
   },
   "trait": {
     "view_related_chars": "関連キャラを見る",
-    "no_results": "特徴が見つかりません"
+    "no_results": "特徴が見つかりません",
+    "detail": "特徴詳細",
+    "related_chars": "関連キャラクター"
   },
   "character": {
     "no_results": "キャラクターが見つかりません",

@@ -348,7 +348,7 @@ function handleRemoveTag(tag) {
 }
 
 function handleTagDetail(tag) {
-  router.push(`/browse/vn?tag=${tag.id}`)
+  router.push(`/tag/${tag.id}`)
 }
 
 function handleTagModalConfirm(tags) {
