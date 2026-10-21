@@ -2,6 +2,34 @@
 
 本文件记录本 fork（[isTurn/vndbest](https://github.com/isTurn/vndbest)）相对上游的功能演进。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.0.9] - 2026-10-21
+
+顶栏与底部 TabBar 从滚动内容里彻底拆出来，来回拖动时只有中间的内容在动；顺带修掉顶栏压住通知栏的问题，并给评分分布柱状图换成逐档递进的配色。
+
+### 变更
+
+- **顶栏固定在内容之上，不跟随拖动**：顶栏原来渲染在 `ion-content` 里靠 `position: sticky` 贴顶，滚动到底继续下拉时会被弹性位移一起带走。现改为 `ion-page` 的直接子节点（渲染在内容之外），`src/components/AppHeader.vue` 拆成「外层 `.app-header` 承担背景 / 模糊 / 安全区内边距」+「内层 `barClass` 承担居中与排布」两层；拖动、回弹、切页都不再影响它
+- **顶栏不再压住通知栏**：`@capacitor/android` 的 `SystemBars` 注入的是 CSS 变量 `--safe-area-inset-top`，而原代码只写了 `env(safe-area-inset-top)`，在 WebView 里取到 0，于是顶栏顶进状态栏。现统一改成 `var(--safe-area-inset-top, env(safe-area-inset-top, 0px))`（`src/style.css` 的 `.app-header` / `.app-header--lg`、`src/App.vue` 的 `.app-tab-bar`）
+- **中间内容保留弹性回弹**：新增 `src/utils/elasticScroll.js`，只在 `ion-content` 的 `.inner-scroll` 上做阻尼位移 + 回弹，弹性只作用在中间内容层，顶栏与 TabBar 不动；文档层继续 `overscroll-behavior: none`，避免整幅画面被视口 stretch
+- **底部 TabBar 不再被拉伸**：底衬从 `bg-white/80 + backdrop-blur-md` 改成一个不透明纯色子层（`absolute inset-0`），`.app-tab-bar` 加 `translateZ(0)` / `backface-visibility: hidden` 提升为独立合成层，滚动时不再和内容一起重绘
+- **原生层关闭 WebView 过度滚动**：`MainActivity.onCreate` 里 `getBridge().getWebView().setOverScrollMode(OVER_SCROLL_NEVER)`，与 CSS 侧双层收敛
+- **评分分布柱状图逐档配色**：`VnDetail.vue` 的 5～10 分从三档（≥8 绿、≥5 蓝、其余灰）改为每档独立颜色。不用 Tailwind 的 emerald / teal / cyan 调色板（其亮度阶梯跳跃，8/9/10 拼在一起会有台阶），改用 `hsl()` 自算等亮度差色带：色相每档 −6°（190° → 160°），亮色 S=95% / 暗色 S=90%，按「感知亮度每档 −8」反解亮度，实测相邻两档 ΔL 稳定在 −7.3 ~ −8.6；10 分不再用渐变
+- **7 个搜索页自己渲染顶栏**：`VnSearch` / `CharacterSearch` / `ProducerSearch` / `ReleaseSearch` / `StaffSearch` / `TagSearch` / `TraitSearch` 把 `AppHeader` 提到 `ion-content` 之外，并给 `SearchBase` 传 `:show-header="false"`（`SearchBase.vue` 新增 `showHeader` prop）
+- **标签 / 特征详情页同步改造**：`TagDetail.vue` / `TraitDetail.vue` 的 `AppHeader` 一并移到 `ion-content` 之外
+
+### 新增
+
+- **语言筛选显示国旗**：新增 `src/components/LanguageFlag.vue`；`BaseSelect.vue` 加 `showLangFlag` prop 与 `flagOf()`（`all` 不显示），当前值与选项前渲染国旗；`VnSearch` / `ReleaseSearch` 传 `show-lang-flag`，`Home.vue` 的语言徽章与搜索结果 badges、`Settings.vue` 的语言列表同步显示
+- **作品简介与相关作品整块折叠**：`VnDetail.vue` 新增 `descriptionSectionOpen` / `relationsSectionOpen`（默认 `false`），标题改为带 chevron 的按钮，整块 `v-show` 收起
+
+### 修复
+
+- **顶栏与通知栏重叠**：改用 WebView 实际上报的安全区高度（见上文「变更」）
+- **下拉回弹时底部按钮栏变形**：TabBar 独立成合成层后不再参与内容重绘
+- **标签 / 特征详情页顶栏跟随滚动**：与其余页面统一为固定顶栏结构
+
+---
+
 ## [1.0.8] - 2026-10-20
 
 本站内容跳转更闭环：新增「最近浏览」「相似作品」与标签 / 特征详情页。

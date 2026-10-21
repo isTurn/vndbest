@@ -138,7 +138,7 @@ jobs:
             echo "::error::Release APK not found"
             exit 1
           fi
-          OUT="vndbest-${{ steps.version.outputs.version }}.apk"
+          OUT="vndb-${{ steps.version.outputs.version }}.apk"
           cp "$SRC" "$OUT"
           ls -l "$OUT"
           # 确认已签名（未签名 APK 无法安装），并强制校验用的是仓库内置 keystore：
@@ -200,7 +200,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: VNDBest ${{ steps.version.outputs.version }}
+          name: VNDB ${{ steps.version.outputs.version }}
           body: ${{ steps.notes.outputs.body }}
           draft: false
           prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'rc') }}

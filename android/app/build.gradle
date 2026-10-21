@@ -14,7 +14,7 @@ def useBundledDebugKeystore = bundledDebugKeystore.exists()
 // 版本号：优先取 CI 注入的环境变量；本地构建时按 CI 同一规则由 versionName 推导
 // （major*10000 + minor*100 + patch），避免本地包 versionCode 偏小导致
 // 覆盖安装正式版时被系统当成「降级」而拒绝。
-def appVersionName = System.getenv("VNDB_VERSION_NAME")?.trim() ?: "1.0.8"
+def appVersionName = System.getenv("VNDB_VERSION_NAME")?.trim() ?: "1.0.9"
 def envVersionCode = System.getenv("VNDB_VERSION_CODE")?.trim()
 def appVersionCode = envVersionCode ? envVersionCode.toInteger() : {
     def parts = appVersionName.tokenize('.').collect { it.replaceAll(/[^0-9].*$/, '') as int }
