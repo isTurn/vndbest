@@ -11,6 +11,17 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(CookieKeeperPlugin.class);
         registerPlugin(ExternalBrowserPlugin.class);
         super.onCreate(savedInstanceState);
+
+        // 关掉 WebView 的过度滚动效果：内容滚到边界后继续拖动时，Chromium 会做「拉伸回弹」，
+        // 整幅画面（含底部 fixed 的 TabBar）看起来都在弹性变形。CSS 侧已用
+        // overscroll-behavior 收敛，这里再从原生层彻底禁掉 WebView 自己的过度滚动。
+        try {
+            if (getBridge() != null && getBridge().getWebView() != null) {
+                getBridge().getWebView().setOverScrollMode(android.view.View.OVER_SCROLL_NEVER);
+            }
+        } catch (Exception ignored) {
+            // WebView 尚未就绪时忽略，不影响主流程
+        }
     }
 
     @Override

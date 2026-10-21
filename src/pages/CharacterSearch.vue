@@ -5,6 +5,7 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
+import AppHeader from '@/components/AppHeader.vue'
 import SearchBase from '@/components/SearchBase.vue'
 import BaseSelect from '@/components/BaseSelect.vue'
 import DualRangeSlider from '@/components/DualRangeSlider.vue'
@@ -567,6 +568,7 @@ const getSexClass = (sex) => {
 
 <template>
   <ion-page>
+  <AppHeader mode="back" :title="t('library.characters')" :subtitle="t('search.subtitle', { title: t('library.characters') })" />
   <ion-content>
   <div class="page-container pb-24">
     <SearchBase
@@ -580,6 +582,7 @@ const getSexClass = (sex) => {
       @search="handleSearch"
       @clear="handleClear"
       @refresh="handleRefresh"
+      :show-header="false"
     >
       <template #filters>
         <div class="space-y-2 pb-2">

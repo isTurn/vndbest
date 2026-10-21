@@ -5,6 +5,7 @@ import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
+import AppHeader from '@/components/AppHeader.vue'
 import SearchBase from '@/components/SearchBase.vue'
 import { searchTraits, getTraitList } from '@/api/vndb'
 import { useTranslation } from '@/composables/useTranslation'
@@ -216,6 +217,7 @@ watch(sentinel, (el) => {
 
 <template>
   <ion-page>
+  <AppHeader mode="back" :title="t('library.traits')" :subtitle="t('search.subtitle', { title: t('library.traits') })" />
   <ion-content>
   <div class="page-container pb-24">
     <SearchBase
@@ -228,6 +230,7 @@ watch(sentinel, (el) => {
       @search="handleSearch"
       @clear="handleClear"
       @refresh="handleRefresh"
+      :show-header="false"
     >
       <!-- API 搜索结果 -->
       <div class="grid grid-cols-1 gap-2">

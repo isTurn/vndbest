@@ -509,18 +509,18 @@ const themeOptions = [
 
 <template>
   <ion-page>
+    <AppHeader
+      :mode="activeSection !== 'root' ? 'back' : 'page'"
+      icon="lucide:settings"
+      :title="activeSectionMeta ? activeSectionMeta.title : t('settings.title')"
+      :subtitle="activeSectionMeta ? activeSectionMeta.description : t('settings.description')"
+      :on-back="activeSection !== 'root' ? goBackToRoot : undefined"
+    />
     <ion-content>
       <div
         class="page-container space-y-6"
         :class="activeSection === 'root' ? 'pb-24' : 'pb-8'"
       >
-        <AppHeader
-          :mode="activeSection !== 'root' ? 'back' : 'page'"
-          icon="lucide:settings"
-          :title="activeSectionMeta ? activeSectionMeta.title : t('settings.title')"
-          :subtitle="activeSectionMeta ? activeSectionMeta.description : t('settings.description')"
-          :on-back="activeSection !== 'root' ? goBackToRoot : undefined"
-        />
 
         <template v-if="activeSection === 'root'">
           <div class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 shadow-xs space-y-3">
@@ -802,6 +802,7 @@ const themeOptions = [
               >
                 <div class="flex items-center gap-3">
                   <span class="text-xs font-bold text-neutral-300 dark:text-neutral-600 w-4">{{ index + 1 }}</span>
+                  <LanguageFlag :lang="lang" class="h-3.5 w-3.5" />
                   <div class="flex flex-col">
                     <span class="text-sm font-medium text-neutral-800 dark:text-neutral-200">{{ t(`settings.lang_names.${lang}`) }}</span>
                     <span class="text-[10px] text-neutral-400 dark:text-neutral-500 uppercase">{{ lang }}</span>

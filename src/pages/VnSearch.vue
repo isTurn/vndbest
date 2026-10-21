@@ -4,6 +4,7 @@ defineOptions({ name: 'VnSearch' })
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
+import AppHeader from '@/components/AppHeader.vue'
 import SearchBase from '@/components/SearchBase.vue'
 import VnList from '@/components/VnList.vue'
 import BaseSelect from '@/components/BaseSelect.vue'
@@ -487,6 +488,7 @@ onMounted(async () => {
 
 <template>
   <ion-page>
+  <AppHeader mode="back" :title="t('library.vn')" :subtitle="t('search.subtitle', { title: t('library.vn') })" />
   <ion-content>
   <div class="page-container pb-24">
   <SearchBase
@@ -500,6 +502,7 @@ onMounted(async () => {
     @search="handleSearch"
     @clear="handleClear"
     @refresh="handleRefresh"
+    :show-header="false"
   >
     <template #filters>
       <div class="space-y-2 pb-2">
@@ -557,6 +560,7 @@ onMounted(async () => {
               v-model="selectedLang"
               :options="langOptions"
               :label-renderer="(l) => t(l)"
+              show-lang-flag
               class="!bg-neutral-50 dark:!bg-neutral-800 rounded-lg border border-neutral-100 dark:border-neutral-700"
             >
               <template #prefix>
@@ -601,6 +605,7 @@ onMounted(async () => {
               v-model="selectedOrigLang"
               :options="origLangOptions"
               :label-renderer="(l) => t(l, l)"
+              show-lang-flag
               class="!bg-neutral-50 dark:!bg-neutral-800 rounded-lg border border-neutral-100 dark:border-neutral-700"
             >
               <template #prefix>

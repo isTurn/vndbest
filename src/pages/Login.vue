@@ -110,9 +110,9 @@ function goBack() {
 
 <template>
   <ion-page>
+  <AppHeader mode="back" :title="t('login.title')" :subtitle="t('login.description')" :on-back="goBack" />
   <ion-content>
   <div class="page-container space-y-6">
-    <AppHeader mode="back" :title="t('login.title')" :subtitle="t('login.description')" :on-back="goBack" />
 
     <!-- 状态面板: 未登录 -->
     <div v-if="!username" class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5 shadow-xs space-y-4">

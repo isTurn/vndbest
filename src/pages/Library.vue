@@ -521,9 +521,9 @@ onUnmounted(() => {
 
 <template>
   <ion-page>
+  <AppHeader mode="page" icon="lucide:search" :title="t('library.title')" :subtitle="t('library.description')" />
   <ion-content>
   <div class="page-container pb-24 space-y-6">
-    <AppHeader mode="page" icon="lucide:search" :title="t('library.title')" :subtitle="t('library.description')" />
 
     <!-- 全局搜索框 -->
     <div class="relative">

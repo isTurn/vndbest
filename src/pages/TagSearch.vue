@@ -5,6 +5,7 @@ import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
+import AppHeader from '@/components/AppHeader.vue'
 import SearchBase from '@/components/SearchBase.vue'
 import { searchTags, getTagList } from '@/api/vndb'
 import { useTranslation } from '@/composables/useTranslation'
@@ -223,6 +224,7 @@ const getCategoryClass = (category) => {
 
 <template>
   <ion-page>
+  <AppHeader mode="back" :title="t('library.tags')" :subtitle="t('search.subtitle', { title: t('library.tags') })" />
   <ion-content>
   <div class="page-container pb-24">
     <SearchBase
@@ -235,6 +237,7 @@ const getCategoryClass = (category) => {
       @search="handleSearch"
       @clear="handleClear"
       @refresh="handleRefresh"
+      :show-header="false"
     >
       <!-- API 搜索结果 -->
       <div class="grid grid-cols-1 gap-2">

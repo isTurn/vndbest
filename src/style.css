@@ -191,6 +191,32 @@ body {
   min-height: 100vh;
 }
 
+/* Android WebView 里，内容滚到边界后继续拖动会触发 Chromium 的「过度滚动回弹」
+   （overscroll stretch）：它作用在视口层面，会把整幅画面（含 fixed 的底部 TabBar）
+   一起拉伸，看起来就是按钮栏跟着弹性变形。这里三层一起收敛：
+   1) 文档层禁止过度滚动 / 下拉刷新；
+   2) 文档自身不滚动，所有滚动都交给 ion-content；
+   3) ion-content 的滚动容器（shadow 内的 .inner-scroll，已导出 part="scroll"）
+      不再把过度滚动继续传递给上层。
+   第 4 层由 src/utils/elasticScroll.js 接手：它只位移 .inner-scroll 自己做橡皮筋，
+   所以中间内容仍有弹性回馈，而 fixed 的 TabBar 完全不动。
+   注意：不要把这条栏的模糊底衬改回 backdrop-filter —— 它会把元素拉进
+   滚动内容层，滚动时会和内容一起重绘。 */
+html,
+body {
+  overscroll-behavior: none;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* 保持 contain：视口级 stretch 已被禁，弹性由 elasticScroll.js 在滚动容器上实现。
+   改成 auto 只会启用视口拉伸，TabBar 又会被一起拽变形。
+   这里也不加 will-change：常驻层提升会让部分 Android WebView 上的文字发虚，
+   只在手势进行时由脚本临时加/删。 */
+ion-content::part(scroll) {
+  overscroll-behavior: contain;
+}
+
 /* 注意：表单元素继承字体这条规则必须放在 @layer base 里。
    Tailwind v4 的 preflight 已在 base 层做过同样的重置；如果这里不加层，
    无层样式会压过所有 utilities 层（text-xs / text-[10px] 等全部失效，
@@ -263,19 +289,18 @@ ion-router-outlet > .app-page-leaving,
   padding-top: 1.5rem;  /* pt-6 */
 }
 
-/* page sticky header: cover top padding + safe-area with same translucent style as header
-   margin-top 抵消 .page-container 的 padding-top，header 贴到内容区顶部；
-   顶部只需「内容间距 + 安全区」，不要再叠加 1.5rem，否则异形屏会多出一大块空白 */
-.page-sticky-header {
-  position: sticky;
-  top: 0;
+/* 页面顶栏（AppHeader 的外壳）
+   位置：它渲染在 <ion-content> 外面（<ion-page> 的直接子节点），是一条真正固定
+   的横栏，不参与中间内容的滚动与橡皮筋位移 —— 见 AppHeader.vue 顶部注释。
+   顶部内边距 = 状态栏高度 + 一点留白。状态栏高度优先取 Capacitor SystemBars
+   注入的 --safe-area-inset-top（WebView ≥140 且 viewport-fit=cover）；
+   env() 只是浏览器/旧 WebView 的兜底，之前只写 env() 取到 0 才与通知栏重叠。 */
+.app-header {
+  position: relative; /* z-index 需要它，否则会被中间内容盖住 */
+  flex-shrink: 0;
+  width: 100%;
   z-index: 30;
-  margin-top: -1.5rem;
-  margin-left: -1rem;
-  margin-right: -1rem;
-  padding-left: 1rem;
-  padding-right: 1rem;
-  padding-top: calc(0.75rem + env(safe-area-inset-top, 0px));
+  padding-top: calc(0.75rem + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
   padding-bottom: 0.75rem;
   background-color: rgb(255 255 255 / 0.8);
   -webkit-backdrop-filter: blur(12px);
@@ -283,13 +308,13 @@ ion-router-outlet > .app-page-leaving,
   border-bottom: 1px solid rgb(245 245 245);
 }
 
-.dark .page-sticky-header {
+.dark .app-header {
   background-color: rgb(23 23 23 / 0.8);
   border-bottom-color: rgb(38 38 38);
 }
 
-.page-sticky-header--lg {
-  padding-top: calc(1rem + env(safe-area-inset-top, 0px));
+.app-header--lg {
+  padding-top: calc(1rem + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
   padding-bottom: 1rem;
 }
 

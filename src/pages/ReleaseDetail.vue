@@ -215,25 +215,25 @@ watch(
 
 <template>
   <ion-page>
+  <AppHeader mode="center" :title="t('release.title')" :on-back="goBack">
+    <template #actions>
+      <button
+        v-if="release"
+        type="button"
+        @click="handleToggleReleaseFavorite"
+        class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 active:bg-neutral-100 dark:active:bg-neutral-600 transition active:scale-95 cursor-pointer"
+        :title="isCurrentReleaseFavorite ? t('favorites.remove') : t('favorites.title')"
+      >
+        <Icon
+          :icon="isCurrentReleaseFavorite ? 'lucide:heart' : 'lucide:heart'"
+          class="h-4 w-4 transition"
+          :class="isCurrentReleaseFavorite ? 'fill-red-500 text-red-500' : 'text-neutral-500 dark:text-neutral-400'"
+        />
+      </button>
+    </template>
+  </AppHeader>
   <ion-content>
   <div class="page-container space-y-4">
-    <AppHeader mode="center" :title="t('release.title')" :on-back="goBack">
-      <template #actions>
-        <button
-          v-if="release"
-          type="button"
-          @click="handleToggleReleaseFavorite"
-          class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 active:bg-neutral-100 dark:active:bg-neutral-600 transition active:scale-95 cursor-pointer"
-          :title="isCurrentReleaseFavorite ? t('favorites.remove') : t('favorites.title')"
-        >
-          <Icon
-            :icon="isCurrentReleaseFavorite ? 'lucide:heart' : 'lucide:heart'"
-            class="h-4 w-4 transition"
-            :class="isCurrentReleaseFavorite ? 'fill-red-500 text-red-500' : 'text-neutral-500 dark:text-neutral-400'"
-          />
-        </button>
-      </template>
-    </AppHeader>
 
     <!-- 骨架屏 (参考 VnDetail) -->
     <div v-if="loading" class="animate-pulse space-y-4">

@@ -275,29 +275,29 @@ function cleanDescription(text) {
 
 <template>
   <ion-page>
+  <AppHeader
+    mode="detail"
+    :title="producer?.name || t('vn.producer_details')"
+    :subtitle="String(producerId)"
+  >
+    <template #actions>
+      <button
+        v-if="producer"
+        type="button"
+        @click="handleToggleProducerFavorite"
+        class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-xs hover:bg-neutral-50 dark:hover:bg-neutral-700 active:scale-95 transition cursor-pointer"
+        :title="isCurrentProducerFavorite ? t('favorites.remove') : t('favorites.title')"
+      >
+        <Icon
+          :icon="isCurrentProducerFavorite ? 'lucide:heart' : 'lucide:heart'"
+          class="h-4 w-4 transition"
+          :class="isCurrentProducerFavorite ? 'fill-red-500 text-red-500' : 'text-neutral-500 dark:text-neutral-400'"
+        />
+      </button>
+    </template>
+  </AppHeader>
   <ion-content>
   <div class="page-container space-y-6">
-    <AppHeader
-      mode="detail"
-      :title="producer?.name || t('vn.producer_details')"
-      :subtitle="String(producerId)"
-    >
-      <template #actions>
-        <button
-          v-if="producer"
-          type="button"
-          @click="handleToggleProducerFavorite"
-          class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-xs hover:bg-neutral-50 dark:hover:bg-neutral-700 active:scale-95 transition cursor-pointer"
-          :title="isCurrentProducerFavorite ? t('favorites.remove') : t('favorites.title')"
-        >
-          <Icon
-            :icon="isCurrentProducerFavorite ? 'lucide:heart' : 'lucide:heart'"
-            class="h-4 w-4 transition"
-            :class="isCurrentProducerFavorite ? 'fill-red-500 text-red-500' : 'text-neutral-500 dark:text-neutral-400'"
-          />
-        </button>
-      </template>
-    </AppHeader>
 
     <!-- Producer Info Section -->
     <div v-if="isProducerLoading" class="flex justify-center py-10">

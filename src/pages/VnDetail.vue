@@ -108,6 +108,10 @@ let ignoreNextOverlayPopState = false
 
 // 控制简介展开/收起
 const isDescriptionExpanded = ref(false)
+// 控制简介整块折叠（连翻译卡一起收起）—— 默认折叠
+const descriptionSectionOpen = ref(false)
+// 控制相关作品整块折叠 —— 默认折叠
+const relationsSectionOpen = ref(false)
 
 // 控制笔记展开/收起
 const notesExpanded = ref(false)
@@ -1531,6 +1535,30 @@ const statsMedian = computed(() => {
   return null
 })
 
+// 评分分布柱状图的逐档配色：1~4 分保持低饱和中性灰（低分不该抢眼），
+// 5~10 分统一走蓝绿色系，色相沿青→蓝绿→翠绿缓慢推进，相邻两档只差一小步，
+// 分数越高颜色略深，整排看过去是一条连贯的冷色渐变带，不用渐变填充。
+//
+// 这里不用 Tailwind 的 bg-emerald/teal/cyan 调色板，因为它们的亮度阶梯是跳跃的
+// （400→500 常常一下暗 20 多级），高分段 8/9/10 拼在一起过渡会显得生硬。
+// 改用 hsl() 自己算一条等亮度差的色带：色相每档 -6°，饱和度拉满保持纯度，
+// 亮度按「感知亮度 L 每档 -8」反解，实测每档 ΔL 都在 -7.3 ~ -8.6 之间，肉眼均匀。
+// 亮色用 S=95%、暗色用 S=90%（暗底上纯度过高会刺眼），色相两端保持同一条曲线。
+// 注意亮色整体停在 37%~57%：更暗在白底上会闷，高分段反而不好读。
+// 旧实现只有三档（>=8 绿、>=5 蓝、其余灰），5/6/7 与 8/9/10 两两糊成一片。
+const STATS_BAR_CLASS = {
+  10: 'bg-[hsl(160_95%_36.6%)] dark:bg-[hsl(160_90%_43.9%)]',
+  9: 'bg-[hsl(166_95%_38.4%)] dark:bg-[hsl(166_90%_45.6%)]',
+  8: 'bg-[hsl(172_95%_40%)] dark:bg-[hsl(172_90%_47.2%)]',
+  7: 'bg-[hsl(178_95%_41.8%)] dark:bg-[hsl(178_90%_49%)]',
+  6: 'bg-[hsl(184_95%_46.2%)] dark:bg-[hsl(184_90%_59.9%)]',
+  5: 'bg-[hsl(190_95%_56.7%)] dark:bg-[hsl(190_90%_71.9%)]'
+}
+
+const statsBarClass = (score) =>
+  STATS_BAR_CLASS[Number(score)] ||
+  (Number(score) >= 4 ? 'bg-neutral-400 dark:bg-neutral-500' : 'bg-neutral-300 dark:bg-neutral-600')
+
 const statsRows = computed(() =>
   (statsData.value?.distribution || []).map((d) => {
     const count = Number(d.count) || 0
@@ -1540,7 +1568,8 @@ const statsRows = computed(() =>
       score: d.score,
       count,
       percent: ((count / total) * 100).toFixed(1),
-      width: Math.max(2, Math.round((count / max) * 100))
+      width: Math.max(2, Math.round((count / max) * 100)),
+      barClass: statsBarClass(d.score)
     }
   })
 )
@@ -1772,25 +1801,25 @@ watch(
 
 <template>
   <ion-page>
+  <AppHeader mode="center" :title="t('vn.details')">
+    <template #actions>
+      <button
+        v-if="vn"
+        type="button"
+        @click="handleToggleVnFavorite"
+        class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 active:bg-neutral-100 dark:active:bg-neutral-600 transition active:scale-95 cursor-pointer"
+        :title="isCurrentVnFavorite ? t('favorites.remove') : t('favorites.title')"
+      >
+        <Icon
+          :icon="isCurrentVnFavorite ? 'lucide:heart' : 'lucide:heart'"
+          class="h-4 w-4 transition"
+          :class="isCurrentVnFavorite ? 'fill-red-500 text-red-500' : 'text-neutral-500 dark:text-neutral-400'"
+        />
+      </button>
+    </template>
+  </AppHeader>
   <ion-content ref="ionContentRef">
   <div class="page-container space-y-4">
-    <AppHeader mode="center" :title="t('vn.details')">
-      <template #actions>
-        <button
-          v-if="vn"
-          type="button"
-          @click="handleToggleVnFavorite"
-          class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 active:bg-neutral-100 dark:active:bg-neutral-600 transition active:scale-95 cursor-pointer"
-          :title="isCurrentVnFavorite ? t('favorites.remove') : t('favorites.title')"
-        >
-          <Icon
-            :icon="isCurrentVnFavorite ? 'lucide:heart' : 'lucide:heart'"
-            class="h-4 w-4 transition"
-            :class="isCurrentVnFavorite ? 'fill-red-500 text-red-500' : 'text-neutral-500 dark:text-neutral-400'"
-          />
-        </button>
-      </template>
-    </AppHeader>
 
     <!-- 骨架屏 -->
     <div v-if="loading" class="animate-pulse space-y-4">
@@ -2185,64 +2214,93 @@ watch(
       <!-- 2. 简介 (固定在选项卡上方) -->
       <div class="space-y-1.5" v-if="vn.description">
         <div class="flex items-center justify-between gap-3">
-          <h3 class="text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">{{ t('vn.description') }}</h3>
+          <button
+            type="button"
+            class="flex min-w-0 items-center gap-1 rounded-md py-0.5 text-left transition-colors hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer"
+            :aria-expanded="descriptionSectionOpen"
+            @click="descriptionSectionOpen = !descriptionSectionOpen"
+          >
+            <Icon
+              :icon="descriptionSectionOpen ? 'lucide:chevron-down' : 'lucide:chevron-right'"
+              class="h-3.5 w-3.5 shrink-0 text-neutral-400 dark:text-neutral-500"
+            />
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">{{ t('vn.description') }}</h3>
+          </button>
           <button
             @click="translateDescription"
             :disabled="translationLoading"
-            class="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2.5 py-1 text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 transition disabled:cursor-not-allowed disabled:opacity-60 hover:border-neutral-300 hover:text-neutral-700 dark:hover:border-neutral-600 dark:hover:text-neutral-200"
+            class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2.5 py-1 text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 transition disabled:cursor-not-allowed disabled:opacity-60 hover:border-neutral-300 hover:text-neutral-700 dark:hover:border-neutral-600 dark:hover:text-neutral-200"
           >
             <Icon :icon="translationLoading ? 'lucide:loader-circle' : 'lucide:languages'" class="h-3.5 w-3.5" :class="{ 'animate-spin': translationLoading }" />
             {{ translationLoading ? t('vn.translation.loading') : (translatedDescription ? t('vn.translation.retranslate') : t('vn.translation.action')) }}
           </button>
         </div>
-        <div class="relative">
-          <div
-            class="relative border-l-3 border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-800 px-4 py-3 text-xs leading-relaxed text-neutral-600 dark:text-neutral-400 whitespace-pre-wrap bbcode-container selectable-text transition-all duration-300"
-            :class="[isDescriptionExpanded ? 'rounded-lg' : 'max-h-32 overflow-hidden rounded-t-lg rounded-b-none']"
-          >
-            <div v-html="parseBBCode(vn.description)"></div>
-            <!-- 渐变蒙层，移至简介卡片内部以适配圆角裁剪 -->
+
+        <div v-show="descriptionSectionOpen" class="space-y-1.5">
+          <div class="relative">
             <div
-              v-if="!isDescriptionExpanded"
-              class="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-neutral-50 dark:from-neutral-800 to-transparent pointer-events-none"
-            ></div>
-          </div>
-          <button
-            @click="isDescriptionExpanded = !isDescriptionExpanded"
-            class="mt-1 text-[10px] font-bold text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 flex items-center gap-0.5 transition-colors"
-          >
-            <Icon :icon="isDescriptionExpanded ? 'lucide:chevron-up' : 'lucide:chevron-down'" class="h-3 w-3" />
-            {{ isDescriptionExpanded ? t('vn.collapse') : t('vn.expand') }}
-          </button>
-        </div>
-
-        <div v-if="translatedDescription || translationError || translationLoading" class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3 space-y-2">
-          <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-violet-500 dark:text-violet-400">
-            <Icon icon="lucide:languages" class="h-3.5 w-3.5" />
-            <span>{{ t('vn.translation.title') }}</span>
-          </div>
-
-          <div v-if="translationLoading" class="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
-            <Icon icon="lucide:loader-circle" class="h-4 w-4 animate-spin" />
-            <span>{{ t('vn.translation.loading') }}</span>
+              class="relative border-l-3 border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-800 px-4 py-3 text-xs leading-relaxed text-neutral-600 dark:text-neutral-400 whitespace-pre-wrap bbcode-container selectable-text transition-all duration-300"
+              :class="[isDescriptionExpanded ? 'rounded-lg' : 'max-h-32 overflow-hidden rounded-t-lg rounded-b-none']"
+            >
+              <div v-html="parseBBCode(vn.description)"></div>
+              <!-- 渐变蒙层，移至简介卡片内部以适配圆角裁剪 -->
+              <div
+                v-if="!isDescriptionExpanded"
+                class="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-neutral-50 dark:from-neutral-800 to-transparent pointer-events-none"
+              ></div>
+            </div>
+            <button
+              @click="isDescriptionExpanded = !isDescriptionExpanded"
+              class="mt-1 text-[10px] font-bold text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 flex items-center gap-0.5 transition-colors cursor-pointer"
+            >
+              <Icon :icon="isDescriptionExpanded ? 'lucide:chevron-up' : 'lucide:chevron-down'" class="h-3 w-3" />
+              {{ isDescriptionExpanded ? t('vn.collapse') : t('vn.expand') }}
+            </button>
           </div>
 
-          <div v-else-if="translationError" class="text-xs leading-relaxed text-rose-500 dark:text-rose-400">
-            {{ translationError }}
-          </div>
+          <div v-if="translatedDescription || translationError || translationLoading" class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3 space-y-2">
+            <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-violet-500 dark:text-violet-400">
+              <Icon icon="lucide:languages" class="h-3.5 w-3.5" />
+              <span>{{ t('vn.translation.title') }}</span>
+            </div>
 
-          <p v-else class="text-xs leading-relaxed text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap selectable-text">
-            {{ translatedDescription }}
-          </p>
+            <div v-if="translationLoading" class="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+              <Icon icon="lucide:loader-circle" class="h-4 w-4 animate-spin" />
+              <span>{{ t('vn.translation.loading') }}</span>
+            </div>
+
+            <div v-else-if="translationError" class="text-xs leading-relaxed text-rose-500 dark:text-rose-400">
+              {{ translationError }}
+            </div>
+
+            <p v-else class="text-xs leading-relaxed text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap selectable-text">
+              {{ translatedDescription }}
+            </p>
+          </div>
         </div>
       </div>
 
       <!-- 3. 相关作品 (固定在选项卡上方) -->
       <div class="space-y-1.5" v-if="vn.relations && vn.relations.length > 0">
         <div class="flex items-center justify-between">
-          <h3 class="text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">{{ t('vn.relations') }}</h3>
+          <button
+            type="button"
+            class="flex min-w-0 items-center gap-1 rounded-md py-0.5 text-left transition-colors hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer"
+            :aria-expanded="relationsSectionOpen"
+            @click="relationsSectionOpen = !relationsSectionOpen"
+          >
+            <Icon
+              :icon="relationsSectionOpen ? 'lucide:chevron-down' : 'lucide:chevron-right'"
+              class="h-3.5 w-3.5 shrink-0 text-neutral-400 dark:text-neutral-500"
+            />
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">{{ t('vn.relations') }}</h3>
+            <span
+              v-if="filteredRelations.length"
+              class="ml-0.5 shrink-0 rounded-full bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-neutral-500 dark:text-neutral-400"
+            >{{ filteredRelations.length }}</span>
+          </button>
           <!-- 同人作开关 -->
-          <label class="flex items-center gap-1.5 cursor-pointer select-none">
+          <label class="flex shrink-0 items-center gap-1.5 cursor-pointer select-none">
             <span class="text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('vn.show_doujin', '同人作') }}</span>
             <button
               @click="showDoujin = !showDoujin"
@@ -2258,19 +2316,21 @@ watch(
             </button>
           </label>
         </div>
-        <VnList
-          :items="filteredRelations"
-          :show-sort="false"
-          :compact="true"
-          :show-footer-status="false"
-          :max-items="8"
-          :empty-title="t('vn.relations_empty_title', '暂无相关作品')"
-          :empty-desc="t('vn.relations_empty_desc', '该作品没有相关联的其他作品')"
-          default-layout="list"
-          title-mode="ja-romaji"
-          show-status
-          storage-key="vndb_vn_relations_layout_v2"
-        />
+        <div v-show="relationsSectionOpen">
+          <VnList
+            :items="filteredRelations"
+            :show-sort="false"
+            :compact="true"
+            :show-footer-status="false"
+            :max-items="8"
+            :empty-title="t('vn.relations_empty_title', '暂无相关作品')"
+            :empty-desc="t('vn.relations_empty_desc', '该作品没有相关联的其他作品')"
+            default-layout="list"
+            title-mode="ja-romaji"
+            show-status
+            storage-key="vndb_vn_relations_layout_v2"
+          />
+        </div>
       </div>
 
       <!-- 4. 跨站搜索已内联到上方信息卡，不再单独占区块 -->
@@ -3057,7 +3117,7 @@ watch(
                   <div class="relative h-3.5 min-w-0 flex-1 overflow-hidden rounded-sm bg-neutral-100 dark:bg-neutral-800">
                     <div
                       class="h-full rounded-sm transition-all duration-300"
-                      :class="row.score >= 8 ? 'bg-emerald-400 dark:bg-emerald-500' : row.score >= 5 ? 'bg-sky-400 dark:bg-sky-500' : 'bg-neutral-400 dark:bg-neutral-500'"
+                      :class="row.barClass"
                       :style="{ width: row.width + '%' }"
                     ></div>
                   </div>

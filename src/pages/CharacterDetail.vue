@@ -407,29 +407,29 @@ watch(
 
 <template>
   <ion-page>
+  <AppHeader
+    mode="detail"
+    :title="character?.name || t('vn.character_details')"
+    :subtitle="String(characterId)"
+  >
+    <template #actions>
+      <button
+        v-if="character"
+        type="button"
+        @click="handleToggleCharFavorite"
+        class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-xs hover:bg-neutral-50 dark:hover:bg-neutral-700 active:scale-95 transition cursor-pointer"
+        :title="isCurrentCharFavorite ? t('favorites.remove') : t('favorites.title')"
+      >
+        <Icon
+          :icon="isCurrentCharFavorite ? 'lucide:heart' : 'lucide:heart'"
+          class="h-4 w-4 transition"
+          :class="isCurrentCharFavorite ? 'fill-red-500 text-red-500' : 'text-neutral-500 dark:text-neutral-400'"
+        />
+      </button>
+    </template>
+  </AppHeader>
   <ion-content>
   <div class="page-container space-y-6">
-    <AppHeader
-      mode="detail"
-      :title="character?.name || t('vn.character_details')"
-      :subtitle="String(characterId)"
-    >
-      <template #actions>
-        <button
-          v-if="character"
-          type="button"
-          @click="handleToggleCharFavorite"
-          class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-xs hover:bg-neutral-50 dark:hover:bg-neutral-700 active:scale-95 transition cursor-pointer"
-          :title="isCurrentCharFavorite ? t('favorites.remove') : t('favorites.title')"
-        >
-          <Icon
-            :icon="isCurrentCharFavorite ? 'lucide:heart' : 'lucide:heart'"
-            class="h-4 w-4 transition"
-            :class="isCurrentCharFavorite ? 'fill-red-500 text-red-500' : 'text-neutral-500 dark:text-neutral-400'"
-          />
-        </button>
-      </template>
-    </AppHeader>
 
     <!-- 骨架屏 -->
     <div v-if="loading" class="animate-pulse space-y-6">

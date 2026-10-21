@@ -6,6 +6,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
 import AppHeader from '@/components/AppHeader.vue'
+import LanguageFlag from '@/components/LanguageFlag.vue'
 import { PLACEHOLDER_ICONS } from '@/icons/icon-names'
 import { getStats, getReleaseList, getRandomVn, getVnList, getCharacterList, getProducerList, getStaffList } from '@/api/vndb'
 import { usePrivacy, getImageNsfwLevel } from '@/composables/usePrivacy'
@@ -240,7 +241,7 @@ function getResultDisplay(search, item) {
       image: null,
       title: item.name,
       subtitle: item.type || '',
-      badges: (item.languages || []).slice(0, 2),
+      badges: (item.languages || []).slice(0, 2).map(l => typeof l === 'string' ? l : l.lang),
       blur: false,
       placeholderIcon: PLACEHOLDER_ICONS.producers
     }
@@ -540,9 +541,9 @@ function getFilterSummary(item) {
 
 <template>
   <ion-page>
+  <AppHeader mode="page" icon="lucide:home" :title="t('home.title')" :subtitle="t('home.subtitle')" />
   <ion-content>
   <div class="page-container pb-24 space-y-6">
-    <AppHeader mode="page" icon="lucide:home" :title="t('home.title')" :subtitle="t('home.subtitle')" />
 
     <div class="flex items-stretch gap-2">
       <div class="h-12 min-w-0 flex-1 overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-1.5 shadow-xs">
@@ -790,7 +791,8 @@ function getFilterSummary(item) {
               <div class="flex items-center gap-2">
                 <div class="text-[10px] text-neutral-400 dark:text-neutral-500">{{ item.released }}</div>
                 <div class="flex flex-wrap gap-1">
-                  <span v-for="lang in item.languages" :key="lang.lang" class="text-[8px] px-1 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
+                  <span v-for="lang in item.languages" :key="lang.lang" class="inline-flex items-center gap-1 text-[8px] px-1 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
+                    <LanguageFlag :lang="lang.lang" class="h-2 w-2" />
                     {{ t(`settings.lang_names.${lang.lang}`, lang.lang) }}
                   </span>
                 </div>
@@ -853,7 +855,8 @@ function getFilterSummary(item) {
               <div class="flex items-center gap-2">
                 <div class="text-[10px] text-neutral-400 dark:text-neutral-500">{{ item.released }}</div>
                 <div class="flex flex-wrap gap-1">
-                  <span v-for="lang in item.languages" :key="lang.lang" class="text-[8px] px-1 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
+                  <span v-for="lang in item.languages" :key="lang.lang" class="inline-flex items-center gap-1 text-[8px] px-1 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
+                    <LanguageFlag :lang="lang.lang" class="h-2 w-2" />
                     {{ t(`settings.lang_names.${lang.lang}`, lang.lang) }}
                   </span>
                 </div>
@@ -959,8 +962,9 @@ function getFilterSummary(item) {
                   <span
                     v-for="badge in getResultDisplay(search, item).badges"
                     :key="badge"
-                    class="text-[8px] px-1 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 whitespace-nowrap"
+                    class="inline-flex items-center gap-1 text-[8px] px-1 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 whitespace-nowrap"
                   >
+                    <LanguageFlag :lang="badge" class="h-2 w-2" />
                     {{ t(`settings.lang_names.${badge}`, badge) }}
                   </span>
                 </div>
