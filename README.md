@@ -41,6 +41,9 @@ VNDB（Visual Novel Database）的 Android 第三方客户端。基于 **Vue 3 +
 - 六个维度的搜索页（作品 / 版本 / 角色 / 职员 / 会社 / 标签），支持标签与特征的多级筛选、剧透等级过滤、性内容过滤
 - **分类浏览**：「搜索」页的分类入口含作品 / 版本 / 会社 / 人物 / 角色 / 标签 / 特征，作品排第一；作品页可按票数 / 相关度 / 评分 / 发售日 / 标题排序并切换升降序，也支持 `?sort=rating&reverse=1` 直接指定（排序不做记忆，每次进入回到默认的票数倒序）
 - **已保存搜索**：把常用筛选条件存下来，在仪表盘一键复用
+- **标签 / 特征详情页**（`/tag/:id`、`/trait/:id`）：标签带分类徽章（内容 / 技术 / 性内容）与作品数，特征带所属分组与角色数，两者都有中文名、别名、清理过 BBCode 的简介和翻译按钮，下方分别接作品列表与角色列表
+- **相似作品**：作品详情页的「相似」页签按共同标签（spoiler ≤ 1）反查其它作品，再按标签重合度与评分排序，最多 20 部
+- **最近浏览**：访问过的作品 / 角色 / 版本 / 会社 / 职员自动记进仪表盘横向卡片条（`vndb_recent_views`，最多 30 条，重复访问提到最前，可一键清空）
 - **收藏状态可视化**：每种状态配独立图标与颜色（游玩中绿 `play`、已通关蓝 `check-circle`、搁置中琥珀 `pause`、已弃坑灰 `x-circle`、想玩紫 `star`、黑名单红 `ban`、已评分琥珀 `award`），列表、瀑布流、紧凑列表、标签页与详情页统一
 
 ### 全局搜索
@@ -181,7 +184,7 @@ npx cap open ios
 src/
 ├── api/vndb.js              VNDB Kana API 封装（超时、429 限流、错误映射）
 ├── components/              可复用组件（列表、筛选面板、骨架屏、错误态、年龄标识…）
-├── composables/             组合式函数（主题、隐私、收藏、图片加载、剪贴板、已保存搜索、搜索历史、收藏状态…）
+├── composables/             组合式函数（主题、隐私、收藏、图片加载、剪贴板、已保存搜索、搜索历史、最近浏览、收藏状态…）
 ├── i18n/locales/            中 / 英 / 日 语言包 + 标签与特征词典
 ├── icons/                   Iconify 图标注册与名称映射
 ├── pages/                   页面（仪表盘、搜索、详情、设置…）
@@ -191,7 +194,8 @@ src/
     ├── linkOpener.js        外链打开策略（内置 / 系统浏览器 + 全局拦截）
     ├── touchgalSearch.js    TouchGal 自动填词注入脚本
     ├── redirectSkip.js      TouchGal 外链过渡页自动跳过
-├── siteSearchInject.js  SearchGal 自动补一次回车
+    ├── siteSearchInject.js  SearchGal 自动补一次回车
+    ├── inAppBrowserTools.js 内置浏览器工具栏（外部浏览器按钮）
     ├── vndbTranslator.js    中文化脚本注入
     ├── imagePrefetch.js     图片预热队列
     ├── releaseImage.js      版本封面回退到关联作品

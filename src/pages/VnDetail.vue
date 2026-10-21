@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { translateError } from '@/utils/errorMessage'
 import { Icon } from '@iconify/vue'
 import AppHeader from '@/components/AppHeader.vue'
-import { getVnDetail, getVnReleases, getVnCharacters, getVnQuotes, getVnListItem, patchVnListItem, deleteVnListItem, getUserListLabels } from '@/api/vndb'
+import { getVnDetail, getVnReleases, getVnCharacters, getVnQuotes, getVnListItem, patchVnListItem, deleteVnListItem, getUserListLabels, getSimilarVns } from '@/api/vndb'
 import VnList from '@/components/VnList.vue'
 import LanguageFlag from '@/components/LanguageFlag.vue'
 import LengthVoteModal from '@/components/LengthVoteModal.vue'
@@ -23,6 +23,7 @@ import { openExternalUrl, getReleaseLinkBrowserMode, getCrossSearchBrowserMode }
 import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
 import { useFavorites } from '@/composables/useFavorites'
+import { useRecentViews } from '@/composables/useRecentViews'
 import { useUlistStatus } from '@/composables/useUlistStatus'
 import { IonPage, IonContent, IonImg, IonSpinner, IonToast } from '@ionic/vue'
 import { Capacitor, CapacitorHttp, registerPlugin } from '@capacitor/core'
@@ -53,6 +54,7 @@ const error = ref(null)
 const quoteTranslations = ref({})
 
 const { isFavorite, toggleFavorite } = useFavorites()
+const { record: recordRecent } = useRecentViews()
 
 const isCurrentVnFavorite = computed(() => {
   return isFavorite(vn.value?.id)
@@ -1338,6 +1340,14 @@ const loadVnDetail = async (id) => {
     const data = await getVnDetail(id)
     if (data && data.results && data.results.length > 0) {
       vn.value = data.results[0]
+      // 记录到「最近浏览」（标题/封面用当前语言偏好解析后的结果）
+      recordRecent({
+        id: vn.value.id,
+        type: 'vn',
+        title: getTitle(vn.value),
+        subtitle: getAltTitle(vn.value),
+        image: vn.value.image?.url || vn.value.image?.thumbnail || ''
+      })
       // 默认激活版本发行
       activeTab.value = 'releases'
       spoilerLevel.value = 0
@@ -1617,9 +1627,37 @@ const loadStats = async (id, force = false) => {
 // 切到「统计」页时才去抓（避免进详情页就开隐藏 WebView）
 watch(activeTab, (tab) => {
   if (tab === 'stats' && vn.value?.id) loadStats(vn.value.id)
+  if (tab === 'similar' && vn.value?.id) loadSimilar()
 })
 
 const reloadStats = () => loadStats(vn.value?.id, true)
+
+// ── 相似作品 ───────────────────────────────────────────────────────────
+// VNDB 无「相似」端点，用共同标签做近似：取当前作品评分最高的 3 个非剧透标签，
+// 取交集（and），排除自身，评分 >= 70，按评分倒序。
+const similarVns = ref([])
+const similarLoading = ref(false)
+const similarError = ref('')
+const similarLoadedFor = ref('')
+
+async function loadSimilar(force = false) {
+  const id = vn.value?.id
+  if (!id) return
+  if (!force && similarLoadedFor.value === id) return
+  similarLoading.value = true
+  similarError.value = ''
+  try {
+    const res = await getSimilarVns(vn.value?.tags || [], id, { results: 12 })
+    similarVns.value = res?.results || []
+    similarLoadedFor.value = id
+  } catch (err) {
+    console.error('获取相似作品失败:', err)
+    similarError.value = translateError(err, t, 'common.error')
+    similarVns.value = []
+  } finally {
+    similarLoading.value = false
+  }
+}
 
 // 复制摘录内容
 const copiedQuoteId = ref(null)
@@ -2347,6 +2385,7 @@ watch(
               { id: 'covers', name: t('vn.tabs.covers') },
               { id: 'screenshots', name: t('vn.tabs.screenshots') },
               { id: 'quotes', name: t('vn.tabs.quotes') },
+              { id: 'similar', name: t('vn.tabs.similar') },
               { id: 'stats', name: t('vn.tabs.stats') },
             ]"
             :key="tab.id"
@@ -3054,7 +3093,47 @@ watch(
           </div>
         </div>
 
-        <!-- 8. 用户统计 Tab：评分分布柱状图 -->
+        <!-- 8. 相似作品 Tab：按共同标签推荐的同类型作品 -->
+        <div v-else-if="activeTab === 'similar'" class="space-y-3">
+          <div v-if="similarLoading" class="flex flex-col items-center justify-center py-10 gap-2">
+            <Icon icon="eos-icons:loading" class="h-6 w-6 text-neutral-300 dark:text-neutral-600" />
+            <span class="text-[10px] text-neutral-400 dark:text-neutral-500 font-bold uppercase tracking-widest">{{ t('common.loading') }}</span>
+          </div>
+
+          <div v-else-if="similarError" class="flex flex-col items-center justify-center gap-2 py-8 text-center">
+            <Icon icon="lucide:alert-triangle" class="h-5 w-5 text-amber-500 dark:text-amber-400" />
+            <p class="text-[11px] text-neutral-500 dark:text-neutral-400">{{ similarError }}</p>
+            <button
+              @click="loadSimilar(true)"
+              class="inline-flex items-center gap-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2.5 py-1 text-[10px] font-semibold text-neutral-600 dark:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600 transition cursor-pointer"
+            >
+              <Icon icon="lucide:refresh-cw" class="h-3 w-3" />
+              {{ t('common.retry') }}
+            </button>
+          </div>
+
+          <div v-else-if="!similarVns.length" class="text-center py-6 text-xs text-neutral-400 dark:text-neutral-500">
+            {{ t('vn.similar_empty') }}
+          </div>
+
+          <template v-else>
+            <p class="text-[11px] leading-relaxed text-neutral-400 dark:text-neutral-500">
+              {{ t('vn.similar_hint') }}
+            </p>
+            <VnList
+              :items="similarVns"
+              :show-sort="false"
+              :compact="true"
+              :max-items="12"
+              default-layout="list"
+              title-mode="ja-romaji"
+              show-status
+              storage-key="vndb_vn_similar_layout"
+            />
+          </template>
+        </div>
+
+        <!-- 9. 用户统计 Tab：评分分布柱状图 -->
         <div v-else-if="activeTab === 'stats'" class="space-y-3">
           <!-- 加载中 -->
           <div v-if="statsLoading" class="flex flex-col items-center justify-center py-10 gap-2">

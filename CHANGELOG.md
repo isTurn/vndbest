@@ -2,12 +2,19 @@
 
 本文件记录本 fork（[isTurn/vndbest](https://github.com/isTurn/vndbest)）相对上游的功能演进。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [1.0.8] - 2026-10-19
+## [1.0.8] - 2026-10-20
 
-搜索页的分类浏览补上了作品入口，作品图标统一成手柄，跨站搜索脚本同步到上游 v2.8.0（新增 Nysoure / GalZY / SakuGAL 三个资源站，站点数 35 → 38；含此前 v2.7.4 的稻荷迁域、SearchGal 自动补搜索、TouchGal 外链改写）。
+本站内容跳转更闭环：新增「最近浏览」「相似作品」与标签 / 特征详情页。
+
+同一版本还包含 10-19 那批改动：搜索页的分类浏览补上了作品入口，作品图标统一成手柄，跨站搜索脚本同步到上游 v2.8.0（新增 Nysoure / GalZY / SakuGAL 三个资源站，站点数 35 → 38；含此前 v2.7.4 的稻荷迁域、SearchGal 自动补搜索、TouchGal 外链改写）。
 
 ### 新增
 
+- **最近浏览**：访问过的作品 / 角色 / 版本 / 会社 / 职员会自动记进首页「最近浏览」横向卡片条（`vndb_recent_views`，最多 30 条，重复访问提到最前，右上角可一键清空）。封面优先用原图，版本没有截图时回退到关联作品封面
+- **相似作品**：作品详情页选项卡新增「相似」页签，按共同标签（spoiler ≤ 1）反查其它作品，再按标签重合度与评分排序，最多 20 部；页面标注「按共同标签推荐，仅供参考」
+- **标签详情页 `/tag/:id`**：标签中文名、分类徽章（内容 / 技术 / 性内容）、作品数、别名、清理过 BBCode 的简介与翻译按钮，下方接作品列表（排序 / 升降序 / 三种布局 / 触底分页）。此前点标签只会跳去「搜索该标签的作品」，没有落点
+- **特征详情页 `/trait/:id`**：特征名、所属分组、角色数、别名、简介与翻译，下方是角色卡片（头像、原名、罗马音、性别图标、触底加载）
+- 新增 `src/composables/useRecentViews.js`、`src/pages/TagDetail.vue`、`src/pages/TraitDetail.vue`，`src/api/vndb.js` 增加 `getSimilarVns`
 - **搜索页「分类浏览」补上作品入口**：分类卡片原本只有版本 / 会社 / 人物 / 角色 / 标签 / 特征六项，作品得靠首页或全局搜索进；现在「作品」是分类里的第一张卡片，指向 `/browse/vn`，和其余分类同尺寸排列
 - **作品页排序可按链接指定**：支持 `?sort=rating&reverse=1` 这样的参数直接落到指定排序（票数 / 相关度 / 评分 / 发售日 / 标题，升降序）；排序本身不做记忆，每次从分类卡进来仍是默认的票数倒序
 - **SearchGal 搜索自动补一次回车**：SearchGal 会读 `?s=` 把关键词填进搜索框，但**不会自己发起搜索**，页面停在空白结果（已核对站点 bundle：`?s=` 只赋值给搜索框的 ref）。新增 `src/utils/siteSearchInject.js`，内置浏览器加载完 `searchgal.top` 后注入「填值 + 回车 + 兜底提交表单」，与用户脚本 v2.7.4 的 searchgal 分支等价
@@ -21,11 +28,17 @@
 
 ### 修复
 
+- **标签详情页排序会 400**：`/vn` 端点不支持 `length` / `lastmod` / `added` 排序，选项只保留 `rating` / `votecount` / `released` / `title`
+- **版本详情的最近浏览卡片是空白灰块**：原来只认 `images[0]`，改用 `getReleaseImageUrl` 回退到关联作品封面
 - **稻荷在应用内打不开**：站点已从 `amoebi.com` 迁到 `inarigal.com`（旧域 301），且新域支持 `?search=` 直接出结果页；应用内 URL 已改到新域并带上关键词
 - **「忧郁的弟弟」条目点了报证书错误**：`ttloli.com` 证书已过期（`CERT_HAS_EXPIRED`），用户脚本 v2.7.4 也已移除该站，应用内一并删除
 - **TouchGal 外链仍可能落到过渡页**：补上 v2.7.4 的 `rewriteRedirectLinks`——把中转链接的 `href` 直接改写成真实地址（MutationObserver 跟踪动态节点），这样即使站点的 JS 抢走点击、或用户长按 / 键盘打开，`href` 本身也已是真实地址，不会再进等待页；轮询从 240 次降到 160 次，`hasWaitMarker` 加 800ms 缓存避免每 50ms 读一遍 body
 - **鲲galgame 关键词参数不对**：从 `?q=` 改回 `?keywords=`，与站点实际参数一致
 - **GalZY 一度被怀疑不消费 `?q=`**：核对站点 bundle 后确认 `/games` 用 `validateSearch` 声明了 `q` 字段并把它传给服务端 loader（无关关键词会返回「没有找到」），所以直接拼 URL 即可
+
+---
+
+---
 
 ---
 

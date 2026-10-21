@@ -860,3 +860,52 @@ export async function deleteVnListItem(vnId) {
     method: 'DELETE'
   })
 }
+
+/**
+ * 14. 相似作品：按共同标签找同类型 VN
+ *
+ * VNDB 没有「相似」端点，只能用标签做近似：把当前作品的标签按「评分 × 权重」
+ * 排序，取前几个（太宽泛的标签如「ADVゲー」会拉进大量无关作品，所以要求
+ * rating 足够高），再排除自身、要求评分和票数下限，最后按评分倒序。
+ *
+ * @param {Array<{id: string, rating: number, category?: string, spoiler?: number}>} tags
+ *        当前作品的标签列表（来自 getVnDetail）
+ * @param {string} excludeId 要排除的 VN id（当前作品）
+ * @param {object} options
+ * @returns {Promise<object>} 与 getVnList 相同结构
+ */
+export async function getSimilarVns(tags = [], excludeId = '', options = {}) {
+  // 取评分最高的几个标签。spoiler > 0 的标签是剧透内容，不能用来推荐。
+  const picked = tags
+    .filter((tg) => tg && tg.id && typeof tg.rating === 'number')
+    .filter((tg) => !tg.spoiler)
+    .sort((a, b) => b.rating - a.rating)
+    .slice(0, options.maxTags || 3)
+
+  if (picked.length === 0) return { results: [] }
+
+  // 单个标签用 ["tag","=","gX"]；多个标签必须用 and 组合（交集，
+  // 用 or 会把任一标签命中的作品全拉进来，结果完全不像）
+  const tagFilters = picked.map((tg) => ['tag', '=', tg.id])
+  const and = tagFilters.length === 1 ? tagFilters[0] : ['and', ...tagFilters]
+
+  const filters = [
+    'and',
+    and,
+    ['id', '!=', excludeId],
+    ['rating', '>=', options.minRating ?? 70]
+  ]
+  if (options.minVotes) filters.push(['votecount', '>=', options.minVotes])
+
+  const payload = {
+    filters,
+    fields: 'id, title, alttitle, titles{lang,title,latin}, image{url,thumbnail,sexual}, released, olang, rating, votecount',
+    sort: 'rating',
+    reverse: true,
+    results: options.results || 12
+  }
+  return request('/vn', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}
