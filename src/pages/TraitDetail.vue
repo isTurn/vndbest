@@ -169,14 +169,14 @@ function goToCharacter(id) {
 
 <template>
   <ion-page>
+    <AppHeader
+      mode="detail"
+      :title="trait ? translateTraitName(trait.name) : t('trait.detail')"
+      :subtitle="traitId"
+      :on-back="goBack"
+    />
     <ion-content>
       <div class="page-container space-y-4">
-        <AppHeader
-          mode="detail"
-          :title="trait ? translateTraitName(trait.name) : t('trait.detail')"
-          :subtitle="traitId"
-          :on-back="goBack"
-        />
 
         <div v-if="traitLoading" class="flex justify-center py-16">
           <Icon icon="eos-icons:loading" class="h-8 w-8 text-neutral-300 dark:text-neutral-600" />

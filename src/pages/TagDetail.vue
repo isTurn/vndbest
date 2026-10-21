@@ -188,14 +188,14 @@ function goBack() {
 
 <template>
   <ion-page>
+    <AppHeader
+      mode="detail"
+      :title="tag ? translateTagName(tag.name) : t('tag.detail')"
+      :subtitle="tagId"
+      :on-back="goBack"
+    />
     <ion-content>
       <div class="page-container space-y-4">
-        <AppHeader
-          mode="detail"
-          :title="tag ? translateTagName(tag.name) : t('tag.detail')"
-          :subtitle="tagId"
-          :on-back="goBack"
-        />
 
         <!-- 加载 -->
         <div v-if="tagLoading" class="flex justify-center py-16">
