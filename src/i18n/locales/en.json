@@ -221,10 +221,10 @@
     "browser_desc_custom": "External links are opened by the selected browser app without asking.",
     "browser_ask": "Ask every time",
     "browser_ask_desc": "Show the system “Open with” chooser each time",
-    "inapp_external_button": "Open in external browser",
-    "inapp_external_button_desc": "Shows a button at the right of the in-app browser toolbar; tap it to hand the current page over to the system browser (or your custom browser).",
     "touchgal_inapp": "Open TouchGal in the in-app browser",
-    "touchgal_inapp_desc": "On by default. When enabled, TouchGal always opens in the in-app browser regardless of the setting above, so you can load the page first and then hand it to an external browser from the toolbar."
+    "touchgal_inapp_desc": "On by default. When enabled, TouchGal always opens in the in-app browser regardless of the setting above, so you can load the page first and then hand it to an external browser from the toolbar.",
+    "recent_views": "Recently Viewed",
+    "recent_views_desc": "Show recently opened detail pages on the home screen and keep recording visits. Turn it off to stop recording; existing history is kept."
   },
   "nav": {
     "home": "Home",

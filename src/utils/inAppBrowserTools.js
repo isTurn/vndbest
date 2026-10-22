@@ -10,36 +10,21 @@
  * 图标用 vector 类型指向 `android/app/src/main/res/drawable/ic_open_external.xml`。
  * 补丁没打上的话传 buttonNearDone 会让 openWebView 直接 reject，
  * 所以这里由 buildExternalButtonOption() 统一出口，方便排查。
+ *
+ * 这个按钮是常驻的，设置里没有开关：内置浏览器遇到 Cloudflare 挑战、
+ * 站点自身跳转异常时，它是唯一能把当前页甩给系统浏览器的出口。
  */
 
 import { Capacitor } from '@capacitor/core'
 
-/** 设置项：内置浏览器工具栏上是否显示「用外部浏览器打开」（默认显示） */
-export const IN_APP_EXTERNAL_BUTTON_KEY = 'vndb_inapp_external_button'
-
 /** 工具栏按钮用的 vector drawable 名（不带 .xml） */
 const BUTTON_ICON = 'ic_open_external'
 
-export function getInAppExternalButtonEnabled() {
-  try {
-    // 只有明确关掉才不显示
-    return localStorage.getItem(IN_APP_EXTERNAL_BUTTON_KEY) !== '0'
-  } catch (e) {
-    return true
-  }
-}
-
-export function setInAppExternalButtonEnabled(on) {
-  try {
-    localStorage.setItem(IN_APP_EXTERNAL_BUTTON_KEY, on ? '1' : '0')
-  } catch (e) {
-    /* 忽略隐私模式下的写入失败 */
-  }
-}
-
 /**
  * 拼 `openWebView` 的 buttonNearDone 参数。
- * 关掉开关或非原生平台时返回空对象，调用方用展开运算符即可（不会多出字段）。
+ *
+ * 「用外部浏览器打开」是内置浏览器的常驻能力，没有开关：
+ * 内置浏览器里遇到 Cloudflare 挑战、站点自身跳转异常时，这是唯一的出口。
  *
  * 只在 Android 上给：iOS 端的 InAppBrowserPlugin.swift 仍然
  * `reject("buttonNearDone is not compatible with toolbarType: navigation")`，
@@ -48,7 +33,6 @@ export function setInAppExternalButtonEnabled(on) {
 export function buildExternalButtonOption() {
   if (!Capacitor.isNativePlatform()) return {}
   if (Capacitor.getPlatform() !== 'android') return {}
-  if (!getInAppExternalButtonEnabled()) return {}
   return {
     buttonNearDone: {
       android: {

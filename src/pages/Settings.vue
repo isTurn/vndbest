@@ -64,10 +64,7 @@ import {
   CHOOSER_MARKER
 } from '@/utils/linkOpener'
 import { getTranslatorEnabled, setTranslatorEnabled } from '@/utils/vndbTranslator'
-import {
-  getInAppExternalButtonEnabled,
-  setInAppExternalButtonEnabled
-} from '@/utils/inAppBrowserTools'
+import { useRecentViews, setRecentViewsEnabled } from '@/composables/useRecentViews'
 import { refreshAllMyLengthVotes } from '@/utils/lengthVote'
 
 const route = useRoute()
@@ -444,10 +441,13 @@ watch(translatorEnabled, (on) => {
   setTranslatorEnabled(on)
 })
 
-// 内置浏览器工具栏上的「用外部浏览器打开」按钮
-const inAppExternalEnabled = ref(getInAppExternalButtonEnabled())
-watch(inAppExternalEnabled, (on) => {
-  setInAppExternalButtonEnabled(on)
+// 最近浏览（首页那栏足迹 + 各详情页的自动记录）
+// 用可写 computed 直接读写 composable 里的单例开关：一改就落盘，
+// 首页与详情页拿到的是同一个 ref，不用再各自 watch。
+const { enabled: recentViewsEnabledRef } = useRecentViews()
+const recentViewsEnabled = computed({
+  get: () => recentViewsEnabledRef.value,
+  set: (on) => setRecentViewsEnabled(on)
 })
 
 // TouchGal 固定用内置浏览器打开（方便页面加载好之后再用工具栏按钮甩给外部浏览器）
@@ -639,23 +639,23 @@ const themeOptions = [
               </button>
             </div>
 
-            <!-- 内置浏览器里的「用外部浏览器打开」工具栏按钮 -->
+            <!-- 最近浏览 -->
             <div class="flex items-start justify-between gap-3 py-2 border-t border-neutral-100 dark:border-neutral-700/50">
               <div class="min-w-0 flex-1">
-                <label class="block text-sm font-medium text-neutral-800 dark:text-neutral-200">{{ t('settings.inapp_external_button') }}</label>
-                <p class="mt-0.5 text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('settings.inapp_external_button_desc') }}</p>
+                <label class="block text-sm font-medium text-neutral-800 dark:text-neutral-200">{{ t('settings.recent_views') }}</label>
+                <p class="mt-0.5 text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('settings.recent_views_desc') }}</p>
               </div>
               <button
                 type="button"
                 role="switch"
-                :aria-checked="inAppExternalEnabled"
-                @click="inAppExternalEnabled = !inAppExternalEnabled"
+                :aria-checked="recentViewsEnabled"
+                @click="recentViewsEnabled = !recentViewsEnabled"
                 class="relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors duration-200"
-                :class="inAppExternalEnabled ? 'bg-sky-500' : 'bg-neutral-300 dark:bg-neutral-600'"
+                :class="recentViewsEnabled ? 'bg-sky-500' : 'bg-neutral-300 dark:bg-neutral-600'"
               >
                 <span
                   class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all duration-200"
-                  :class="inAppExternalEnabled ? 'translate-x-[20px]' : 'translate-x-0'"
+                  :class="recentViewsEnabled ? 'translate-x-[20px]' : 'translate-x-0'"
                 />
               </button>
             </div>

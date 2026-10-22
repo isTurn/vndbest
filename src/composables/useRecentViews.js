@@ -11,6 +11,8 @@
 import { ref, computed } from 'vue'
 
 const STORAGE_KEY = 'vndb_recent_views'
+/** 开关：关掉后不再记录新足迹，首页那一栏也隐藏（默认开） */
+export const RECENT_VIEWS_ENABLED_KEY = 'vndb_recent_views_enabled'
 /** 最多保留多少条足迹 */
 const MAX_ITEMS = 30
 
@@ -52,18 +54,48 @@ function saveToStorage(list) {
 // 全局单例，多个组件共享同一份足迹
 const recent = ref(loadFromStorage())
 
-export function useRecentViews() {
-  const list = computed(() => recent.value)
+function readEnabled() {
+  try {
+    // 只有明确存过 '0' 才算关掉
+    return localStorage.getItem(RECENT_VIEWS_ENABLED_KEY) !== '0'
+  } catch {
+    return true
+  }
+}
 
-  const isEmpty = computed(() => recent.value.length === 0)
+// 开关状态也做成单例，设置页一关，首页与各详情页立刻同步
+const enabled = ref(readEnabled())
+
+export function getRecentViewsEnabled() {
+  return readEnabled()
+}
+
+export function setRecentViewsEnabled(on) {
+  try {
+    localStorage.setItem(RECENT_VIEWS_ENABLED_KEY, on ? '1' : '0')
+  } catch {
+    /* 忽略隐私模式下的写入失败 */
+  }
+  enabled.value = !!on
+}
+
+export function useRecentViews() {
+  // 关掉开关时列表直接当空处理：首页那一栏随之隐藏，不用每个调用点自己判断
+  const list = computed(() => (enabled.value ? recent.value : []))
+
+  const isEmpty = computed(() => !enabled.value || recent.value.length === 0)
 
   /**
    * 记录一次浏览。已存在的条目会被提到最前并刷新标题/封面
    * （数据可能因为后来补充了中文标题而变化）。
    *
+   * 开关关掉时不写任何东西：既不记录新足迹，也不动既有数据，
+   * 这样用户重新打开开关后历史还在。
+   *
    * @param {{ id: string, type: string, title?: string, subtitle?: string, image?: string }} item
    */
   function record(item) {
+    if (!enabled.value) return
     if (!item || !item.id || !RECENT_TYPES.includes(item.type)) return
     const entry = {
       id: item.id,
@@ -106,5 +138,5 @@ export function useRecentViews() {
     return prefix ? `${prefix}/${item.id}` : '/'
   }
 
-  return { list, isEmpty, record, remove, clear, toPath }
+  return { list, isEmpty, record, remove, clear, toPath, enabled }
 }

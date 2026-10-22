@@ -16,11 +16,13 @@
 - **评分分布柱状图逐档配色**：`VnDetail.vue` 的 5～10 分从三档（≥8 绿、≥5 蓝、其余灰）改为每档独立颜色。不用 Tailwind 的 emerald / teal / cyan 调色板（其亮度阶梯跳跃，8/9/10 拼在一起会有台阶），改用 `hsl()` 自算等亮度差色带：色相每档 −6°（190° → 160°），亮色 S=95% / 暗色 S=90%，按「感知亮度每档 −8」反解亮度，实测相邻两档 ΔL 稳定在 −7.3 ~ −8.6；10 分不再用渐变
 - **7 个搜索页自己渲染顶栏**：`VnSearch` / `CharacterSearch` / `ProducerSearch` / `ReleaseSearch` / `StaffSearch` / `TagSearch` / `TraitSearch` 把 `AppHeader` 提到 `ion-content` 之外，并给 `SearchBase` 传 `:show-header="false"`（`SearchBase.vue` 新增 `showHeader` prop）
 - **标签 / 特征详情页同步改造**：`TagDetail.vue` / `TraitDetail.vue` 的 `AppHeader` 一并移到 `ion-content` 之外
+- **内置浏览器「用外部浏览器打开」按钮改为常驻**：删掉 `vndb_inapp_external_button` 设置项与 `get/setInAppExternalButtonEnabled`，`buildExternalButtonOption()` 不再读开关。遇到 Cloudflare 挑战或站点跳转异常时，这是唯一能把当前页交给系统浏览器的出口，不该被关掉
 
 ### 新增
 
 - **语言筛选显示国旗**：新增 `src/components/LanguageFlag.vue`；`BaseSelect.vue` 加 `showLangFlag` prop 与 `flagOf()`（`all` 不显示），当前值与选项前渲染国旗；`VnSearch` / `ReleaseSearch` 传 `show-lang-flag`，`Home.vue` 的语言徽章与搜索结果 badges、`Settings.vue` 的语言列表同步显示
 - **作品简介与相关作品整块折叠**：`VnDetail.vue` 新增 `descriptionSectionOpen` / `relationsSectionOpen`（默认 `false`），标题改为带 chevron 的按钮，整块 `v-show` 收起
+- **最近浏览开关**：「外观与语言」新增 `vndb_recent_views_enabled`（默认开）。关掉后不再记录新足迹、首页那一栏隐藏，已有历史保留，重新打开即恢复；`useRecentViews` 增加单例 `enabled` 状态，设置页用可写 computed 直连，首页与五个详情页共享同一个 ref
 
 ### 修复
 

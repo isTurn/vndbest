@@ -182,7 +182,7 @@ export async function openWithSystemBrowser(url) {
 /** 内置 WebView 打开 */
 async function openWithInAppBrowser(url) {
   const { InAppBrowser, ToolBarType } = await import('@capgo/inappbrowser')
-  // 工具栏上的「用外部浏览器打开」按钮（可在设置里关掉）
+  // 工具栏上的「用外部浏览器打开」按钮（常驻，没有开关）
   const { buildExternalButtonOption, noteBrowserUrl } = await import('./inAppBrowserTools')
   const { id } = await InAppBrowser.openWebView({
     url,
