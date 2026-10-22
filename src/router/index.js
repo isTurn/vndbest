@@ -13,6 +13,7 @@ const VnDetail = () => import('@/pages/VnDetail.vue')
 const CharacterDetail = () => import('@/pages/CharacterDetail.vue')
 const ProducerDetail = () => import('@/pages/ProducerDetail.vue')
 const VnSearch = () => import('@/pages/VnSearch.vue')
+const ImageSearch = () => import('@/pages/ImageSearch.vue')
 const ReleaseSearch = () => import('@/pages/ReleaseSearch.vue')
 const ProducerSearch = () => import('@/pages/ProducerSearch.vue')
 const StaffSearch = () => import('@/pages/StaffSearch.vue')
@@ -119,6 +120,12 @@ const routes = [
     path: '/browse/vn',
     name: 'VnSearch',
     component: VnSearch,
+    meta: { showTabBar: true }
+  },
+  {
+    path: '/browse/image',
+    name: 'ImageSearch',
+    component: ImageSearch,
     meta: { showTabBar: true }
   },
   {

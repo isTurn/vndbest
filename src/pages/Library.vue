@@ -482,6 +482,11 @@ function clearQuery() {
   isSearching.value = false
 }
 
+/** 以图搜作品：独立页面（选图 → AnimeTrace 识别 → VNDB 匹配） */
+function goImageSearch() {
+  router.push('/browse/image')
+}
+
 function submitSearch() {
   if (debounceTimer) clearTimeout(debounceTimer)
   addSearchHistory(query.value)
@@ -553,6 +558,17 @@ onUnmounted(() => {
         <Icon icon="lucide:x" class="h-3.5 w-3.5" />
       </button>
     </div>
+
+    <!-- 以图搜作品入口：独立一行，不去挤搜索框右侧的清除按钮 -->
+    <button
+      v-if="!hasSearched"
+      @click="goImageSearch"
+      class="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-neutral-200 dark:border-neutral-700 px-3 py-2 text-xs text-neutral-500 dark:text-neutral-400 transition hover:border-neutral-300 dark:hover:border-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-200 cursor-pointer"
+    >
+      <Icon icon="lucide:image-plus" class="h-4 w-4" />
+      {{ t('image_search.entry') }}
+      <Icon icon="lucide:chevron-right" class="h-3.5 w-3.5" />
+    </button>
 
     <!-- 搜索历史：仅在还没开始搜索时展示，避免占满结果区 -->
     <section v-if="!hasSearched && !searchHistoryEmpty" class="space-y-2">

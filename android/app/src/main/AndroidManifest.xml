@@ -98,6 +98,16 @@
         <package android:name="com.transsion.phoenix" />
         <package android:name="com.transsion.browser" />
         <package android:name="com.android.htmlviewer" />
+
+        <!--
+          下载管理器（内置浏览器点下载时优先交给它们）。
+          Android 11+ 起，不在这里声明就看不到对方的 activity，
+          setClassName 启动会被当成不存在的组件。1DM+ 与 ADM 的包名。
+        -->
+        <package android:name="idm.internet.download.manager.plus" />
+        <package android:name="idm.internet.download.manager" />
+        <package android:name="com.dv.adm.pay" />
+        <package android:name="com.dv.adm" />
     </queries>
 
     <application

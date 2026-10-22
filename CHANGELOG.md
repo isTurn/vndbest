@@ -2,6 +2,30 @@
 
 本文件记录本 fork（[isTurn/vndbest](https://github.com/isTurn/vndbest)）相对上游的功能演进。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.0.10] - 2026-10-22
+
+搜索页加了「以图搜作品」——上传截图或插画，识别出作品名后直接给出 VNDB 作品页；内置浏览器里的下载也改为交给 1DM+ / ADM 接管。
+
+### 新增
+
+- **以图搜作品**：底部「搜索」页的搜索框下方新增入口（`src/pages/Library.vue`），跳转 `/browse/image`（`src/pages/ImageSearch.vue`）。选图后先在本地压缩（最长边 1280、JPEG 0.85，`src/utils/imageSearch.js` 的 `prepareImageFile`），再 POST 到 `https://api.animetrace.com/v1/search` 做识别（`is_multi=1`、`ai_detect=1`）；返回的 `data[].character[].work` 按作品名归并、按命中次数排序，每个作品名再用 `getVnList(['search', '=', work], { results: 3 })` 反查 VNDB 条目，列出封面 / 标题 / 原名 / 年份，点击进 `/vn/:id`；没匹配上的作品给「在 VNDB 搜索」入口跳 `/browse/vn?q=`。
+- **图片上传走 WebView 原生文件选择器**：用 H5 `<input type="file" accept="image/*" class="sr-only">`（不能用 `hidden` / `display:none`，否则 WebView 里 `click()` 不触发），由 Capacitor 的 `BridgeWebChromeClient.onShowFileChooser` 调起系统相册，未引入相机插件。
+- **识别请求双通道**：优先 `fetch` + `FormData`（AnimeTrace 已开 CORS）；只有在原生平台出现网络层错误（`TypeError` / `failed to fetch`）时才回退到 `CapacitorHttp.request` 的 `dataType: 'formData'` + `base64File`。
+- **识别错误码映射**：`17701` 图过大、`17702` 服务器繁忙、`17704` 维护中、`17705` 格式不支持、`17708` / `17731` 人物过多、`17724` 非图片文件、`17728` 使用上限，统一映射到 `image_search.error_*` 三语文案，失败时可重试。
+- **置信度与 AI 提示**：`box.not_confident` 全为真时标「置信度较低」，`ai: true` 时标「可能是 AI 生成图」。
+
+### 变更
+
+- **内置浏览器下载交给下载管理器**：`scripts/patch-inappbrowser.cjs` 新增两处补丁（独立标记 `[vndbest patch:download]` / `[vndbest patch:download-route]`）——把 `WebViewDialog.java` 里原本被 `if (_options.getHandleDownloads())` 包住的 `setDownloadListener` 改为无条件注册；新增 `routeDownloadToExternalApp()`，下载时优先用显式组件 `Intent(ACTION_VIEW)` + `setClassName("idm.internet.download.manager.plus", "idm.internet.download.manager.UrlHandlerDownloader")` 交给 1DM+，失败再按 `DOWNLOAD_MANAGER_PACKAGES`（`idm.internet.download.manager.plus` / `idm.internet.download.manager` / `com.dv.adm.pay` / `com.dv.adm`）用 `setPackage` 逐个试，仍不行则按 `handleDownloads` 开关决定是否由插件自己落盘，最后退回系统 `ACTION_VIEW`。这样内置浏览器里的下载行为与「检查更新」的 APK 下载一致。
+- **下载管理器包可见性声明**：`android/app/src/main/AndroidManifest.xml` 的 `<queries>` 补上上述 4 个下载器包名（Android 11+ 不声明就无法定位到对应组件）。
+- **补丁脚本支持逐补丁标记**：`patchOne()` 新增 `marker` 参数（默认仍是全局 `[vndbest patch]`），避免同一个 `WebViewDialog.java` 里的后续补丁被「整文件已含 MARKER」直接跳过。
+
+### 修复
+
+- **内置浏览器点下载没反应**：插件默认不装 `DownloadListener`（`handleDownloads` 默认 false），`Content-Disposition: attachment` 与 `<a download>` 链接会被静默丢弃；补丁 3 无条件注册后不再丢失。
+
+---
+
 ## [1.0.9] - 2026-10-21
 
 顶栏与底部 TabBar 从滚动内容里彻底拆出来，来回拖动时只有中间的内容在动；顺带修掉顶栏压住通知栏的问题，并给评分分布柱状图换成逐档递进的配色。
