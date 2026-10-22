@@ -2,32 +2,9 @@
 
 本文件记录本 fork（[isTurn/vndbest](https://github.com/isTurn/vndbest)）相对上游的功能演进。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [1.0.20] - 2026-10-23
-
-别的应用（相册、QQ、文件管理器……）里点「分享」时，多了一个叫「以图搜作品」的入口；选中后 App 直接拿这张图去识别，不用再手动进「以图搜作品」页面选图。
-
-### 新增
-
-- **从其他应用分享图片直接以图搜作品**：`AndroidManifest.xml` 新增 `<activity-alias android:name=".ShareImageAlias">`（targetActivity 指向 `MainActivity`，label 单独设成「以图搜作品」，桌面图标仍是 VNDB），注册 `ACTION_SEND` / `ACTION_SEND_MULTIPLE` + `image/*` 两个 filter；系统分享面板里该项显示为「VNDB / 以图搜作品」两行
-- **原生侧接住分享的图片**：新增 `android/app/src/main/java/com/vndb/ShareImagePlugin.java`（`@CapacitorPlugin(name = "ShareImage")`）。`handleOnNewIntent()` 只接 `ACTION_SEND` / `ACTION_SEND_MULTIPLE`，把 Intent 副本存在静态 `pendingIntent` 里并用 `notifyListeners("shareImage", ..., true)` 保留事件到监听器注册；`@PluginMethod getPending()` 消费它，在 `getBridge().execute(...)` 里把 `content://` 流复制到 `getCacheDir()/shared-image/shared-<时间戳>.<扩展名>`，返回 `{ path, name, mimeType }`。分享 URI 带的是临时读权限，必须尽快复制到自己的缓存目录，不能在 JS 侧直接长期持有
-- **取图位置四路兜底**：`extractFirstUri()` 依次尝试「EXTRA_STREAM 是单个 Uri」「EXTRA_STREAM 是 Uri 列表，取第一张」「Intent 的 data」「ClipData 第一项」。实测 ZUI 分享面板对 `ACTION_SEND_MULTIPLE` 也可能只塞单个 Uri，不能按 action 死取
-- **JS 侧接收与跳转**：新增 `src/utils/sharedImage.js`（`pendingSharedImage` ref、`consumeSharedImage()`、`installSharedImageWatcher(router)`）。三条触发路径互为保险——原生 `shareImage` 事件（热启动）、`@capacitor/app` 的 `appStateChange` 回前台再拉一次（事件丢失兜底）、`router.isReady()` 后拉一次（冷启动）。取到后用 `Capacitor.convertFileSrc()` + `fetch` 转成 `File`，`router.push('/browse/image')`
-- **页面自动开跑**：`src/pages/ImageSearch.vue` 加 `watch(pendingSharedImage, takeSharedImage)` + `onMounted(takeSharedImage)`，取走文件后立刻清空 ref，避免返回本页时重跑；直接调用已有的 `runSearch(file)`
-
-### 变更
-
-- **`MainActivity` 注册新插件**：`registerPlugin(ShareImagePlugin.class)` 加在 `super.onCreate(savedInstanceState)` 之前
-- **分享入口的本地化文案**：`android/app/src/main/res/values/strings.xml` 新增 `share_image_label` =「以图搜作品」
-
-### 修复
-
-- **分享进来的图片读不到**：`EXTRA_STREAM` 的类型在不同发送方之间并不统一（单个 Uri / Uri 列表），原先按 action 分支取会在对不上的组合上直接返回 null（分享后停在首页、不识别）；改成四路兜底后冷启动与热启动、单图与多图都正常
-
----
-
 ## [1.0.10] - 2026-10-22
 
-搜索页加了「以图搜作品」——上传截图或插画，识别出作品名后直接给出 VNDB 作品页；内置浏览器里的下载也改为交给 1DM+ / ADM 接管。
+搜索页多了「以图搜作品」——上传截图或插画，识别出作品名后直接给出 VNDB 作品页；别的应用（相册、QQ、文件管理器……）里看到图，也能直接「分享」过来识别。内置浏览器里的下载改为交给 1DM+ / ADM 接管。
 
 ### 新增
 
@@ -36,16 +13,24 @@
 - **识别请求双通道**：优先 `fetch` + `FormData`（AnimeTrace 已开 CORS）；只有在原生平台出现网络层错误（`TypeError` / `failed to fetch`）时才回退到 `CapacitorHttp.request` 的 `dataType: 'formData'` + `base64File`。
 - **识别错误码映射**：`17701` 图过大、`17702` 服务器繁忙、`17704` 维护中、`17705` 格式不支持、`17708` / `17731` 人物过多、`17724` 非图片文件、`17728` 使用上限，统一映射到 `image_search.error_*` 三语文案，失败时可重试。
 - **置信度与 AI 提示**：`box.not_confident` 全为真时标「置信度较低」，`ai: true` 时标「可能是 AI 生成图」。
+- **从其他应用分享图片直接以图搜作品**：`AndroidManifest.xml` 新增 `<activity-alias android:name=".ShareImageAlias">`（targetActivity 指向 `MainActivity`，label 单独设成「以图搜作品」，桌面图标仍是 VNDB），注册 `ACTION_SEND` / `ACTION_SEND_MULTIPLE` + `image/*` 两个 filter；系统分享面板里该项显示为「VNDB / 以图搜作品」两行
+- **原生侧接住分享的图片**：新增 `android/app/src/main/java/com/vndb/ShareImagePlugin.java`（`@CapacitorPlugin(name = "ShareImage")`）。`handleOnNewIntent()` 只接 `ACTION_SEND` / `ACTION_SEND_MULTIPLE`，把 Intent 副本存在静态 `pendingIntent` 里并用 `notifyListeners("shareImage", ..., true)` 保留事件到监听器注册；`@PluginMethod getPending()` 消费它，在 `getBridge().execute(...)` 里把 `content://` 流复制到 `getCacheDir()/shared-image/shared-<时间戳>.<扩展名>`，返回 `{ path, name, mimeType }`。分享 URI 带的是临时读权限，必须尽快复制到自己的缓存目录，不能在 JS 侧直接长期持有
+- **取图位置四路兜底**：`extractFirstUri()` 依次尝试「EXTRA_STREAM 是单个 Uri」「EXTRA_STREAM 是 Uri 列表，取第一张」「Intent 的 data」「ClipData 第一项」。实测 ZUI 分享面板对 `ACTION_SEND_MULTIPLE` 也可能只塞单个 Uri，不能按 action 死取
+- **JS 侧接收与跳转**：新增 `src/utils/sharedImage.js`（`pendingSharedImage` ref、`consumeSharedImage()`、`installSharedImageWatcher(router)`）。三条触发路径互为保险——原生 `shareImage` 事件（热启动）、`@capacitor/app` 的 `appStateChange` 回前台再拉一次（事件丢失兜底）、`router.isReady()` 后拉一次（冷启动）。取到后用 `Capacitor.convertFileSrc()` + `fetch` 转成 `File`，`router.push('/browse/image')`
+- **页面自动开跑**：`src/pages/ImageSearch.vue` 加 `watch(pendingSharedImage, takeSharedImage)` + `onMounted(takeSharedImage)`，取走文件后立刻清空 ref，避免返回本页时重跑；直接调用已有的 `runSearch(file)`
 
 ### 变更
 
 - **内置浏览器下载交给下载管理器**：`scripts/patch-inappbrowser.cjs` 新增两处补丁（独立标记 `[vndbest patch:download]` / `[vndbest patch:download-route]`）——把 `WebViewDialog.java` 里原本被 `if (_options.getHandleDownloads())` 包住的 `setDownloadListener` 改为无条件注册；新增 `routeDownloadToExternalApp()`，下载时优先用显式组件 `Intent(ACTION_VIEW)` + `setClassName("idm.internet.download.manager.plus", "idm.internet.download.manager.UrlHandlerDownloader")` 交给 1DM+，失败再按 `DOWNLOAD_MANAGER_PACKAGES`（`idm.internet.download.manager.plus` / `idm.internet.download.manager` / `com.dv.adm.pay` / `com.dv.adm`）用 `setPackage` 逐个试，仍不行则按 `handleDownloads` 开关决定是否由插件自己落盘，最后退回系统 `ACTION_VIEW`。这样内置浏览器里的下载行为与「检查更新」的 APK 下载一致。
 - **下载管理器包可见性声明**：`android/app/src/main/AndroidManifest.xml` 的 `<queries>` 补上上述 4 个下载器包名（Android 11+ 不声明就无法定位到对应组件）。
 - **补丁脚本支持逐补丁标记**：`patchOne()` 新增 `marker` 参数（默认仍是全局 `[vndbest patch]`），避免同一个 `WebViewDialog.java` 里的后续补丁被「整文件已含 MARKER」直接跳过。
+- **`MainActivity` 注册新插件**：`registerPlugin(ShareImagePlugin.class)` 加在 `super.onCreate(savedInstanceState)` 之前
+- **分享入口的本地化文案**：`android/app/src/main/res/values/strings.xml` 新增 `share_image_label` =「以图搜作品」
 
 ### 修复
 
 - **内置浏览器点下载没反应**：插件默认不装 `DownloadListener`（`handleDownloads` 默认 false），`Content-Disposition: attachment` 与 `<a download>` 链接会被静默丢弃；补丁 3 无条件注册后不再丢失。
+- **分享进来的图片读不到**：`EXTRA_STREAM` 的类型在不同发送方之间并不统一（单个 Uri / Uri 列表），原先按 action 分支取会在对不上的组合上直接返回 null（分享后停在首页、不识别）；改成四路兜底后冷启动与热启动、单图与多图都正常
 
 ---
 
