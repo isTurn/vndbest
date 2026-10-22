@@ -177,21 +177,20 @@ jobs:
             ${{ steps.find-apk.outputs.signature_file }}
           retention-days: 14
 
+      # 发布说明直接用 body_path 让 action 自己读文件，不再经 $GITHUB_OUTPUT 中转：
+      # 之前用多行 heredoc 写 output，一旦 output 为空，action 会退回「保留已有 release 的正文」，
+      # 于是 release 被更新成旧文案却仍然报 success（v1.0.10 就这样丢过一次正文）。
       - name: Resolve release notes
         id: notes
         run: |
           FILE="docs/release-notes/${GITHUB_REF_NAME#v}.md"
           if [ -f "$FILE" ]; then
             echo "Using hand-written notes: $FILE"
-            # 多行内容经 GITHUB_OUTPUT 用分隔符写法传给下一步
-            {
-              echo "body<<VNDB_RELEASE_NOTES_EOF"
-              cat "$FILE"
-              echo "VNDB_RELEASE_NOTES_EOF"
-            } >> "$GITHUB_OUTPUT"
+            echo "body_path=$FILE" >> "$GITHUB_OUTPUT"
             echo "has_body=true" >> "$GITHUB_OUTPUT"
           else
             echo "No $FILE, will fall back to auto-generated notes"
+            echo "body_path=" >> "$GITHUB_OUTPUT"
             echo "has_body=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -201,9 +200,32 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: VNDB ${{ steps.version.outputs.version }}
-          body: ${{ steps.notes.outputs.body }}
+          body_path: ${{ steps.notes.outputs.body_path }}
           draft: false
           prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'rc') }}
           generate_release_notes: ${{ steps.notes.outputs.has_body != 'true' }}
           files: |
             ${{ steps.find-apk.outputs.apk_path }}
+
+      # action 报 success 不代表正文真的写进去了（见上），这里回查一次 API：
+      # 正文长度明显短于发布说明文件就判失败，避免又发一个只有旧文案的 release。
+      - name: Verify release body
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          TAG="${GITHUB_REF_NAME}"
+          BODY_LEN=$(gh release view "$TAG" --json body -q '.body | length')
+          echo "Release body length: $BODY_LEN (characters)"
+          FILE="docs/release-notes/${TAG#v}.md"
+          if [ -f "$FILE" ]; then
+            # 用 jq 数字符（与 API 的 body 长度口径一致），不要用 wc -m（受 locale 影响会数成字节）
+            FILE_LEN=$(jq -R -s 'length' < "$FILE")
+            echo "Release notes file length: $FILE_LEN (characters)"
+            if [ "$BODY_LEN" -lt $((FILE_LEN / 2)) ]; then
+              echo "::error::Release 正文疑似没有更新（$BODY_LEN 字符，发布说明 $FILE_LEN 字符）"
+              exit 1
+            fi
+          fi
+          gh release view "$TAG" --json tagName,name,url -q '"Release " + .tagName + " (" + .name + ") " + .url'
