@@ -10,6 +10,9 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(PhotoGalleryPlugin.class);
         registerPlugin(CookieKeeperPlugin.class);
         registerPlugin(ExternalBrowserPlugin.class);
+        // 接收其他应用分享进来的图片（相册 / QQ 等），交给「以图搜作品」识别。
+        // 冷启动与热启动的 Intent 都由插件的 handleOnNewIntent 接住，这里只注册。
+        registerPlugin(ShareImagePlugin.class);
         super.onCreate(savedInstanceState);
 
         // 关掉 WebView 的过度滚动效果：内容滚到边界后继续拖动时，Chromium 会做「拉伸回弹」，

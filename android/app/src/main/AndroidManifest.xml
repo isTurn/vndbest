@@ -133,6 +133,32 @@
 
         </activity>
 
+        <!--
+            分享面板里的「以图搜作品」入口。
+            用 activity-alias 而不是给 MainActivity 直接加 filter：alias 可以单独设 label，
+            分享面板显示「以图搜作品」，桌面图标仍然是 VNDB。
+            收到图片后由 ShareImagePlugin 复制到缓存目录，JS 侧切到 /browse/image 自动识别。
+        -->
+        <activity-alias
+            android:name=".ShareImageAlias"
+            android:targetActivity=".MainActivity"
+            android:label="@string/share_image_label"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+
+        </activity-alias>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

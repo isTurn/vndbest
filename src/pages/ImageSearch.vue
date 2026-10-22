@@ -164,7 +164,7 @@
 </template>
 
 <script setup>
-import { ref, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { IonPage, IonContent } from '@ionic/vue'
@@ -173,6 +173,7 @@ import AppHeader from '@/components/AppHeader.vue'
 import { searchByImage, prepareImageFile } from '@/utils/imageSearch'
 import { getVnList } from '@/api/vndb'
 import { translateError } from '@/utils/errorMessage'
+import { pendingSharedImage } from '@/utils/sharedImage'
 
 defineOptions({ name: 'ImageSearch' })
 
@@ -256,6 +257,20 @@ function openVn(vn) {
 function searchVndb(name) {
   router.push({ path: '/browse/vn', query: { q: name } })
 }
+
+/**
+ * 别的应用分享图片进来（相册 / QQ 等）：直接拿这张图开始识别。
+ * 取走后立刻清空 pendingSharedImage，避免返回本页时又重跑一遍。
+ */
+function takeSharedImage() {
+  const file = pendingSharedImage.value
+  if (!file) return
+  pendingSharedImage.value = null
+  runSearch(file)
+}
+
+watch(pendingSharedImage, takeSharedImage)
+onMounted(takeSharedImage)
 
 onUnmounted(revokePreview)
 </script>

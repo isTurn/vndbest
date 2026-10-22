@@ -2,6 +2,29 @@
 
 本文件记录本 fork（[isTurn/vndbest](https://github.com/isTurn/vndbest)）相对上游的功能演进。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.0.20] - 2026-10-23
+
+别的应用（相册、QQ、文件管理器……）里点「分享」时，多了一个叫「以图搜作品」的入口；选中后 App 直接拿这张图去识别，不用再手动进「以图搜作品」页面选图。
+
+### 新增
+
+- **从其他应用分享图片直接以图搜作品**：`AndroidManifest.xml` 新增 `<activity-alias android:name=".ShareImageAlias">`（targetActivity 指向 `MainActivity`，label 单独设成「以图搜作品」，桌面图标仍是 VNDB），注册 `ACTION_SEND` / `ACTION_SEND_MULTIPLE` + `image/*` 两个 filter；系统分享面板里该项显示为「VNDB / 以图搜作品」两行
+- **原生侧接住分享的图片**：新增 `android/app/src/main/java/com/vndb/ShareImagePlugin.java`（`@CapacitorPlugin(name = "ShareImage")`）。`handleOnNewIntent()` 只接 `ACTION_SEND` / `ACTION_SEND_MULTIPLE`，把 Intent 副本存在静态 `pendingIntent` 里并用 `notifyListeners("shareImage", ..., true)` 保留事件到监听器注册；`@PluginMethod getPending()` 消费它，在 `getBridge().execute(...)` 里把 `content://` 流复制到 `getCacheDir()/shared-image/shared-<时间戳>.<扩展名>`，返回 `{ path, name, mimeType }`。分享 URI 带的是临时读权限，必须尽快复制到自己的缓存目录，不能在 JS 侧直接长期持有
+- **取图位置四路兜底**：`extractFirstUri()` 依次尝试「EXTRA_STREAM 是单个 Uri」「EXTRA_STREAM 是 Uri 列表，取第一张」「Intent 的 data」「ClipData 第一项」。实测 ZUI 分享面板对 `ACTION_SEND_MULTIPLE` 也可能只塞单个 Uri，不能按 action 死取
+- **JS 侧接收与跳转**：新增 `src/utils/sharedImage.js`（`pendingSharedImage` ref、`consumeSharedImage()`、`installSharedImageWatcher(router)`）。三条触发路径互为保险——原生 `shareImage` 事件（热启动）、`@capacitor/app` 的 `appStateChange` 回前台再拉一次（事件丢失兜底）、`router.isReady()` 后拉一次（冷启动）。取到后用 `Capacitor.convertFileSrc()` + `fetch` 转成 `File`，`router.push('/browse/image')`
+- **页面自动开跑**：`src/pages/ImageSearch.vue` 加 `watch(pendingSharedImage, takeSharedImage)` + `onMounted(takeSharedImage)`，取走文件后立刻清空 ref，避免返回本页时重跑；直接调用已有的 `runSearch(file)`
+
+### 变更
+
+- **`MainActivity` 注册新插件**：`registerPlugin(ShareImagePlugin.class)` 加在 `super.onCreate(savedInstanceState)` 之前
+- **分享入口的本地化文案**：`android/app/src/main/res/values/strings.xml` 新增 `share_image_label` =「以图搜作品」
+
+### 修复
+
+- **分享进来的图片读不到**：`EXTRA_STREAM` 的类型在不同发送方之间并不统一（单个 Uri / Uri 列表），原先按 action 分支取会在对不上的组合上直接返回 null（分享后停在首页、不识别）；改成四路兜底后冷启动与热启动、单图与多图都正常
+
+---
+
 ## [1.0.10] - 2026-10-22
 
 搜索页加了「以图搜作品」——上传截图或插画，识别出作品名后直接给出 VNDB 作品页；内置浏览器里的下载也改为交给 1DM+ / ADM 接管。

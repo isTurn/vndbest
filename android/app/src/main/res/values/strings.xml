@@ -4,4 +4,6 @@
     <string name="title_activity_main">VNDB</string>
     <string name="package_name">com.vndb</string>
     <string name="custom_url_scheme">com.vndb</string>
+    <!-- 分享面板里的入口名：别的应用点「分享」时，选 VNDB 就是「以图搜作品」 -->
+    <string name="share_image_label">以图搜作品</string>
 </resources>

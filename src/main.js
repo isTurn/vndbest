@@ -11,6 +11,7 @@ import { installExternalButtonWatcher } from './utils/inAppBrowserTools'
 import { installRedirectSkipWatcher } from './utils/redirectSkip'
 import { installSiteSearchWatcher } from './utils/siteSearchInject'
 import { installElasticScroll } from './utils/elasticScroll'
+import { installSharedImageWatcher } from './utils/sharedImage'
 import './style.css'
 
 registerAppIcons()
@@ -28,6 +29,8 @@ installRedirectSkipWatcher()
 installSiteSearchWatcher()
 // 中间内容的橡皮筋回弹（只动 ion-content 里的滚动容器，底部 TabBar 不跟着变形）
 installElasticScroll()
+// 接收其他应用分享进来的图片（相册 / QQ 等），自动切到「以图搜作品」并识别
+installSharedImageWatcher(router)
 
 // 根据 .env 中的 VITE_VCONSOLE 环境变量决定是否启用 vConsole 调试面板
 if (import.meta.env.VITE_VCONSOLE === 'true') {
