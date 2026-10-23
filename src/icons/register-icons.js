@@ -95,7 +95,7 @@ import ruler from '@iconify-icons/lucide/ruler'
 import weight from '@iconify-icons/lucide/weight'
 import circle from '@iconify-icons/lucide/circle'
 // 性别图标：lucide 没有 ♀/♂/⚥ 符号，改用自绘的（见 gender-icons.js）
-import { venus as genderVenus, mars as genderMars, venusMars as genderVenusMars } from './gender-icons'
+import { venus as genderVenus, mars as genderMars, venusMars as genderVenusMars, agender as genderAgender } from './gender-icons'
 import heart from '@iconify-icons/lucide/heart'
 import droplets from '@iconify-icons/lucide/droplets'
 import database from '@iconify-icons/lucide/database'
@@ -221,6 +221,7 @@ const ICON_DATA = {
   [APP_ICON_NAMES.common.venus]: genderVenus,
   [APP_ICON_NAMES.common.mars]: genderMars,
   [APP_ICON_NAMES.common.venusMars]: genderVenusMars,
+  [APP_ICON_NAMES.common.agender]: genderAgender,
   [APP_ICON_NAMES.common.database]: database,
   [APP_ICON_NAMES.common.hardDrive]: hardDrive,
   [APP_ICON_NAMES.common.checkSquare]: checkSquare,

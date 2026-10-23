@@ -773,7 +773,10 @@
       "translated": "Translation",
       "collab": "Collab",
       "ser": "Same Series",
-      "set": "Same Staff"
+      "set": "Same Staff",
+      "orig": "Original",
+      "par": "Parent Story",
+      "char": "Shares Characters"
     },
     "staff_role": {
       "scenario": "Scenario",

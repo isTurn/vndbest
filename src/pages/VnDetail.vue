@@ -124,8 +124,8 @@ const translationLoading = ref(false)
 const translationError = ref('')
 const translationSourceText = ref('')
 
-// 相关作品：同人作开关（默认隐藏非官方关联）
-const showDoujin = ref(false)
+// 相关作品：同人作开关（默认显示全部关联，包括非官方/同人作）
+const showDoujin = ref(true)
 
 // 过滤后的相关作品（根据同人作开关）
 const filteredRelations = computed(() => {

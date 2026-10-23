@@ -119,7 +119,7 @@ const props = defineProps({
 const emit = defineEmits(['loadMore', 'sortChange', 'reverseChange', 'retry'])
 
 const router = useRouter()
-const { t } = useI18n()
+const { t, te } = useI18n()
 
 // 布局状态：'list', 'waterfall', 'compact'；'text' 会规范化为 'compact'
 const normalizeLayout = (layout) => {
@@ -321,14 +321,26 @@ function getBadge(item) {
   return item.role || item.relation || null
 }
 
-const translateBadge = (val) => {
-  if (!val) return null
-  // 尝试翻译 role 或 relation
-  return t(`metadata.role.${val.toLowerCase()}`, val) !== val.toLowerCase()
-    ? t(`metadata.role.${val.toLowerCase()}`)
-    : (t(`metadata.relation.${val.toLowerCase()}`, val) !== val.toLowerCase()
-        ? t(`metadata.relation.${val.toLowerCase()}`)
-        : val)
+// VNDB 的 relations 里 relation_official 为 false 表示非官方关联（同人作），
+// 光看「续作 / 番外」这种关系词分不出来，需要单独标一个「同人作」徽章。
+function isDoujinRelation(item) {
+  return item?.relation_official === false
+}
+
+// 关联作品的关系词（relation：seq/preq/orig/par…）和角色列表里的定位词（role：main/side…）
+// 共用同一套徽章样式，但两者的取值会撞名 —— relation 的 side 是「外传」，role 的 side 是「配角」，
+// 所以翻译时必须按字段来源分别查表，不能先查 role 再回落 relation，否则外传会被显示成配角。
+const translateBadgeOf = (item) => {
+  if (!item) return null
+  if (item.relation) {
+    const key = `metadata.relation.${String(item.relation).toLowerCase()}`
+    return te(key) ? t(key) : item.relation
+  }
+  if (item.role) {
+    const key = `metadata.role.${String(item.role).toLowerCase()}`
+    return te(key) ? t(key) : item.role
+  }
+  return null
 }
 
 // ==================== 收藏状态（在玩 / 已通关 / 想玩…） ====================
@@ -578,7 +590,13 @@ function toggleReverse() {
                           : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border border-neutral-200/50 dark:border-neutral-700/50'
                       ]"
                     >
-                      {{ translateBadge(getBadge(item)) }}
+                      {{ translateBadgeOf(item) }}
+                    </span>
+                    <span
+                      v-if="isDoujinRelation(item)"
+                      class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/50"
+                    >
+                      {{ t('vn.show_doujin') }}
                     </span>
                     <span
                       v-if="getStatusLabel(item)"
@@ -714,7 +732,13 @@ function toggleReverse() {
                       : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border border-neutral-200/50 dark:border-neutral-700/50'
                   ]"
                 >
-                  {{ translateBadge(getBadge(item)) }}
+                  {{ translateBadgeOf(item) }}
+                </span>
+                <span
+                  v-if="isDoujinRelation(item)"
+                  class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/50"
+                >
+                  {{ t('vn.show_doujin') }}
                 </span>
                 <span
                   v-if="getStatusLabel(item)"
@@ -799,7 +823,13 @@ function toggleReverse() {
                       : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border border-neutral-200/50 dark:border-neutral-700/50'
                   ]"
                 >
-                  {{ translateBadge(getBadge(item)) }}
+                  {{ translateBadgeOf(item) }}
+                </span>
+                <span
+                  v-if="isDoujinRelation(item)"
+                  class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/50"
+                >
+                  {{ t('vn.show_doujin') }}
                 </span>
                 <span
                   v-if="getStatusLabel(item)"
@@ -846,7 +876,13 @@ function toggleReverse() {
                     : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border border-neutral-200/50 dark:border-neutral-700/50'
                 ]"
               >
-                {{ translateBadge(getBadge(item)) }}
+                {{ translateBadgeOf(item) }}
+              </span>
+              <span
+                v-if="isDoujinRelation(item)"
+                class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/50"
+              >
+                {{ t('vn.show_doujin') }}
               </span>
               <span
                 v-if="getStatusLabel(item)"

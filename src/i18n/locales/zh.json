@@ -773,7 +773,9 @@
       "ser": "同系列",
       "set": "同职员",
       "collab": "联名/联动",
-      "shares-char": "共享角色"
+      "shares-char": "共享角色",
+      "orig": "原作",
+      "par": "本篇"
     },
     "staff_role": {
       "scenario": "剧本",

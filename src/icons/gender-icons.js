@@ -32,6 +32,21 @@ export const mars = {
     '</g>'
 }
 
+/**
+ * 无性（中性）：圆 + 贯穿圆心的横线（agender / neutrois 常用符号）。
+ * 之前 VNDB 的 sex = "n"（无性）没有对应图标，徽章整块不显示，
+ * 现在补一个：横线横穿圆周，和 ♀ 的「下方十字」、♂ 的「右上箭头」都不撞。
+ */
+export const agender = {
+  width: 24,
+  height: 24,
+  body:
+    '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">' +
+    '<circle cx="12" cy="12" r="7"/>' +
+    '<path d="M6.6 12h10.8"/>' +
+    '</g>'
+}
+
 /** 双性 ⚥：圆 + 下方十字 + 右上箭头 */
 export const venusMars = {
   width: 24,

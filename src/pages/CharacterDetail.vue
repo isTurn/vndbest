@@ -379,6 +379,7 @@ const getSexIcon = (sex) => {
   if (s === 'f') return SEX_ICONS.f
   if (s === 'm') return SEX_ICONS.m
   if (s === 'b') return SEX_ICONS.b
+  if (s === 'n') return SEX_ICONS.n
   return null
 }
 
