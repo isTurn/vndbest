@@ -1,7 +1,7 @@
 # VNDBest
 
 [![Build and Release APK](https://github.com/isTurn/vndbest/actions/workflows/release.yml/badge.svg)](https://github.com/isTurn/vndbest/actions/workflows/release.yml)
-[![Version](https://img.shields.io/badge/version-1.0.10-blue.svg)](https://github.com/isTurn/vndbest/releases)
+[![Version](https://img.shields.io/badge/version-1.0.11-blue.svg)](https://github.com/isTurn/vndbest/releases)
 [![Platform](https://img.shields.io/badge/platform-Android-3DDC84.svg)](https://www.android.com/)
 [![Vue](https://img.shields.io/badge/Vue-3.5-42b883.svg)](https://vuejs.org/)
 [![Capacitor](https://img.shields.io/badge/Capacitor-8-119EFF.svg)](https://capacitorjs.com/)

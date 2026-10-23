@@ -254,7 +254,7 @@ watch(sentinel, (el) => {
 
 <template>
   <ion-page>
-  <AppHeader mode="back" :title="t('library.staff')" :subtitle="t('search.subtitle', { title: t('library.staff') })" />
+  <AppHeader mode="back" :title="t('library.staff')" />
   <ion-content>
   <div class="page-container pb-24">
     <SearchBase

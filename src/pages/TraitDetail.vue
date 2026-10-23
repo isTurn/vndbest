@@ -59,6 +59,15 @@ function getSexIcon(sex) {
   return SEX_ICONS[sex[0]] || ''
 }
 
+// 女=粉、男=蓝、双性=红，和角色页保持同一套配色
+function getSexClass(sex) {
+  const s = Array.isArray(sex) ? sex[0] : sex
+  if (s === 'f') return 'text-pink-500 dark:text-pink-400'
+  if (s === 'm') return 'text-blue-400 dark:text-blue-400'
+  if (s === 'b') return 'text-red-500 dark:text-red-400'
+  return 'text-neutral-400 dark:text-neutral-500'
+}
+
 async function fetchTrait() {
   if (!traitId.value) return
   traitLoading.value = true
@@ -311,7 +320,7 @@ function goToCharacter(id) {
                       <Icon
                         v-if="getSexIcon(item.sex)"
                         :icon="getSexIcon(item.sex)"
-                        class="h-3 w-3 shrink-0 text-neutral-400 dark:text-neutral-500"
+                        :class="['h-3 w-3 shrink-0', getSexClass(item.sex)]"
                       />
                     </div>
                     <p

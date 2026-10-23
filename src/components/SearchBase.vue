@@ -106,7 +106,7 @@ defineExpose({
 
 <template>
   <div class="space-y-6">
-    <AppHeader v-if="showHeader" mode="back" :title="title" :subtitle="t('search.subtitle', { title })" />
+    <AppHeader v-if="showHeader" mode="back" :title="title" />
 
     <!-- Search Input -->
     <div class="relative">

@@ -488,7 +488,7 @@ onMounted(async () => {
 
 <template>
   <ion-page>
-  <AppHeader mode="back" :title="t('library.vn')" :subtitle="t('search.subtitle', { title: t('library.vn') })" />
+  <AppHeader mode="back" :title="t('library.vn')" />
   <ion-content>
   <div class="page-container pb-24">
   <SearchBase

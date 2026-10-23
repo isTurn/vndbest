@@ -224,7 +224,7 @@ const getCategoryClass = (category) => {
 
 <template>
   <ion-page>
-  <AppHeader mode="back" :title="t('library.tags')" :subtitle="t('search.subtitle', { title: t('library.tags') })" />
+  <AppHeader mode="back" :title="t('library.tags')" />
   <ion-content>
   <div class="page-container pb-24">
     <SearchBase

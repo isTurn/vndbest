@@ -319,7 +319,12 @@
     "error_not_image": "This is not an image file.",
     "error_too_many": "Too many characters in the image. Try another one.",
     "error_limit": "Usage limit reached. Please try again later.",
-    "error_generic": "Recognition failed. Please try again later."
+    "error_generic": "Recognition failed. Please try again later.",
+    "error_timeout": "Recognition timed out. Check your network and try again.",
+    "searchbox_characters": "Detected characters",
+    "searchbox_credits": "Recognition powered by SearchBox",
+    "searchbox_error_limit": "SearchBox usage limit reached. Please try again later.",
+    "searchbox_error_generic": "SearchBox recognition failed. Please try again later."
   },
   "producer_type": {
     "co": "Company",

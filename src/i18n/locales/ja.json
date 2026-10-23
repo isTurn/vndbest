@@ -319,7 +319,12 @@
     "error_not_image": "画像ファイルではありません。",
     "error_too_many": "画像内の人物が多すぎます。別の画像をお試しください。",
     "error_limit": "利用上限に達しました。しばらくしてからお試しください。",
-    "error_generic": "認識に失敗しました。しばらくしてからお試しください。"
+    "error_generic": "認識に失敗しました。しばらくしてからお試しください。",
+    "error_timeout": "認識がタイムアウトしました。ネットワークを確認してもう一度お試しください。",
+    "searchbox_characters": "検出されたキャラクター",
+    "searchbox_credits": "画像認識は SearchBox を利用しています",
+    "searchbox_error_limit": "SearchBox の利用上限に達しました。しばらくしてからお試しください",
+    "searchbox_error_generic": "SearchBox での認識に失敗しました。しばらくしてからお試しください"
   },
   "producer_type": {
     "co": "会社",

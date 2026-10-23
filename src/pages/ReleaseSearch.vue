@@ -395,7 +395,7 @@ onUnmounted(() => {
 
 <template>
   <ion-page>
-  <AppHeader mode="back" :title="t('library.releases')" :subtitle="t('search.subtitle', { title: t('library.releases') })" />
+  <AppHeader mode="back" :title="t('library.releases')" />
   <ion-content>
   <div class="page-container pb-24">
   <SearchBase

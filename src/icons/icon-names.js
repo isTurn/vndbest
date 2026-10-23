@@ -95,9 +95,10 @@ export const APP_ICON_NAMES = {
     pause: 'lucide:pause',
     ban: 'lucide:ban',
     droplets: 'lucide:droplets',
-    venus: 'lucide:circle',
-    mars: 'lucide:circle-dot',
-    venusMars: 'lucide:badge',
+    // 性别符号用自绘图标（lucide 没有 ♀/♂/⚥，用 circle/circle-dot/badge 顶替时小尺寸分不清）
+    venus: 'vndb:venus',
+    mars: 'vndb:mars',
+    venusMars: 'vndb:venus-mars',
     database: 'lucide:database',
     hardDrive: 'lucide:hard-drive',
     checkSquare: 'lucide:check-square',

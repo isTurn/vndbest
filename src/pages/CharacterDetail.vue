@@ -382,6 +382,7 @@ const getSexIcon = (sex) => {
   return null
 }
 
+// 女=粉、男=蓝、双性=红（三者色相差得开，一眼能分辨）
 const getSexClass = (sex) => {
   let s
   if (Array.isArray(sex)) {
@@ -391,8 +392,9 @@ const getSexClass = (sex) => {
   } else {
     s = sex
   }
-  if (s === 'f') return 'text-rose-400 bg-rose-50 border-rose-100 dark:bg-rose-900/30 dark:border-rose-800/50'
+  if (s === 'f') return 'text-pink-500 bg-pink-50 border-pink-100 dark:bg-pink-900/30 dark:border-pink-800/50'
   if (s === 'm') return 'text-blue-400 bg-blue-50 border-blue-100 dark:bg-blue-900/30 dark:border-blue-800/50'
+  if (s === 'b') return 'text-red-500 bg-red-50 border-red-100 dark:bg-red-900/30 dark:border-red-800/50'
   return 'text-neutral-400 bg-neutral-50 border-neutral-100 dark:bg-neutral-800 dark:border-neutral-700'
 }
 

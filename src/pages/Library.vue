@@ -10,6 +10,7 @@ import { IonPage, IonContent } from '@ionic/vue'
 import { prefetchImages } from '@/utils/imagePrefetch'
 import { getReleaseImageUrl } from '@/utils/releaseImage'
 import { useSearchHistory } from '@/composables/useSearchHistory'
+import { pendingSharedImage } from '@/utils/sharedImage'
 import {
   getVnList,
   getReleaseList,
@@ -22,6 +23,8 @@ import {
 
 const router = useRouter()
 const { t } = useI18n()
+
+const imageInput = ref(null)
 
 // 分类入口（第一项是作品/视觉小说，其余为 VNDB 其他数据库分类）
 const libraryItems = computed(() => [
@@ -50,20 +53,20 @@ const libraryItems = computed(() => [
     path: '/browse/producers'
   },
   {
-    id: 'staff',
-    title: t('library.staff'),
-    icon: 'lucide:users',
-    color: 'text-green-500',
-    bgColor: 'bg-green-50',
-    path: '/browse/staff'
-  },
-  {
     id: 'characters',
     title: t('library.characters'),
     icon: 'lucide:user-circle',
     color: 'text-pink-500',
     bgColor: 'bg-pink-50',
     path: '/browse/characters'
+  },
+  {
+    id: 'staff',
+    title: t('library.staff'),
+    icon: 'lucide:users',
+    color: 'text-green-500',
+    bgColor: 'bg-green-50',
+    path: '/browse/staff'
   },
   {
     id: 'tags',
@@ -482,9 +485,27 @@ function clearQuery() {
   isSearching.value = false
 }
 
-/** 以图搜作品：独立页面（选图 → AnimeTrace 识别 → VNDB 匹配） */
+/** 以图搜作品：直接在本页选图，选完带图跳二级页（大图 + 识别结果都在那边） */
 function goImageSearch() {
   router.push('/browse/image')
+}
+
+/**
+ * 点「以图搜作品」：先在本页调起系统相册，选好图再跳二级页。
+ * 这样用户少点一次（原来要先跳过去、再在二级页点选图）。
+ * 图片通过 pendingSharedImage 传给二级页，和「外部分享进来」走同一条通道。
+ */
+function pickImage() {
+  imageInput.value?.click()
+}
+
+function onImagePicked(event) {
+  const file = event.target.files?.[0]
+  // 立刻清空，否则用户重选同一张图不会触发 change
+  event.target.value = ''
+  if (!file) return
+  pendingSharedImage.value = file
+  goImageSearch()
 }
 
 function submitSearch() {
@@ -559,10 +580,11 @@ onUnmounted(() => {
       </button>
     </div>
 
-    <!-- 以图搜作品入口：独立一行，不去挤搜索框右侧的清除按钮 -->
+    <!-- 以图搜作品：直接在本页选图，选完跳二级页看大图和识别结果 -->
+    <input ref="imageInput" type="file" accept="image/*" class="sr-only" @change="onImagePicked" />
     <button
       v-if="!hasSearched"
-      @click="goImageSearch"
+      @click="pickImage"
       class="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-neutral-200 dark:border-neutral-700 px-3 py-2 text-xs text-neutral-500 dark:text-neutral-400 transition hover:border-neutral-300 dark:hover:border-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-200 cursor-pointer"
     >
       <Icon icon="lucide:image-plus" class="h-4 w-4" />
@@ -670,21 +692,17 @@ onUnmounted(() => {
           {{ t('library.categories') }}
         </h2>
       </div>
-      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div class="grid grid-cols-2 gap-3">
         <button
           v-for="item in libraryItems"
           :key="item.id"
           @click="navigateTo(item.path)"
-          class="flex items-center gap-4 p-4 rounded-xl border border-neutral-100 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-sm transition-all hover:border-neutral-300 dark:hover:border-neutral-600 hover:shadow-md active:scale-[0.98] text-left group"
+          class="flex items-center gap-3 p-4 rounded-xl border border-neutral-100 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-sm transition-all hover:border-neutral-300 dark:hover:border-neutral-600 hover:shadow-md active:scale-[0.98] text-left group"
         >
-          <div :class="['grid h-12 w-12 place-items-center rounded-lg transition-colors group-hover:scale-110', item.bgColor]">
-            <Icon :icon="item.icon" :class="['h-6 w-6', item.color]" />
+          <div :class="['grid h-10 w-10 shrink-0 place-items-center rounded-lg transition-colors group-hover:scale-110', item.bgColor]">
+            <Icon :icon="item.icon" :class="['h-5 w-5', item.color]" />
           </div>
-          <div class="flex-1">
-            <h3 class="font-bold text-neutral-900 dark:text-neutral-100">{{ item.title }}</h3>
-            <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">{{ t('library.view_list', { name: item.title }) }}</p>
-          </div>
-          <Icon icon="lucide:chevron-right" class="h-5 w-5 text-neutral-300 dark:text-neutral-600 group-hover:text-neutral-500 dark:group-hover:text-neutral-400 transition-colors" />
+          <h3 class="font-bold text-neutral-900 dark:text-neutral-100 truncate">{{ item.title }}</h3>
         </button>
       </div>
     </template>

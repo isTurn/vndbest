@@ -2,6 +2,30 @@
 
 本文件记录本 fork（[isTurn/vndbest](https://github.com/isTurn/vndbest)）相对上游的功能演进。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.0.11] - 2026-10-23
+
+分类浏览改成两列并去掉多余小字，性别图标换成能一眼分辨的 ♀ / ♂ / ⚥，以图搜作品新增 SearchBox 识别源、可在搜索页直接选图、结果页可全屏看大图。
+
+### 新增
+
+- **SearchBox 识别源**：`src/utils/searchboxSearch.js` 接入 `https://api.searchbox.club/ai/chat`（该站前端在 www.searchbox.club，真实后端是 api. 域）。请求体为 JSON，`images` 里放 base64 dataURL，最长边压到 1024、JPEG 0.85，受接口 `imageBase64Chars` 上限约束。响应是 NDJSON 逐行事件（`status` / `block` / `delta` / `error`），用流式 reader 按行切分解析：`block.kind === 'image'` 归为角色候选，`block.kind === 'media'` 里命中 `vndb.org/vNNN` 的归为作品条目，`delta` 拼成整段说明文字。识别页顶部可切换 `AnimeTrace` / `SearchBox`，选择存 `localStorage['vndb_image_search_source']`
+- **SearchBox 结果分区**：VNDB 匹配（封面 / 标题 / 原名 + 年份评分 / tag 胶囊，点击进 `/vn/:id`）、识别到的角色、AI 说明正文；识别中遮罩显示服务端下发的进度文案
+- **搜索页直接选图**：`Library.vue` 的「以图搜作品」入口改为直接 `click()` 隐藏的 `<input type="file">`，选完把文件塞进 `pendingSharedImage` 再跳 `/browse/image`，省掉先进空页面再点一次的步骤
+- **全屏看大图**：`ImageSearch.vue` 预览图加 `cursor-zoom-in`，点击后用 `Teleport` 打开黑底大图层，点任意处或右上关闭
+
+### 变更
+
+- **分类浏览两列**：`Library.vue` 的 `libraryItems` 网格从 `grid-cols-1 sm:grid-cols-2` 固定为 `grid-cols-2`，卡片由竖排居中改为左图标右标题（`flex items-center gap-3`，图标容器 h-10 w-10、图标 h-5 w-5，标题加 `truncate`）
+- **去掉「查看 X 列表」小字**：分类卡片不再渲染 `t('library.view_list', ...)` 与右侧 chevron；i18n 键保留未删
+- **二级页去掉副标题**：7 个搜索页与 `SearchBase.vue` 不再给 `AppHeader` 传 `:subtitle="t('search.subtitle', ...)"`
+- **角色排到人物前**：顺序改为 作品 / 版本 / 角色 / 人物 / 标签 / 特征
+- **性别图标重绘**：`lucide` 图标集里没有 ♀ / ♂ / ⚥，原来借用 `circle` / `circle-dot` / `badge`，小尺寸几乎不可分辨。新增 `src/icons/gender-icons.js` 自绘 24×24 stroke SVG，注册名 `vndb:venus` / `vndb:mars` / `vndb:venus-mars`，替换 `icon-names.js` 里原有的三个映射
+- **性别配色**：女=粉（`pink-500` 系）、男=蓝（`blue-400` 系）、双性=红（`red-500` 系），三处 `getSexClass`（`CharacterDetail` / `CharacterSearch` / `TraitDetail`）统一
+
+### 修复
+
+- **识别超时显示英文原文**：`imageSearch.js` 的 `AbortController` 超时抛的是 `AbortError`（message 为 `signal is aborted without reason`），原来不满足 `isNetworkLayerError` 判定，既没本地化也没走原生重试。现在 `AbortError` 转为 `image_search.error_timeout`，并把该情况纳入 `CapacitorHttp` 重试条件——实测部分设备 WebView 的 fetch 连不上识别接口，但系统网络本身通，原生请求能拿到结果
+
 ## [1.0.10] - 2026-10-22
 
 搜索页多了「以图搜作品」——上传截图或插画，识别出作品名后直接给出 VNDB 作品页；别的应用（相册、QQ、文件管理器……）里看到图，也能直接「分享」过来识别。内置浏览器里的下载改为交给 1DM+ / ADM 接管。

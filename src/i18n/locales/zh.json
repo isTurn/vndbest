@@ -318,7 +318,12 @@
     "error_not_image": "这不是图片文件",
     "error_too_many": "图中人物太多，换一张试试",
     "error_limit": "已达使用上限，请稍后再试",
-    "error_generic": "识别失败，请稍后再试"
+    "error_generic": "识别失败，请稍后再试",
+    "error_timeout": "识别请求超时，请检查网络后重试",
+    "searchbox_characters": "识别到的角色",
+    "searchbox_credits": "识别由 SearchBox 提供",
+    "searchbox_error_limit": "SearchBox 识别次数已达上限，请稍后再试",
+    "searchbox_error_generic": "SearchBox 识别失败，请稍后再试"
   },
   "producer_type": {
     "co": "会社",

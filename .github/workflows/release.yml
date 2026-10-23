@@ -207,8 +207,28 @@ jobs:
           files: |
             ${{ steps.find-apk.outputs.apk_path }}
 
-      # action 报 success 不代表正文真的写进去了（见上），这里回查一次 API：
-      # 正文长度明显短于发布说明文件就判失败，避免又发一个只有旧文案的 release。
+      # 上面那个 action 在「release 已存在」时，如果它拿到的正文为空，会静默保留旧正文
+      # 却照样报 success（v1.0.10 的正文就这么丢过一次）。所以这里再显式用 gh 写一遍正文，
+      # 不依赖 action 的行为：只改正文和名字，不动已上传的 APK 资产。
+      - name: Force release body
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          TAG="${GITHUB_REF_NAME}"
+          FILE="docs/release-notes/${TAG#v}.md"
+          if [ ! -f "$FILE" ]; then
+            echo "No $FILE, keep auto-generated notes"
+            exit 0
+          fi
+          gh release edit "$TAG" \
+            --notes-file "$FILE" \
+            --title "VNDB ${{ steps.version.outputs.version }}"
+          echo "Release body written from $FILE"
+
+      # 最后回查一次 API，正文必须和文件近似相等（不再用「至少一半」这种宽松阈值，
+      # 旧文案 846 字符能骗过 1362/2 的判据）。
       - name: Verify release body
         if: startsWith(github.ref, 'refs/tags/')
         env:
@@ -216,16 +236,20 @@ jobs:
         run: |
           set -e
           TAG="${GITHUB_REF_NAME}"
-          BODY_LEN=$(gh release view "$TAG" --json body -q '.body | length')
-          echo "Release body length: $BODY_LEN (characters)"
           FILE="docs/release-notes/${TAG#v}.md"
-          if [ -f "$FILE" ]; then
-            # 用 jq 数字符（与 API 的 body 长度口径一致），不要用 wc -m（受 locale 影响会数成字节）
-            FILE_LEN=$(jq -R -s 'length' < "$FILE")
-            echo "Release notes file length: $FILE_LEN (characters)"
-            if [ "$BODY_LEN" -lt $((FILE_LEN / 2)) ]; then
-              echo "::error::Release 正文疑似没有更新（$BODY_LEN 字符，发布说明 $FILE_LEN 字符）"
-              exit 1
-            fi
-          fi
           gh release view "$TAG" --json tagName,name,url -q '"Release " + .tagName + " (" + .name + ") " + .url'
+          if [ ! -f "$FILE" ]; then
+            echo "No $FILE, skip body check"
+            exit 0
+          fi
+          BODY_LEN=$(gh release view "$TAG" --json body -q '.body | length')
+          # 用 jq 数字符（与 API 的 body 长度口径一致），不要用 wc -m（受 locale 影响会数成字节）
+          FILE_LEN=$(jq -R -s 'length' < "$FILE")
+          DIFF=$((BODY_LEN - FILE_LEN))
+          echo "Release body length: $BODY_LEN, notes file length: $FILE_LEN, diff: $DIFF"
+          # gh 写正文时可能吃掉/补上任一结尾换行，留 5 字符容差
+          if [ "$DIFF" -lt -5 ] || [ "$DIFF" -gt 5 ]; then
+            echo "::error::Release 正文与发布说明不一致（正文 $BODY_LEN 字符，文件 $FILE_LEN 字符）"
+            exit 1
+          fi
+          echo "Release body matches notes file"

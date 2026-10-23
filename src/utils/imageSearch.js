@@ -97,8 +97,11 @@ export async function searchByImage(blob) {
   try {
     payload = await postWithFetch(blob)
   } catch (err) {
-    // 只有「像是网络层失败」时才换原生 HTTP 重试；接口业务错误（code != 0）不重试
-    if (!isNetworkLayerError(err) || !Capacitor.isNativePlatform()) throw err
+    // 「网络层失败」或「WebView fetch 被挂到超时」时，原生平台换 CapacitorHttp 再试一次。
+    // 实测部分设备 WebView 的 fetch 连不上 api.animetrace.com（30s 后 AbortError），
+    // 但系统网络本身是通的，原生 HTTP 能正常拿到结果。
+    const canRetry = isNetworkLayerError(err) || err?.i18nKey === 'image_search.error_timeout'
+    if (!canRetry || !Capacitor.isNativePlatform()) throw err
     payload = await postWithCapacitorHttp(blob)
   }
   return normalizeResult(payload)
@@ -131,6 +134,13 @@ async function postWithFetch(blob) {
   let res
   try {
     res = await fetch(API_URL, { method: 'POST', body: form, signal: controller.signal })
+  } catch (err) {
+    // fetch 超时抛出的是 AbortError（message 是 "signal is aborted without reason"），
+    // 直接冒到页面会显示英文原文，这里换成本地化的超时提示。
+    if (err && err.name === 'AbortError') {
+      throw new ImageSearchError('timeout', { i18nKey: 'image_search.error_timeout' })
+    }
+    throw err
   } finally {
     clearTimeout(timer)
   }

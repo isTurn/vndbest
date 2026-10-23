@@ -74,7 +74,6 @@ import stickyNote from '@iconify-icons/lucide/sticky-note'
 import badge from '@iconify-icons/lucide/badge'
 import badgeCheck from '@iconify-icons/lucide/badge-check'
 import calendar from '@iconify-icons/lucide/calendar'
-import circleDot from '@iconify-icons/lucide/circle-dot'
 import play from '@iconify-icons/lucide/play'
 import pause from '@iconify-icons/lucide/pause'
 import ban from '@iconify-icons/lucide/ban'
@@ -95,6 +94,8 @@ import cake from '@iconify-icons/lucide/cake'
 import ruler from '@iconify-icons/lucide/ruler'
 import weight from '@iconify-icons/lucide/weight'
 import circle from '@iconify-icons/lucide/circle'
+// 性别图标：lucide 没有 ♀/♂/⚥ 符号，改用自绘的（见 gender-icons.js）
+import { venus as genderVenus, mars as genderMars, venusMars as genderVenusMars } from './gender-icons'
 import heart from '@iconify-icons/lucide/heart'
 import droplets from '@iconify-icons/lucide/droplets'
 import database from '@iconify-icons/lucide/database'
@@ -217,9 +218,9 @@ const ICON_DATA = {
   [APP_ICON_NAMES.common.pause]: pause,
   [APP_ICON_NAMES.common.ban]: ban,
   [APP_ICON_NAMES.common.droplets]: droplets,
-  [APP_ICON_NAMES.common.venus]: circle,
-  [APP_ICON_NAMES.common.mars]: circleDot,
-  [APP_ICON_NAMES.common.venusMars]: badge,
+  [APP_ICON_NAMES.common.venus]: genderVenus,
+  [APP_ICON_NAMES.common.mars]: genderMars,
+  [APP_ICON_NAMES.common.venusMars]: genderVenusMars,
   [APP_ICON_NAMES.common.database]: database,
   [APP_ICON_NAMES.common.hardDrive]: hardDrive,
   [APP_ICON_NAMES.common.checkSquare]: checkSquare,
