@@ -224,7 +224,9 @@
     "touchgal_inapp": "Open TouchGal in the in-app browser",
     "touchgal_inapp_desc": "On by default. When enabled, TouchGal always opens in the in-app browser regardless of the setting above, so you can load the page first and then hand it to an external browser from the toolbar.",
     "recent_views": "Recently Viewed",
-    "recent_views_desc": "Show recently opened detail pages on the home screen and keep recording visits. Turn it off to stop recording; existing history is kept."
+    "recent_views_desc": "Show recently opened detail pages on the home screen and keep recording visits. Turn it off to stop recording; existing history is kept.",
+    "latest_chinese_card": "Latest translations card",
+    "latest_chinese_card_desc": "Show the “Latest translations” card on the dashboard. If you deleted it, turn this back on to restore it."
   },
   "nav": {
     "home": "Home",

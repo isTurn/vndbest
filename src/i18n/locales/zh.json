@@ -224,7 +224,9 @@
     "touchgal_inapp": "TouchGal 用内置浏览器打开",
     "touchgal_inapp_desc": "默认开启。打开时不管上面怎么选，TouchGal 都固定在内置浏览器里打开，页面加载完成后可再用工具栏按钮甩给外部浏览器。",
     "recent_views": "最近浏览",
-    "recent_views_desc": "首页显示最近打开过的详情页，并自动记录浏览足迹。关掉后不再记录新足迹，已有记录会保留。"
+    "recent_views_desc": "首页显示最近打开过的详情页，并自动记录浏览足迹。关掉后不再记录新足迹，已有记录会保留。",
+    "latest_chinese_card": "最新汉化卡片",
+    "latest_chinese_card_desc": "在仪表盘显示「最新汉化」卡片。删掉后可以在这里重新打开恢复；关掉则不再显示。"
   },
   "nav": {
     "home": "主页",
