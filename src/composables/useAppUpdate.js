@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 
-export const APP_VERSION = '1.0.11'
+export const APP_VERSION = '1.0.12'
 // 更新源：本仓库（完善者 isTurn 的 fork）。上游原仓库 Cyancat000/vndbest 不再发布新版。
 const RELEASE_REPO = 'isTurn/vndbest'
 const IGNORED_UPDATE_VERSION_KEY = 'vndb_ignored_update_version'

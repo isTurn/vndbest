@@ -2,6 +2,21 @@
 
 本文件记录本 fork（[isTurn/vndbest](https://github.com/isTurn/vndbest)）相对上游的功能演进。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.0.12] - 2026-10-25
+
+仪表盘的「即将发布」多了查看全部入口；相关作品默认显示同人作并在条目上标注，关系标签全部汉化，无性别角色补齐图标。
+
+### 新增
+
+- **即将发布可查看全部**：`src/pages/Home.vue` 的「即将发布」标题右侧加「查看全部」按钮，跳 `/browse/releases?dateFrom=today`（与「刚刚发布」的 `dateTo=today` 对称，复用 `ReleaseSearch` 已有的 query 传参）
+- **同人作默认显示**：`src/pages/VnDetail.vue` 的 `showDoujin` 初值由 `false` 改为 `true`，进入作品页即可看到非官方/同人关联，不用每次手动打开
+- **关联作品标注「同人作」**：`src/components/VnList.vue` 在 `relation_official === false` 的条目上加琥珀色「同人作」小徽章，与关系标签并排
+- **无性别角色补齐图标**：`src/icons/gender-icons.js` 新增 agender（圆 + 横线）SVG，注册为 `vndb:agender`；`SEX_ICONS` 补 `n` 映射，未知/无性角色不再空着
+
+### 变更
+
+- **关系标签全部汉化**：`metadata.relation` 补上 VNDB 的 10 个关系枚举（`seq` 续作 / `preq` 前作 / `set` 同设定 / `alt` 另版 / `char` 共享角色 / `side` 外传·番外 / `par` 本篇 / `ser` 系列 / `fan` 同人 / `orig` 原作），`VnList.getBadge` 改为查表 + 缺键时回退英文原码；顺带修掉关系 `side`（外传）与角色 `side`（配角）撞表导致外传显示成配角的问题
+
 ## [1.0.11] - 2026-10-23
 
 分类浏览改成两列并去掉多余小字，性别图标换成能一眼分辨的 ♀ / ♂ / ⚥，以图搜作品新增 SearchBox 识别源、可在搜索页直接选图、结果页可全屏看大图。
