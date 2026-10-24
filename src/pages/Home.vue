@@ -10,7 +10,7 @@ import LanguageFlag from '@/components/LanguageFlag.vue'
 import { PLACEHOLDER_ICONS } from '@/icons/icon-names'
 import { getStats, getReleaseList, getRandomVn, getVnList, getCharacterList, getProducerList, getStaffList } from '@/api/vndb'
 import { usePrivacy, getImageNsfwLevel } from '@/composables/usePrivacy'
-import { useSavedSearches, SEARCH_TYPE_MAP } from '@/composables/useSavedSearches'
+import { useSavedSearches, SEARCH_TYPE_MAP, DEFAULT_LATEST_CHINESE_ID } from '@/composables/useSavedSearches'
 import { IonPage, IonContent, IonImg, IonSpinner } from '@ionic/vue'
 import { useImageLoader } from '@/composables/useImageLoader'
 import { prefetchFromItems } from '@/utils/imagePrefetch'
@@ -955,19 +955,30 @@ function getFilterSummary(item) {
             </span>
           </h2>
           <div class="flex items-center gap-1">
+            <!-- 内置的「最新汉化」卡片只保留「查看更多」：刷新/更多菜单（删除）对它没意义 -->
             <button
-              @click.stop="refreshSingleSearch(search)"
-              class="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-              :class="{ 'animate-spin': savedSearchLoading[search.id] }"
+              v-if="search.id === DEFAULT_LATEST_CHINESE_ID"
+              @click.stop="navigateToSavedSearch(search)"
+              class="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
             >
-              <Icon icon="lucide:refresh-cw" class="h-3.5 w-3.5" />
+              {{ t('home.view_more') }}
+              <Icon icon="lucide:chevron-right" class="h-3 w-3" />
             </button>
-            <button
-              @click.stop="openMoreActions(search)"
-              class="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-            >
-              <Icon icon="lucide:ellipsis" class="h-3.5 w-3.5" />
-            </button>
+            <template v-else>
+              <button
+                @click.stop="refreshSingleSearch(search)"
+                class="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+                :class="{ 'animate-spin': savedSearchLoading[search.id] }"
+              >
+                <Icon icon="lucide:refresh-cw" class="h-3.5 w-3.5" />
+              </button>
+              <button
+                @click.stop="openMoreActions(search)"
+                class="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+              >
+                <Icon icon="lucide:ellipsis" class="h-3.5 w-3.5" />
+              </button>
+            </template>
           </div>
         </div>
 
