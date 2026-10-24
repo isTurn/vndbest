@@ -385,6 +385,16 @@ onMounted(() => {
     selectedDateTo.value = route.query.dateTo || ''
   }
 
+  // 支持 sort / reverse 传参：仪表盘的「即将发布」要从最近要发售的开始看，
+  // 而本页默认是 reverse=true（新的排前面），所以那边会传 reverse=0 覆盖掉
+  if (typeof route.query.sort === 'string' && route.query.sort) {
+    sortBy.value = route.query.sort
+  }
+  if (route.query.reverse !== undefined) {
+    const raw = String(route.query.reverse)
+    reverse.value = raw !== '0' && raw !== 'false'
+  }
+
   fetchData()
 })
 
