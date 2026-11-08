@@ -680,24 +680,26 @@ function toggleReverse() {
           >
             <div class="relative">
               <template v-if="isIconPlaceholder(item)">
-                <div class="w-full h-40 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
+                <div class="w-full aspect-[3/4] flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
                   <Icon icon="lucide:eye-off" class="h-6 w-6 text-neutral-400 dark:text-neutral-500" />
                 </div>
               </template>
               <template v-else>
-                <div class="relative">
+                <!-- 封面固定成 3:4 比例盒：以前用 h-auto 让图片按自身比例撑高，
+                     竖版封面会把下面的标题区挤到卡片外，看起来「只有封面和评分」 -->
+                <div class="relative w-full aspect-[3/4] overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                   <ion-img
                     v-if="getImage(item)?.url"
                     :key="`card-left-${item.id}-${imageLoader.getRetryCount('card-left-' + item.id)}`"
                     :src="imageLoader.resolveSrc('card-left-' + item.id, getImage(item).thumbnail || getImage(item).url)"
                     alt="cover"
-                    class="w-full h-auto object-cover max-h-96 transition-opacity duration-500"
+                    class="absolute inset-0 h-full w-full object-cover transition-opacity duration-500"
                     :class="{ 'opacity-0': !imageLoader.isSuccess('card-left-' + item.id) }"
                     @ionImgWillLoad="imageLoader.onWillLoad('card-left-' + item.id)"
                     @ionImgDidLoad="imageLoader.onLoad('card-left-' + item.id)"
                     @ionError="imageLoader.onError('card-left-' + item.id)"
                   />
-                  <div v-else class="w-full h-40 flex items-center justify-center bg-neutral-50 dark:bg-neutral-800 text-neutral-300 dark:text-neutral-600">
+                  <div v-else class="absolute inset-0 flex items-center justify-center bg-neutral-50 dark:bg-neutral-800 text-neutral-300 dark:text-neutral-600">
                     <Icon icon="lucide:image" class="h-6 w-6" />
                   </div>
                   <div v-if="imageLoader.isLoading('card-left-' + item.id) && !imageLoader.isError('card-left-' + item.id)" class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
@@ -772,24 +774,25 @@ function toggleReverse() {
           >
             <div class="relative">
               <template v-if="isIconPlaceholder(item)">
-                <div class="w-full h-40 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
+                <div class="w-full aspect-[3/4] flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
                   <Icon icon="lucide:eye-off" class="h-6 w-6 text-neutral-400 dark:text-neutral-500" />
                 </div>
               </template>
               <template v-else>
-                <div class="relative">
+                <!-- 同上：固定 3:4 比例盒，保证标题区永远在卡片内 -->
+                <div class="relative w-full aspect-[3/4] overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                   <ion-img
                     v-if="getImage(item)?.url"
                     :key="`card-right-${item.id}-${imageLoader.getRetryCount('card-right-' + item.id)}`"
                     :src="imageLoader.resolveSrc('card-right-' + item.id, getImage(item).thumbnail || getImage(item).url)"
                     alt="cover"
-                    class="w-full h-auto object-cover max-h-96 transition-opacity duration-500"
+                    class="absolute inset-0 h-full w-full object-cover transition-opacity duration-500"
                     :class="{ 'opacity-0': !imageLoader.isSuccess('card-right-' + item.id) }"
                     @ionImgWillLoad="imageLoader.onWillLoad('card-right-' + item.id)"
                     @ionImgDidLoad="imageLoader.onLoad('card-right-' + item.id)"
                     @ionError="imageLoader.onError('card-right-' + item.id)"
                   />
-                  <div v-else class="w-full h-40 flex items-center justify-center bg-neutral-50 dark:bg-neutral-800 text-neutral-300 dark:text-neutral-600">
+                  <div v-else class="absolute inset-0 flex items-center justify-center bg-neutral-50 dark:bg-neutral-800 text-neutral-300 dark:text-neutral-600">
                     <Icon icon="lucide:image" class="h-6 w-6" />
                   </div>
                   <div v-if="imageLoader.isLoading('card-right-' + item.id) && !imageLoader.isError('card-right-' + item.id)" class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
