@@ -179,11 +179,26 @@ export async function openWithSystemBrowser(url) {
   a.remove()
 }
 
-/** 内置 WebView 打开 */
-async function openWithInAppBrowser(url) {
+/**
+ * 桌面版 User-Agent。
+ *
+ * 有些站点按 UA 直接返回两套完全不同的页面（例如绯月：移动 UA 给
+ * `ys/mobilestyle201228.css` 的移动皮肤，桌面 UA 给 `ys/style211012_7.css` 的完整版），
+ * 而移动皮肤不消费 `?search=` 这类搜索参数——表现就是「进去是手机版，关键词没填」。
+ * 这类站点必须用桌面 UA 打开。
+ */
+export const DESKTOP_USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36'
+
+/** 内置 WebView 打开；传 desktopUserAgent 时改用桌面版 UA 加载 */
+async function openWithInAppBrowser(url, opts = {}) {
   const { InAppBrowser, ToolBarType } = await import('@capgo/inappbrowser')
   // 工具栏上的「用外部浏览器打开」按钮（常驻，没有开关）
   const { buildExternalButtonOption, noteBrowserUrl } = await import('./inAppBrowserTools')
+  // 插件的 headers 里 user-agent 会被原生层拿去 setUserAgentString
+  // （WebViewDialog: key 等于 user-agent 时不进 requestHeaders，而是设给 WebView 自己），
+  // 因此之后所有站内跳转都保持桌面 UA，不会翻页又变回手机版。
+  const extra = opts.desktopUserAgent ? { headers: { 'User-Agent': DESKTOP_USER_AGENT } } : {}
   const { id } = await InAppBrowser.openWebView({
     url,
     // 导航栏自带标题与前进/后退/刷新，站内跳转不用回到 App
@@ -192,6 +207,7 @@ async function openWithInAppBrowser(url) {
     // 立即弹出，页面在可见的 WebView 里加载，避免用户以为点了没反应
     isPresentAfterPageLoad: false,
     backgroundColor: 'white',
+    ...extra,
     ...buildExternalButtonOption()
   })
   // 先把初始 URL 记下来：首次 browserPageLoaded 可能早于 urlChangeEvent，
@@ -217,11 +233,11 @@ async function openWithInAppBrowser(url) {
  * 再点一次又好了。这里在回退系统浏览器之前先静默重试一次，
  * 用短退避避开瞬断，避免把用户直接甩去系统浏览器。
  */
-async function openWithInAppBrowserRetry(url, attempts = 2) {
+async function openWithInAppBrowserRetry(url, attempts = 2, opts = {}) {
   let lastError = null
   for (let i = 0; i < attempts; i++) {
     try {
-      await openWithInAppBrowser(url)
+      await openWithInAppBrowser(url, opts)
       return true
     } catch (e) {
       lastError = e
@@ -235,9 +251,10 @@ async function openWithInAppBrowserRetry(url, attempts = 2) {
 /**
  * 按当前设置打开一个外部链接。
  * @param {string} url
- * @param {{forceInApp?: boolean, mode?: string}} [opts]
+ * @param {{forceInApp?: boolean, mode?: string, desktopUserAgent?: boolean}} [opts]
  *   forceInApp 用于 TouchGal 这类必须内嵌的场景；
- *   mode 显式指定本次用内置还是系统浏览器（跨站搜索 / 版本外链各自有独立设置）。
+ *   mode 显式指定本次用内置还是系统浏览器（跨站搜索 / 版本外链各自有独立设置）；
+ *   desktopUserAgent 用桌面版 UA 打开（绯月这类「移动 UA 给残缺页面」的站点）。
  */
 export async function openExternalUrl(url, opts = {}) {
   const href = String(url || '').trim()
@@ -247,7 +264,7 @@ export async function openExternalUrl(url, opts = {}) {
   const wantInApp = opts.forceInApp || mode === LINK_BROWSER_INAPP
   if (native && wantInApp) {
     try {
-      await openWithInAppBrowserRetry(href)
+      await openWithInAppBrowserRetry(href, 2, { desktopUserAgent: opts.desktopUserAgent })
       return
     } catch (e) {
       console.error('[linkOpener] in-app browser failed, fallback to system:', e)

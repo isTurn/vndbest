@@ -2,6 +2,26 @@
 
 本文件记录本 fork（[isTurn/vndbest](https://github.com/isTurn/vndbest)）相对上游的功能演进。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.0.13] - 2026-11-09
+
+作品页上半区不再套一层卡片框，列表封面缩小后四周留白、四角仍是圆角；游戏时长弹窗的「投票类型」和「阅读速度」都改成左边标题、右边分段按钮；跨站搜索点开绯月会以桌面版打开并自动填入关键词。
+
+### 新增
+
+- **绯月走桌面版并自动填词**：新增 `src/utils/forumSearch.js`，用桌面 UA 打开绯月的内置 WebView（`@capgo/inappbrowser` 的 `headers['User-Agent']` 会被原生层 `setUserAgentString`，站内翻页也保持桌面版），页面加载后注入脚本找搜索框、写值、提交。`crossSearch.js` 给绯月条目加了 `desktopOnly` 标记，`openCrossSearchSite` 据此分流
+
+### 变更
+
+- **时长弹窗的投票类型改成分段切换**：`LengthVoteModal.vue` 里原来三个带边框的圆角方块按钮改成与「阅读速度」完全一致的胶囊分段，标题在左、按钮在右
+- **阅读速度按钮不再换行**：标题与分段按钮同一行左对齐、按钮 `shrink-0` 不被压缩，长文案也不折行
+- **作品页上半区去掉卡片框**：`VnDetail.vue` 封面与基本信息那一块不再套 `rounded-xl border bg-neutral-50` 的底色框，内容直接铺在页面上
+- **列表封面缩小留白**：`VnList.vue`、`ReleaseList.vue`、`CharacterSearch.vue` 的列表卡片加 `p-2`，封面从「撑满卡片高度、贴边」改为固定尺寸（`h-28 w-20`，紧凑 `h-20 w-14`，角色 `w-20 h-28`）并保留 `rounded-lg`，四周留出白
+- **瀑布流封面放大**：两列布局的封面 `max-h-72` 提到 `max-h-96`，无封面占位从 `h-32` 加高到 `h-40`，并去掉封面下沿的分隔线
+
+### 修复
+
+- **绯月进去是移动版、关键词没填**：该站按 User-Agent 返回两套页面，移动 UA 拿到的是 `ys/mobilestyle201228.css` 的移动皮肤，顶栏没有搜索框也不认 `?search=`。现在固定用桌面 UA 打开并注入填词，未登录时会停在登录页，登录成功后重新加载再自动填
+
 ## [1.0.12] - 2026-10-25
 
 仪表盘的「即将发布」多了查看全部入口，「最新汉化」卡片删掉后能在设置里重新打开；相关作品默认显示同人作并在条目上标注，关系标签全部汉化，无性别角色补齐图标。

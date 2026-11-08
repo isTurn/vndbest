@@ -1884,7 +1884,8 @@ watch(
     <!-- 详情内容 (Notion Style Layout) -->
     <div v-else class="space-y-5">
       <!-- 1. 封面图与基本信息 (固定在选项卡上方) -->
-      <div class="flex flex-col items-center sm:flex-row sm:items-start gap-4 p-4 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800">
+      <!-- 不再套一层带边框/底色的卡片：上半区内容直接铺在页面上，避免多出一圈框 -->
+      <div class="flex flex-col items-center sm:flex-row sm:items-start gap-4">
         <div
           class="relative flex-shrink-0 overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-sm"
           :class="[ vn.image?.dims && vn.image.dims[0] > vn.image.dims[1] ? 'w-full max-w-[280px] aspect-[4/3]' : 'w-full max-w-[180px] aspect-[3/4]' ]"

@@ -896,10 +896,10 @@ const getSexClass = (sex) => {
           v-for="item in results"
           :key="item.id"
           @click="goToDetail(item.id)"
-          class="group relative flex items-start p-3 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-950 shadow-xs active:scale-[0.99] transition-all cursor-pointer hover:border-neutral-200 dark:hover:border-neutral-700 hover:shadow-sm overflow-hidden"
+          class="group relative flex items-stretch gap-3 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-950 shadow-xs active:scale-[0.99] transition-all cursor-pointer hover:border-neutral-200 dark:hover:border-neutral-700 hover:shadow-sm overflow-hidden p-2"
         >
-          <!-- Avatar/Image -->
-          <div class="shrink-0 w-16 h-20 rounded-lg bg-neutral-50 dark:bg-neutral-900 overflow-hidden border border-neutral-100 dark:border-neutral-700 mr-3 relative">
+          <!-- Avatar/Image：比卡片小一圈，四周留白，四角保持圆角 -->
+          <div class="relative shrink-0 overflow-hidden rounded-lg w-20 h-28 bg-neutral-50 dark:bg-neutral-900">
             <ion-img
               v-if="item.image?.url"
               :key="`char-img-${item.id}-${imageLoader.getRetryCount(`char-${item.id}`)}`"
@@ -929,7 +929,7 @@ const getSexClass = (sex) => {
             </div>
           </div>
 
-          <div class="flex-1 min-w-0 py-0.5">
+          <div class="flex-1 min-w-0 py-1 pr-1 min-h-28">
             <div class="flex items-center gap-2">
               <h3 class="font-bold text-sm text-neutral-900 dark:text-neutral-100 truncate">
                 {{ item.original || item.name }}

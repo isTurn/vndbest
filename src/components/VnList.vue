@@ -217,9 +217,8 @@ function formatDate(timestamp) {
 // 统一项点击处理
 function handleItemClick(item) {
   const id = item.vn?.id || item.id
-  if (id) {
-    router.push(`/vn/${id}`)
-  }
+  if (!id) return
+  router.push(`/vn/${id}`)
 }
 
 // 统一属性获取
@@ -525,13 +524,13 @@ function toggleReverse() {
         <div
           v-for="item in displayItems"
           :key="item.id"
-          class="relative flex items-start gap-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-xs hover:border-neutral-300 dark:hover:border-neutral-600 transition cursor-pointer overflow-hidden"
-          :class="[compact ? 'p-2.5' : 'p-4']"
+          class="relative flex items-stretch gap-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-xs hover:border-neutral-300 dark:hover:border-neutral-600 transition cursor-pointer overflow-hidden p-2"
           @click="handleItemClick(item)"
         >
+          <!-- 封面：比卡片小一圈，四周留出白，四角保持圆角 -->
           <div
-            class="rounded-lg bg-neutral-50 dark:bg-neutral-800 overflow-hidden border border-neutral-200 dark:border-neutral-700 shrink-0"
-            :class="[compact ? 'h-20 w-15' : 'h-28 w-21']"
+            class="relative shrink-0 overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-800"
+            :class="[compact ? 'h-20 w-14' : 'h-28 w-20']"
           >
             <template v-if="isIconPlaceholder(item)">
               <div class="h-full w-full flex items-center justify-center bg-neutral-100 dark:bg-neutral-700">
@@ -573,8 +572,8 @@ function toggleReverse() {
           </div>
 
           <div
-            class="min-w-0 flex-1 flex flex-col justify-between py-0.5"
-            :class="[compact ? 'h-20' : 'h-28']"
+            class="min-w-0 flex-1 flex flex-col justify-between py-1 pr-1"
+            :class="[compact ? 'min-h-20' : 'min-h-28']"
           >
             <div class="space-y-0.5">
               <div class="flex items-start justify-between gap-2">
@@ -681,7 +680,7 @@ function toggleReverse() {
           >
             <div class="relative">
               <template v-if="isIconPlaceholder(item)">
-                <div class="w-full h-32 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-100 dark:border-neutral-800">
+                <div class="w-full h-40 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
                   <Icon icon="lucide:eye-off" class="h-6 w-6 text-neutral-400 dark:text-neutral-500" />
                 </div>
               </template>
@@ -692,13 +691,13 @@ function toggleReverse() {
                     :key="`card-left-${item.id}-${imageLoader.getRetryCount('card-left-' + item.id)}`"
                     :src="imageLoader.resolveSrc('card-left-' + item.id, getImage(item).thumbnail || getImage(item).url)"
                     alt="cover"
-                    class="w-full h-auto object-cover max-h-72 border-b border-neutral-100 dark:border-neutral-800 transition-opacity duration-500"
+                    class="w-full h-auto object-cover max-h-96 transition-opacity duration-500"
                     :class="{ 'opacity-0': !imageLoader.isSuccess('card-left-' + item.id) }"
                     @ionImgWillLoad="imageLoader.onWillLoad('card-left-' + item.id)"
                     @ionImgDidLoad="imageLoader.onLoad('card-left-' + item.id)"
                     @ionError="imageLoader.onError('card-left-' + item.id)"
                   />
-                  <div v-else class="w-full h-32 flex items-center justify-center bg-neutral-50 dark:bg-neutral-800 text-neutral-300 dark:text-neutral-600 border-b border-neutral-100 dark:border-neutral-800">
+                  <div v-else class="w-full h-40 flex items-center justify-center bg-neutral-50 dark:bg-neutral-800 text-neutral-300 dark:text-neutral-600">
                     <Icon icon="lucide:image" class="h-6 w-6" />
                   </div>
                   <div v-if="imageLoader.isLoading('card-left-' + item.id) && !imageLoader.isError('card-left-' + item.id)" class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
@@ -773,7 +772,7 @@ function toggleReverse() {
           >
             <div class="relative">
               <template v-if="isIconPlaceholder(item)">
-                <div class="w-full h-32 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-100 dark:border-neutral-800">
+                <div class="w-full h-40 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
                   <Icon icon="lucide:eye-off" class="h-6 w-6 text-neutral-400 dark:text-neutral-500" />
                 </div>
               </template>
@@ -784,13 +783,13 @@ function toggleReverse() {
                     :key="`card-right-${item.id}-${imageLoader.getRetryCount('card-right-' + item.id)}`"
                     :src="imageLoader.resolveSrc('card-right-' + item.id, getImage(item).thumbnail || getImage(item).url)"
                     alt="cover"
-                    class="w-full h-auto object-cover max-h-72 border-b border-neutral-100 dark:border-neutral-800 transition-opacity duration-500"
+                    class="w-full h-auto object-cover max-h-96 transition-opacity duration-500"
                     :class="{ 'opacity-0': !imageLoader.isSuccess('card-right-' + item.id) }"
                     @ionImgWillLoad="imageLoader.onWillLoad('card-right-' + item.id)"
                     @ionImgDidLoad="imageLoader.onLoad('card-right-' + item.id)"
                     @ionError="imageLoader.onError('card-right-' + item.id)"
                   />
-                  <div v-else class="w-full h-32 flex items-center justify-center bg-neutral-50 dark:bg-neutral-800 text-neutral-300 dark:text-neutral-600 border-b border-neutral-100 dark:border-neutral-800">
+                  <div v-else class="w-full h-40 flex items-center justify-center bg-neutral-50 dark:bg-neutral-800 text-neutral-300 dark:text-neutral-600">
                     <Icon icon="lucide:image" class="h-6 w-6" />
                   </div>
                   <div v-if="imageLoader.isLoading('card-right-' + item.id) && !imageLoader.isError('card-right-' + item.id)" class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">

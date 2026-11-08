@@ -319,16 +319,15 @@ onUnmounted(() => {
         <div
           v-for="item in filteredItems"
           :key="item.id"
-          class="relative rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-xs hover:border-neutral-300 dark:hover:border-neutral-600 transition cursor-pointer overflow-hidden"
-          :class="isCompact ? 'p-2' : 'p-3'"
+          class="relative rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-xs hover:border-neutral-300 dark:hover:border-neutral-600 transition cursor-pointer overflow-hidden p-2"
           @click="handleItemClick(item)"
         >
-          <div class="flex items-start gap-3">
+          <div class="flex items-stretch gap-3">
 
-            <!-- 封面 -->
+            <!-- 封面：比卡片小一圈，四周留出白，四角保持圆角 -->
             <div
-              class="rounded-lg bg-neutral-50 dark:bg-neutral-800 overflow-hidden border border-neutral-100 dark:border-neutral-700 shrink-0"
-              :class="isCompact ? 'h-16 w-12' : 'h-24 w-18'"
+              class="relative shrink-0 overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-800"
+              :class="isCompact ? 'h-20 w-14' : 'h-28 w-20'"
             >
               <template v-if="isIconPlaceholder(item)">
                 <div class="h-full w-full flex items-center justify-center bg-neutral-100 dark:bg-neutral-700">
@@ -367,8 +366,8 @@ onUnmounted(() => {
 
             <!-- 内容区域 -->
             <div
-              class="min-w-0 flex-1 flex flex-col justify-between"
-              :class="isCompact ? 'h-16 py-0.5' : 'h-24 py-0.5'"
+              class="min-w-0 flex-1 flex flex-col justify-between py-1 pr-1"
+              :class="isCompact ? 'min-h-20' : 'min-h-28'"
             >
               <!-- 标题区 -->
               <div class="space-y-0.5">

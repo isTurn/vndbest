@@ -98,46 +98,42 @@
               <p v-else-if="Number(form.mins) >= 60" class="text-[10px] text-rose-500 dark:text-rose-400">{{ t('vn.length_vote.mins_invalid') }}</p>
             </div>
 
-            <!-- 投票类型：标题与选项同一排 -->
+            <!-- 投票类型：标题在左，分段切换按钮在右（与阅读速度同一套样式） -->
             <div class="space-y-1">
-              <div class="flex items-center gap-2">
+              <div class="flex items-center justify-between gap-2">
                 <label class="shrink-0 text-xs font-medium text-neutral-500 dark:text-neutral-400">{{ t('vn.length_vote.vote_type') }}</label>
-                <div class="flex items-stretch gap-1 flex-1 min-w-0 justify-end">
+                <div class="flex shrink-0 items-center gap-0.5 rounded-full bg-neutral-200/70 dark:bg-neutral-700/60 p-0.5">
                   <button
                     v-for="opt in voteTypeOptions"
                     :key="opt.value"
                     type="button"
                     @click="form.voteType = opt.value"
-                    class="flex-1 min-w-0 flex items-center justify-center gap-1 rounded-lg border px-1.5 py-1.5 text-center transition cursor-pointer"
+                    class="whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] font-medium leading-none transition-all cursor-pointer"
                     :class="form.voteType === opt.value
-                      ? 'border-neutral-900 dark:border-neutral-100 bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900'
-                      : 'border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/80 text-neutral-700 dark:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600'"
-                  >
-                    <Icon
-                      :icon="form.voteType === opt.value ? 'lucide:check-circle' : 'lucide:circle'"
-                      class="h-3 w-3 shrink-0"
-                    />
-                    <span class="block text-[10px] font-medium leading-none whitespace-nowrap">{{ opt.label }}</span>
-                  </button>
+                      ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs'
+                      : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'"
+                  >{{ opt.label }}</button>
                 </div>
               </div>
               <p class="text-[10px] leading-relaxed text-neutral-400 dark:text-neutral-500">{{ voteTypeDesc }}</p>
             </div>
 
-            <!-- 阅读速度：只有「计入平均」时才需要 -->
-            <div v-if="form.voteType === 'counted'" class="space-y-2">
-              <label class="text-xs font-medium text-neutral-500 dark:text-neutral-400">{{ t('vn.length_vote.speed') }}</label>
-              <div class="flex items-center gap-1 rounded-full bg-neutral-200/70 dark:bg-neutral-700/60 p-0.5">
-                <button
-                  v-for="opt in speedOptions"
-                  :key="String(opt.value)"
-                  type="button"
-                  @click="form.speed = opt.value"
-                  class="flex-1 whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] font-medium leading-none transition-all cursor-pointer"
-                  :class="form.speed === opt.value
-                    ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs'
-                    : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'"
-                >{{ opt.label }}</button>
+            <!-- 阅读速度：只有「计入平均」时才需要；标题在左、按钮在右，不换行 -->
+            <div v-if="form.voteType === 'counted'" class="space-y-1">
+              <div class="flex items-center justify-between gap-2">
+                <label class="shrink-0 text-xs font-medium text-neutral-500 dark:text-neutral-400">{{ t('vn.length_vote.speed') }}</label>
+                <div class="flex shrink-0 items-center gap-0.5 rounded-full bg-neutral-200/70 dark:bg-neutral-700/60 p-0.5">
+                  <button
+                    v-for="opt in speedOptions"
+                    :key="String(opt.value)"
+                    type="button"
+                    @click="form.speed = opt.value"
+                    class="whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] font-medium leading-none transition-all cursor-pointer"
+                    :class="form.speed === opt.value
+                      ? 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 font-semibold shadow-xs'
+                      : 'text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200'"
+                  >{{ opt.label }}</button>
+                </div>
               </div>
             </div>
 
