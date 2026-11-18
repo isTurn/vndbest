@@ -1074,7 +1074,7 @@ function getFilterSummary(item) {
     <Transition name="slide-up">
       <div
         v-if="showBottomSheet"
-        class="fixed bottom-0 inset-x-0 z-50 rounded-t-2xl bg-white dark:bg-neutral-900 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-xl"
+        class="fixed bottom-0 inset-x-0 z-50 rounded-t-2xl bg-white dark:bg-neutral-900 p-4 pb-[max(1rem,var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))] shadow-xl"
       >
         <div class="mx-auto mb-4 h-1 w-10 rounded-full bg-neutral-300 dark:bg-neutral-600" aria-hidden="true"></div>
         <div class="grid gap-2">

@@ -1429,7 +1429,7 @@ const themeOptions = [
               </button>
             </div>
 
-            <div class="flex-1 space-y-1 overflow-y-auto px-2 py-2">
+            <div class="sheet-safe-bottom flex-1 space-y-1 overflow-y-auto px-2 py-2">
               <!-- 系统默认 -->
               <button
                 type="button"

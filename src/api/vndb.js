@@ -541,6 +541,22 @@ export async function getCharacterDetail(id) {
 }
 
 /**
+ * 3.4b 获取角色的声优（CV）列表
+ * POST /character 不支持 va 字段，只能反查 /vn 的 va[]：
+ * 用 character 过滤器拿到该角色出演过的作品，再筛出与本角色匹配的 va 项
+ */
+export async function getCharacterVoiceActors(characterId) {
+  return request('/vn', {
+    method: 'POST',
+    body: JSON.stringify({
+      filters: ['character', '=', ['id', '=', characterId]],
+      fields: 'id, title, va{note, character{id}, staff{id, name, original}}',
+      results: 25
+    })
+  })
+}
+
+/**
  * 3.5 搜索 Characters
  * POST /character
  */

@@ -459,7 +459,7 @@ let editSuccessTimer = null
 // 弹窗表单数据
 const editForm = ref({
   selectedLabelIds: [], // 状态标签 ID 列表
-  vote: '',            // 评分 1-10，空字符串表示未评分
+  vote: '',            // 评分 1-10（支持小数），空字符串表示未评分
   notes: '',           // 笔记
   started: '',         // 开始日期 YYYY-MM-DD
   finished: ''         // 结束日期 YYYY-MM-DD
@@ -470,7 +470,8 @@ const hoverVote = ref(null)
 
 // 设置评分（点击星星）
 const setVote = (val) => {
-  if (editForm.value.vote === val) {
+  const current = editForm.value.vote === '' ? null : Number(editForm.value.vote)
+  if (current !== null && current === val) {
     // 再次点击同一个星星 = 取消评分
     editForm.value.vote = ''
   } else {
@@ -481,6 +482,29 @@ const setVote = (val) => {
 // 清除评分
 const clearVote = () => {
   editForm.value.vote = ''
+}
+
+// 把表单里的 1-10（可含小数）换算成 API 需要的 10-100 整数
+const voteToApi = (raw) => {
+  if (raw === '' || raw === null || raw === undefined) return null
+  const num = Number(raw)
+  if (!Number.isFinite(num)) return null
+  return Math.min(100, Math.max(10, Math.round(num * 10)))
+}
+
+// 手写评分输入归一：支持小数，限制在 1-10，保留一位小数
+const normalizeVoteInput = () => {
+  const raw = editForm.value.vote
+  if (raw === '' || raw === null || raw === undefined) {
+    editForm.value.vote = ''
+    return
+  }
+  const num = Number(raw)
+  if (!Number.isFinite(num)) {
+    editForm.value.vote = ''
+    return
+  }
+  editForm.value.vote = Math.min(10, Math.max(1, Math.round(num * 10) / 10))
 }
 
 // 切换编辑弹窗内的标签勾选状态
@@ -522,7 +546,7 @@ const openEditModal = () => {
   const rawVote = collectionEntry.value?.vote
   editForm.value = {
     selectedLabelIds: [...currentLabelIds.value],
-    vote: rawVote ? Math.round(rawVote / 10) : '',
+    vote: rawVote ? rawVote / 10 : '',
     notes: collectionEntry.value?.notes || '',
     started: collectionEntry.value?.started || '',
     finished: collectionEntry.value?.finished || ''
@@ -577,8 +601,9 @@ const saveEditForm = async () => {
       if (newSelectedLabelIds.length > 0) {
         patchData.labels = newSelectedLabelIds
       }
-      if (form.vote !== '') {
-        patchData.vote = Math.round(Number(form.vote) * 10)
+      const createdVote = voteToApi(form.vote)
+      if (createdVote !== null) {
+        patchData.vote = createdVote
       }
       if (form.notes) {
         patchData.notes = form.notes
@@ -609,7 +634,7 @@ const saveEditForm = async () => {
 
       // 评分变更（仅在实际变更时发送）
       const oldVote = entry.vote  // 原始值为整数 10-100 或 null
-      const newVote = form.vote !== '' ? Math.round(Number(form.vote) * 10) : null
+      const newVote = voteToApi(form.vote)
       if (oldVote !== newVote) {
         patchData.vote = newVote
       }
@@ -2117,10 +2142,11 @@ watch(
               <!-- 骨架屏：加载中 -->
               <template v-if="collectionLoading">
                 <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.title') }}</span>
-                <div class="h-5 w-20 rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
-
-                <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.my_vote') }}</span>
-                <div class="h-4 w-16 rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
+                <div class="flex items-center gap-2">
+                  <div class="h-5 w-20 rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
+                  <div class="h-4 w-14 rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
+                  <div class="ml-auto h-5 w-14 rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
+                </div>
 
                 <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.notes') }}</span>
                 <div class="h-10 w-full rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
@@ -2130,76 +2156,69 @@ watch(
 
                 <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.finished_date') }}</span>
                 <div class="h-4 w-20 rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
-
-                <span></span>
-                <div class="h-5 w-14 rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
               </template>
 
               <!-- 已加载 -->
               <template v-else>
+                <!-- 收藏状态 + 我的评分 + 编辑按钮：同一行 -->
                 <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.title') }}</span>
-                <div class="flex flex-col gap-1.5">
-                  <div class="flex items-center gap-2">
-                    <button
-                      type="button"
-                      @click="showStatusActionSheet = true"
-                      :disabled="statusLoading"
-                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-xs font-medium text-neutral-800 dark:text-neutral-200 hover:border-neutral-300 dark:hover:border-neutral-600 transition cursor-pointer max-w-[220px]"
-                    >
-                      <Icon
-                        :icon="currentSelectedLabels.length === 0 ? 'lucide:bookmark-plus' : (currentStatusLabel?.icon || 'lucide:tag')"
-                        class="h-3.5 w-3.5 shrink-0"
-                        :class="currentSelectedLabels.length === 0 ? 'text-neutral-400 dark:text-neutral-500' : (currentStatusLabel?.color || 'text-amber-500 dark:text-amber-400')"
-                      />
-                      <span class="truncate">{{ currentStatusLabel?.name || t('vn.status.none') }}</span>
-                      <Icon icon="lucide:chevron-down" class="h-3 w-3 text-neutral-400 dark:text-neutral-500 shrink-0 ml-0.5" />
-                    </button>
+                <div class="flex items-center gap-2 min-w-0">
+                  <button
+                    type="button"
+                    @click="showStatusActionSheet = true"
+                    :disabled="statusLoading"
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-xs font-medium text-neutral-800 dark:text-neutral-200 hover:border-neutral-300 dark:hover:border-neutral-600 transition cursor-pointer max-w-[180px]"
+                  >
                     <Icon
-                      v-if="statusLoading"
-                      icon="lucide:loader-2"
-                      class="h-4 w-4 animate-spin text-neutral-400 dark:text-neutral-500 flex-shrink-0"
+                      :icon="currentSelectedLabels.length === 0 ? 'lucide:bookmark-plus' : (currentStatusLabel?.icon || 'lucide:tag')"
+                      class="h-3.5 w-3.5 shrink-0"
+                      :class="currentSelectedLabels.length === 0 ? 'text-neutral-400 dark:text-neutral-500' : (currentStatusLabel?.color || 'text-amber-500 dark:text-amber-400')"
                     />
-                  </div>
-                  <!-- 多标签 Chips 展示 -->
-                  <div v-if="currentSelectedLabels.length > 1" class="flex flex-wrap gap-1 mt-0.5">
-                    <span
-                      v-for="lbl in currentSelectedLabels"
-                      :key="lbl.id"
-                      class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-200/60 dark:border-neutral-700/60 font-medium"
-                    >
-                      <Icon :icon="lbl.icon" class="h-2.5 w-2.5" :class="lbl.color" />
-                      {{ lbl.name }}
-                    </span>
-                  </div>
-                </div>
-
-                <!-- 我的评分：未收藏时先提示加入收藏，避免点了没反应 -->
-                <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.my_vote') }}</span>
-                <button
-                  v-if="collectionEntry"
-                  type="button"
-                  @click="openEditModal"
-                  class="inline-flex items-center gap-1.5 w-fit rounded-md px-1.5 py-0.5 -ml-1.5 text-left transition hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
-                  :title="t('vn.status.vote_hint')"
-                >
+                    <span class="truncate">{{ currentStatusLabel?.name || t('vn.status.none') }}</span>
+                    <Icon icon="lucide:chevron-down" class="h-3 w-3 text-neutral-400 dark:text-neutral-500 shrink-0 ml-0.5" />
+                  </button>
                   <Icon
-                    icon="lucide:star"
-                    class="h-3.5 w-3.5 shrink-0"
-                    :class="formattedVote != null ? 'text-amber-500 fill-amber-500' : 'text-neutral-300 dark:text-neutral-600'"
+                    v-if="statusLoading"
+                    icon="lucide:loader-2"
+                    class="h-4 w-4 animate-spin text-neutral-400 dark:text-neutral-500 flex-shrink-0"
                   />
-                  <span class="text-neutral-800 dark:text-neutral-200" :class="{ 'text-neutral-400 dark:text-neutral-500': !formattedVote }">
-                    {{ formattedVote != null ? `${formattedVote.toFixed(1)} / 10` : t('vn.status.add_vote') }}
-                  </span>
-                </button>
-                <button
-                  v-else
-                  type="button"
-                  @click="showStatusActionSheet = true"
-                  class="inline-flex items-center gap-1.5 w-fit rounded-md px-1.5 py-0.5 -ml-1.5 text-left transition hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
-                >
-                  <Icon icon="lucide:star" class="h-3.5 w-3.5 shrink-0 text-neutral-300 dark:text-neutral-600" />
-                  <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.vote_need_collect') }}</span>
-                </button>
+
+                  <!-- 我的评分：未收藏时先提示加入收藏，避免点了没反应 -->
+                  <button
+                    v-if="collectionEntry"
+                    type="button"
+                    @click="openEditModal"
+                    class="inline-flex items-center gap-1 shrink-0 rounded-md px-1.5 py-0.5 transition hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+                    :title="t('vn.status.vote_hint')"
+                  >
+                    <Icon
+                      icon="lucide:star"
+                      class="h-3.5 w-3.5 shrink-0"
+                      :class="formattedVote != null ? 'text-amber-500 fill-amber-500' : 'text-neutral-300 dark:text-neutral-600'"
+                    />
+                    <span class="text-neutral-800 dark:text-neutral-200 whitespace-nowrap" :class="{ 'text-neutral-400 dark:text-neutral-500': !formattedVote }">
+                      {{ formattedVote != null ? `${formattedVote.toFixed(1)}` : t('vn.status.add_vote') }}
+                    </span>
+                  </button>
+                  <button
+                    v-else
+                    type="button"
+                    @click="showStatusActionSheet = true"
+                    class="inline-flex items-center gap-1 shrink-0 rounded-md px-1.5 py-0.5 transition hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+                  >
+                    <Icon icon="lucide:star" class="h-3.5 w-3.5 shrink-0 text-neutral-300 dark:text-neutral-600" />
+                    <span class="text-neutral-400 dark:text-neutral-500 whitespace-nowrap">{{ t('vn.status.vote_need_collect') }}</span>
+                  </button>
+
+                  <!-- 编辑按钮：该行最右 -->
+                  <button
+                    @click="openEditModal"
+                    class="ml-auto inline-flex items-center gap-1 shrink-0 text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition cursor-pointer"
+                  >
+                    <Icon icon="lucide:pencil" class="h-3.5 w-3.5" />
+                    {{ t('vn.status.edit') }}
+                  </button>
+                </div>
 
                 <!-- 笔记 -->
                 <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.notes') }}</span>
@@ -2234,16 +2253,6 @@ watch(
                 <span class="text-neutral-800 dark:text-neutral-200" :class="{ 'text-neutral-400 dark:text-neutral-500': !collectionEntry?.finished }">
                   {{ collectionEntry?.finished || '—' }}
                 </span>
-
-                <!-- 编辑按钮 -->
-                <span></span>
-                <button
-                  @click="openEditModal"
-                  class="flex items-center gap-1.5 text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition cursor-pointer w-fit"
-                >
-                  <Icon icon="lucide:pencil" class="h-3.5 w-3.5" />
-                  {{ t('vn.status.edit') }}
-                </button>
               </template>
             </template>
           </div>
@@ -3477,7 +3486,24 @@ watch(
 
               <!-- 评分 -->
               <div class="space-y-2.5">
-                <label class="text-xs font-medium text-neutral-500 dark:text-neutral-400">{{ t('vn.status.my_vote') }}</label>
+                <div class="flex items-center justify-between gap-2">
+                  <label class="text-xs font-medium text-neutral-500 dark:text-neutral-400">{{ t('vn.status.my_vote') }}</label>
+                  <!-- 自定义评分输入（支持小数） -->
+                  <div class="flex items-center gap-1">
+                    <input
+                      v-model="editForm.vote"
+                      type="number"
+                      inputmode="decimal"
+                      min="1"
+                      max="10"
+                      step="0.1"
+                      placeholder="—"
+                      @blur="normalizeVoteInput"
+                      class="w-16 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 px-2 py-1 text-xs text-center outline-none transition focus:border-neutral-400 dark:focus:border-neutral-500 focus:bg-white dark:focus:bg-neutral-700 placeholder-neutral-400 dark:placeholder-neutral-500"
+                    />
+                    <span class="text-[11px] text-neutral-400 dark:text-neutral-500">/ 10</span>
+                  </div>
+                </div>
                 <div class="flex items-center justify-center gap-1">
                   <!-- 取消评分按钮 -->
                   <button
@@ -3505,8 +3531,8 @@ watch(
                     <Icon
                       icon="solar:star-bold"
                       class="h-6 w-6 transition-colors"
-                      :class="(hoverVote !== null ? n <= hoverVote : n <= editForm.vote) ? 'text-amber-400' : 'text-neutral-200 dark:text-neutral-700'"
-                      :style="(hoverVote !== null ? n <= hoverVote : n <= editForm.vote)
+                      :class="(hoverVote !== null ? n <= hoverVote : n <= Number(editForm.vote || 0)) ? 'text-amber-400' : 'text-neutral-200 dark:text-neutral-700'"
+                      :style="(hoverVote !== null ? n <= hoverVote : n <= Number(editForm.vote || 0))
                         ? { fill: '#fbbf24' }
                         : { fill: '#e5e5e5' }"
                     />
@@ -3547,7 +3573,7 @@ watch(
             </div>
 
             <!-- 底部按钮 -->
-            <div class="flex items-center justify-end gap-2 px-4 py-3 border-t border-neutral-100 dark:border-neutral-800">
+            <div class="sheet-safe-bottom flex items-center justify-end gap-2 px-4 py-3 border-t border-neutral-100 dark:border-neutral-800">
               <button
                 @click="closeEditModal"
                 class="px-4 py-2 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition cursor-pointer"

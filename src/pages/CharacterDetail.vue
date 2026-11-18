@@ -6,7 +6,7 @@ import { translateError } from '@/utils/errorMessage'
 import { Icon } from '@iconify/vue'
 import AppHeader from '@/components/AppHeader.vue'
 import { SEX_ICONS } from '@/icons/icon-names'
-import { getCharacterDetail, getCharacterQuotes } from '@/api/vndb'
+import { getCharacterDetail, getCharacterQuotes, getCharacterVoiceActors } from '@/api/vndb'
 import VnList from '@/components/VnList.vue'
 import { useTranslation } from '@/composables/useTranslation'
 import { useImageLoader } from '@/composables/useImageLoader'
@@ -35,6 +35,10 @@ const traitSpoilerLevel = ref(0)
 const showTraitSexual = ref(false)
 const tempTraitSpoilerLevel = ref(0)
 const showTraitSpoilerConfirm = ref(false)
+
+// 声优（CV）数据：/character 拿不到 va，只能反查 /vn 的 va[]
+const voiceActors = ref([])
+const vaLoading = ref(false)
 
 // 台词数据
 const quotes = ref([])
@@ -318,6 +322,8 @@ async function fetchCharacterInfo() {
       resetQuoteTranslations()
       // 自动加载台词
       fetchQuotes()
+      // 声优列表（后台加载，失败不影响主内容）
+      fetchVoiceActors()
     } else {
       error.value = t('vn.not_found')
     }
@@ -343,6 +349,40 @@ async function fetchQuotes() {
     quotesError.value = translateError(err, t, 'common.error')
   } finally {
     quotesLoading.value = false
+  }
+}
+
+// 拉取声优：跨作品去重，同一人物只保留一条，附带一个代表作标题
+async function fetchVoiceActors() {
+  if (!characterId.value) return
+  vaLoading.value = true
+  voiceActors.value = []
+  try {
+    const res = await getCharacterVoiceActors(characterId.value)
+    const seen = new Set()
+    const list = []
+    for (const vn of res?.results || []) {
+      for (const item of vn?.va || []) {
+        if (item?.character?.id !== characterId.value) continue
+        const staffId = item?.staff?.id
+        if (!staffId || seen.has(staffId)) continue
+        seen.add(staffId)
+        list.push({
+          id: staffId,
+          name: item.staff.name || '',
+          original: item.staff.original || '',
+          note: item.note || '',
+          vnId: vn.id,
+          vnTitle: vn.title || ''
+        })
+      }
+    }
+    voiceActors.value = list
+  } catch (err) {
+    console.error('获取角色声优失败:', err)
+    voiceActors.value = []
+  } finally {
+    vaLoading.value = false
   }
 }
 
@@ -527,6 +567,26 @@ watch(
               class="text-sm text-neutral-500 dark:text-neutral-400 font-medium mt-0.5 copyable-title"
               @click="copyTitleText(character.name)"
             >{{ character.name }}</p>
+
+            <!-- 声优（CV）：名字下方，可点击跳转声优详情 -->
+            <div v-if="voiceActors.length > 0" class="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
+              <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.characters.voiced_by') }}</span>
+              <button
+                v-for="va in voiceActors"
+                :key="va.id"
+                type="button"
+                class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium text-sky-600 dark:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-950/40 active:bg-sky-100 dark:active:bg-sky-900/50 transition-colors"
+                @click="router.push(`/staff/${va.id}`)"
+              >
+                <Icon icon="lucide:mic" class="h-3 w-3 shrink-0" />
+                <span>{{ va.original || va.name }}</span>
+                <span v-if="va.original && va.name" class="text-[10px] font-normal text-neutral-400 dark:text-neutral-500">{{ va.name }}</span>
+              </button>
+            </div>
+            <div v-else-if="vaLoading" class="mt-1.5 flex items-center gap-1.5 text-xs text-neutral-400 dark:text-neutral-500">
+              <IonSpinner name="dots" class="h-3 w-3" />
+              <span>{{ t('common.loading') }}</span>
+            </div>
           </div>
           
           <div class="flex items-start justify-between gap-2 text-[11px]">
@@ -635,7 +695,7 @@ watch(
             </div>
 
             <!-- 简介面板 -->
-            <div v-if="infoSheet === 'description'" class="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div v-if="infoSheet === 'description'" class="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-[max(0.75rem,var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))]">
               <div class="flex items-center justify-end">
                 <button
                   @click="translateDescription"
@@ -671,7 +731,7 @@ watch(
             <!-- 特征面板 -->
             <div
               v-if="infoSheet === 'traits' && character.traits && character.traits.length > 0"
-              class="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+              class="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-[max(0.75rem,var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))]"
             >
               <!-- 特征筛选控件 -->
               <div class="rounded-xl border border-neutral-200/80 dark:border-neutral-700 bg-neutral-50/60 dark:bg-neutral-800/40 p-2 space-y-1.5">

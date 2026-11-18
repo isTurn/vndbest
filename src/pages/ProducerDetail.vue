@@ -517,7 +517,7 @@ function cleanDescription(text) {
             </div>
           </div>
 
-          <div class="flex items-center gap-2 px-4 py-3 border-t border-neutral-100 dark:border-neutral-800">
+          <div class="sheet-safe-bottom flex items-center gap-2 px-4 py-3 border-t border-neutral-100 dark:border-neutral-800">
             <button
               type="button"
               class="flex-1 rounded-xl border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer"

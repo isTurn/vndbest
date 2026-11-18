@@ -248,12 +248,21 @@ ion-app {
   height: 100vh;
 }
 
-/* 禁用 ion-content 默认 padding，由 .page-container 控制布局 */
+/* 禁用 ion-content 默认 padding，由 .page-container 控制布局。
+   底部例外：必须给系统导航栏留出安全区。开启「虚拟导航键」（三键导航）后
+   navigationBar 会盖住屏幕最下方约 48dp，而详情页的 .page-container 只有顶部/
+   水平 padding、没有底部 padding，内容会一直排到屏幕最底边上，最后一截被导航键
+   压住且点不到。这里统一在滚动容器内补一段底部留白：
+   - 优先用 Capacitor SystemBars 注入的 --safe-area-inset-bottom（WebView ≥140
+     且 viewport-fit=cover）；
+   - env() 作为旧 WebView / 浏览器的兜底；
+   - 再加 0.75rem 呼吸留白，避免内容紧贴导航栏上沿。
+   列表页自己带的 pb-24 是给底部 TabBar 留位的，两者叠加只会多留空间，不影响布局。 */
 ion-content {
   --padding-start: 0;
   --padding-end: 0;
   --padding-top: 0;
-  --padding-bottom: 0;
+  --padding-bottom: calc(0.75rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   flex: 1;
   min-height: 0;
 }
@@ -277,6 +286,24 @@ ion-router-outlet > .app-page-leaving,
   height: 100%;
   z-index: -1 !important;
   pointer-events: none !important;
+}
+
+/* 底部弹层（ActionSheet / 各种 Modal / 底部选择器）的安全区内边距。
+   这些面板都是 `items-end` 贴着屏幕最底渲染的，面板底部那排「取消 / 确定 /
+   保存」按钮会正好落在系统导航栏下面 —— 开启「虚拟导航键」后点不到。
+   这里把导航栏高度（Capacitor SystemBars 注入的 --safe-area-inset-bottom）
+   作为面板自身的底部内边距，按钮被顶到导航栏上方，面板的白色背景仍然铺到
+   屏幕最底，视觉上不会出现缝隙。注意不要用 margin，否则会露出背后的遮罩。 */
+.sheet-safe-bottom {
+  padding-bottom: calc(0.75rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+}
+
+/* 只在 `<sm`（窄屏 = 手机竖屏）下补安全区。宽屏时这些弹层走 `sm:items-center`
+   变成垂直居中的对话框，底部不贴导航栏，再补内边距会让面板看起来偏上。 */
+@media (min-width: 640px) {
+  .sheet-safe-bottom {
+    padding-bottom: 0.75rem;
+  }
 }
 
 /* 页面内容容器：max-width 居中 + 水平/顶部 padding */
