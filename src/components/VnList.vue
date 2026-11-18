@@ -187,18 +187,21 @@ function isIconPlaceholder(item) {
   return shouldBlurCover(item) && !shouldBlurCard(item)
 }
 
-// 瀑布流双列分配（使用 displayItems 以支持折叠）
+// 瀑布流列数：手机 3 列，平板（>=768px）4 列
+const waterfallColumnCount = ref(3)
+function updateWaterfallColumns() {
+  if (typeof window === 'undefined') return
+  waterfallColumnCount.value = window.innerWidth >= 768 ? 4 : 3
+}
+
+// 瀑布流分列分配（使用 displayItems 以支持折叠），按列数轮流放入
 const waterfallColumns = computed(() => {
-  const leftCol = []
-  const rightCol = []
+  const count = waterfallColumnCount.value
+  const cols = Array.from({ length: count }, () => [])
   displayItems.value.forEach((item, index) => {
-    if (index % 2 === 0) {
-      leftCol.push(item)
-    } else {
-      rightCol.push(item)
-    }
+    cols[index % count].push(item)
   })
-  return { leftCol, rightCol }
+  return cols
 })
 
 // 处理评分显示
@@ -421,6 +424,8 @@ const sentinel = ref(null)
 let observer = null
 
 onMounted(() => {
+  updateWaterfallColumns()
+  window.addEventListener('resize', updateWaterfallColumns)
   observer = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting && props.hasMore && !props.isLoading) {
       emit('loadMore')
@@ -435,6 +440,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  window.removeEventListener('resize', updateWaterfallColumns)
   if (observer) {
     observer.disconnect()
   }
@@ -669,11 +675,15 @@ function toggleReverse() {
         </div>
       </div>
 
-      <!-- 2. 双列瀑布流布局 -->
-      <div v-else-if="displayItems.length > 0 && layoutMode === 'waterfall'" class="grid grid-cols-2 gap-3.5 items-start">
-        <div class="flex flex-col gap-3.5">
+      <!-- 2. 响应式瀑布流布局：手机 3 列 / 平板 4 列 -->
+      <div
+        v-else-if="displayItems.length > 0 && layoutMode === 'waterfall'"
+        class="grid gap-3 items-start"
+        :class="waterfallColumnCount === 4 ? 'grid-cols-4' : 'grid-cols-3'"
+      >
+        <div v-for="(col, colIndex) in waterfallColumns" :key="colIndex" class="flex flex-col gap-3">
           <div
-            v-for="item in waterfallColumns.leftCol"
+            v-for="item in col"
             :key="item.id"
             class="relative rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 overflow-hidden shadow-xs hover:border-neutral-300 dark:hover:border-neutral-600 transition cursor-pointer"
             @click="handleItemClick(item)"
@@ -690,25 +700,25 @@ function toggleReverse() {
                 <div class="relative w-full aspect-[3/4] overflow-hidden bg-neutral-100 dark:bg-neutral-800">
                   <ion-img
                     v-if="getImage(item)?.url"
-                    :key="`card-left-${item.id}-${imageLoader.getRetryCount('card-left-' + item.id)}`"
-                    :src="imageLoader.resolveSrc('card-left-' + item.id, getImage(item).thumbnail || getImage(item).url)"
+                    :key="`card-${colIndex}-${item.id}-${imageLoader.getRetryCount('card-' + colIndex + '-' + item.id)}`"
+                    :src="imageLoader.resolveSrc('card-' + colIndex + '-' + item.id, getImage(item).thumbnail || getImage(item).url)"
                     alt="cover"
                     class="absolute inset-0 h-full w-full object-cover transition-opacity duration-500"
-                    :class="{ 'opacity-0': !imageLoader.isSuccess('card-left-' + item.id) }"
-                    @ionImgWillLoad="imageLoader.onWillLoad('card-left-' + item.id)"
-                    @ionImgDidLoad="imageLoader.onLoad('card-left-' + item.id)"
-                    @ionError="imageLoader.onError('card-left-' + item.id)"
+                    :class="{ 'opacity-0': !imageLoader.isSuccess('card-' + colIndex + '-' + item.id) }"
+                    @ionImgWillLoad="imageLoader.onWillLoad('card-' + colIndex + '-' + item.id)"
+                    @ionImgDidLoad="imageLoader.onLoad('card-' + colIndex + '-' + item.id)"
+                    @ionError="imageLoader.onError('card-' + colIndex + '-' + item.id)"
                   />
                   <div v-else class="absolute inset-0 flex items-center justify-center bg-neutral-50 dark:bg-neutral-800 text-neutral-300 dark:text-neutral-600">
                     <Icon icon="lucide:image" class="h-6 w-6" />
                   </div>
-                  <div v-if="imageLoader.isLoading('card-left-' + item.id) && !imageLoader.isError('card-left-' + item.id)" class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
+                  <div v-if="imageLoader.isLoading('card-' + colIndex + '-' + item.id) && !imageLoader.isError('card-' + colIndex + '-' + item.id)" class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
                     <ion-spinner name="crescent" class="h-5 w-5 text-neutral-400" />
                   </div>
                   <button
-                    v-if="imageLoader.isError('card-left-' + item.id)"
+                    v-if="imageLoader.isError('card-' + colIndex + '-' + item.id)"
                     class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 cursor-pointer"
-                    @click.stop="imageLoader.retry('card-left-' + item.id)"
+                    @click.stop="imageLoader.retry('card-' + colIndex + '-' + item.id)"
                   >
                     <Icon icon="lucide:refresh-cw" class="h-5 w-5 text-neutral-400" />
                   </button>
@@ -758,101 +768,9 @@ function toggleReverse() {
                 </span>
               </div>
             </div>
-            <!-- 整卡模糊遮罩 (左列) -->
+            <!-- 整卡模糊遮罩 -->
             <div v-if="shouldBlurCard(item)" class="absolute inset-0 rounded-xl bg-white/50 dark:bg-neutral-900/70 backdrop-blur-md flex items-center justify-center z-10 pointer-events-none">
               <Icon icon="lucide:eye-off" class="h-8 w-8 text-neutral-400 dark:text-neutral-500" />
-            </div>
-          </div>
-        </div>
-
-        <div class="flex flex-col gap-3.5">
-          <div
-            v-for="item in waterfallColumns.rightCol"
-            :key="item.id"
-            class="relative rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 overflow-hidden shadow-xs hover:border-neutral-300 dark:hover:border-neutral-600 transition cursor-pointer"
-            @click="handleItemClick(item)"
-          >
-            <div class="relative">
-              <template v-if="isIconPlaceholder(item)">
-                <div class="w-full aspect-[3/4] flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
-                  <Icon icon="lucide:eye-off" class="h-6 w-6 text-neutral-400 dark:text-neutral-500" />
-                </div>
-              </template>
-              <template v-else>
-                <!-- 同上：固定 3:4 比例盒，保证标题区永远在卡片内 -->
-                <div class="relative w-full aspect-[3/4] overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-                  <ion-img
-                    v-if="getImage(item)?.url"
-                    :key="`card-right-${item.id}-${imageLoader.getRetryCount('card-right-' + item.id)}`"
-                    :src="imageLoader.resolveSrc('card-right-' + item.id, getImage(item).thumbnail || getImage(item).url)"
-                    alt="cover"
-                    class="absolute inset-0 h-full w-full object-cover transition-opacity duration-500"
-                    :class="{ 'opacity-0': !imageLoader.isSuccess('card-right-' + item.id) }"
-                    @ionImgWillLoad="imageLoader.onWillLoad('card-right-' + item.id)"
-                    @ionImgDidLoad="imageLoader.onLoad('card-right-' + item.id)"
-                    @ionError="imageLoader.onError('card-right-' + item.id)"
-                  />
-                  <div v-else class="absolute inset-0 flex items-center justify-center bg-neutral-50 dark:bg-neutral-800 text-neutral-300 dark:text-neutral-600">
-                    <Icon icon="lucide:image" class="h-6 w-6" />
-                  </div>
-                  <div v-if="imageLoader.isLoading('card-right-' + item.id) && !imageLoader.isError('card-right-' + item.id)" class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
-                    <ion-spinner name="crescent" class="h-5 w-5 text-neutral-400" />
-                  </div>
-                  <button
-                    v-if="imageLoader.isError('card-right-' + item.id)"
-                    class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 cursor-pointer"
-                    @click.stop="imageLoader.retry('card-right-' + item.id)"
-                  >
-                    <Icon icon="lucide:refresh-cw" class="h-5 w-5 text-neutral-400" />
-                  </button>
-                </div>
-              </template>
-              <div v-if="!shouldBlurCard(item) && (getRating(item) || getUserVote(item))" class="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/60 text-white text-[9px] font-bold backdrop-blur-xs flex items-center gap-0.5">
-                <Icon icon="lucide:star" class="h-2.5 w-2.5 fill-yellow-400 stroke-yellow-400" />
-                {{ formatRating(getUserVote(item) || getRating(item)) }}
-              </div>
-            </div>
-            <div class="p-3 space-y-1.5">
-              <span class="text-xs font-semibold text-neutral-900 dark:text-neutral-100 block line-clamp-2 leading-tight">{{ getTitle(item) }}</span>
-              <span v-if="getAltTitle(item)" class="text-[10px] text-neutral-400 dark:text-neutral-500 block line-clamp-1 leading-tight">{{ getAltTitle(item) }}</span>
-              <div v-if="getBadge(item) || getStatusLabel(item) || getPlayTime(item)" class="flex flex-wrap gap-1">
-                <span
-                  v-if="getBadge(item)"
-                  class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0"
-                  :class="[
-                    getBadge(item) === 'main'
-                      ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/50'
-                      : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border border-neutral-200/50 dark:border-neutral-700/50'
-                  ]"
-                >
-                  {{ translateBadgeOf(item) }}
-                </span>
-                <span
-                  v-if="isDoujinRelation(item)"
-                  class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/50"
-                >
-                  {{ t('vn.show_doujin') }}
-                </span>
-                <span
-                  v-if="getStatusLabel(item)"
-                  class="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border"
-                  :class="statusStyle(item)"
-                >
-                  <Icon v-if="statusIcon(item)" :icon="statusIcon(item)" class="h-2.5 w-2.5 shrink-0" :class="statusIconColor(item)" />
-                  {{ labelText(getStatusLabel(item)) }}
-                </span>
-                <span
-                  v-if="getPlayTime(item)"
-                  class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 border-sky-100 dark:border-sky-900/50 inline-flex items-center gap-0.5"
-                >
-                  <Icon icon="lucide:clock" class="h-2.5 w-2.5" />
-                  {{ getPlayTime(item) }}
-                </span>
-              </div>
-              <!-- 整卡模糊遮罩 (右列) -->
-              <div v-if="shouldBlurCard(item)" class="absolute inset-0 rounded-xl bg-white/50 dark:bg-neutral-900/70 backdrop-blur-md flex items-center justify-center z-10 pointer-events-none">
-                <Icon icon="lucide:eye-off" class="h-8 w-8 text-neutral-400" />
-              </div>
             </div>
           </div>
         </div>

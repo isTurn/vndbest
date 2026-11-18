@@ -2151,11 +2151,10 @@ watch(
                 <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.notes') }}</span>
                 <div class="h-10 w-full rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
 
-                <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.started') }}</span>
-                <div class="h-4 w-20 rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
-
-                <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.finished_date') }}</span>
-                <div class="h-4 w-20 rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
+                <div class="col-span-2 flex items-center gap-4">
+                  <div class="h-4 w-28 rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
+                  <div class="h-4 w-28 rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
+                </div>
               </template>
 
               <!-- 已加载 -->
@@ -2242,17 +2241,21 @@ watch(
                 </template>
                 <span v-else class="text-neutral-400 dark:text-neutral-500">—</span>
 
-                <!-- 开始日期 -->
-                <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.started') }}</span>
-                <span class="text-neutral-800 dark:text-neutral-200" :class="{ 'text-neutral-400 dark:text-neutral-500': !collectionEntry?.started }">
-                  {{ collectionEntry?.started || '—' }}
-                </span>
-
-                <!-- 结束日期 -->
-                <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.finished_date') }}</span>
-                <span class="text-neutral-800 dark:text-neutral-200" :class="{ 'text-neutral-400 dark:text-neutral-500': !collectionEntry?.finished }">
-                  {{ collectionEntry?.finished || '—' }}
-                </span>
+                <!-- 开始日期 + 结束日期：同一行显示 -->
+                <div class="col-span-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <span class="inline-flex items-center gap-1.5">
+                    <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.started') }}</span>
+                    <span class="text-neutral-800 dark:text-neutral-200" :class="{ 'text-neutral-400 dark:text-neutral-500': !collectionEntry?.started }">
+                      {{ collectionEntry?.started || '—' }}
+                    </span>
+                  </span>
+                  <span class="inline-flex items-center gap-1.5">
+                    <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.finished_date') }}</span>
+                    <span class="text-neutral-800 dark:text-neutral-200" :class="{ 'text-neutral-400 dark:text-neutral-500': !collectionEntry?.finished }">
+                      {{ collectionEntry?.finished || '—' }}
+                    </span>
+                  </span>
+                </div>
               </template>
             </template>
           </div>
