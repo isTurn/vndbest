@@ -2,6 +2,28 @@
 
 本文件记录本 fork（[isTurn/vndbest](https://github.com/isTurn/vndbest)）相对上游的功能演进。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.0.15] - 2026-11-27
+
+首屏 JS 体积减少约 63%，首页数据在冷启动时直接读本地持久缓存，跨站搜索在浏览器打开前就注册监听并在拿到窗口后立即注入关键词；同时修正了缓存过期时间被无意延长、缓存键未区分生产与沙箱、失败请求占住并发位等隐患。
+
+### 变更
+
+- **首屏包体积**：`vite.config.js` 只对 `@ionic/core/components/ion-*.js` 这些由 Ionic 生成的组件模块关闭副作用，未使用的 `ion-datetime`、`ion-input` 等不再进入首屏；首屏 JS 由 1,485.78 kB（gzip 347.57 kB）降到 552.18 kB（gzip 173.36 kB），`src/style.css` 的 Tailwind 改为 `source(none)` 并显式声明扫描范围，CSS 由 121.23 kB 降到 114.71 kB
+- **首页加载**：`src/pages/Home.vue` 的统计、最新发售、即将发售、生日等请求改用 5 分钟持久缓存（`HOME_CACHE_OPTIONS`）；保存的搜索从逐个 `await` 改为最多 2 路并发；今日与明日生日不再互相等待，今日先渲染，明日单独占位；手动刷新走 `forceReload` 真正回源；图片预取条数由 12/8 调整为 10/8
+- **请求缓存**：`src/api/vndb.js` 的缓存键补上 API 端点，生产与沙箱不再共用同一条缓存；并发请求归并为一次网络请求，强制刷新不会复用旧的在途请求，且旧响应迟到时不会覆盖刷新后的新缓存；`getStats()` 与 5 个 `get*List()` 增加 `requestOptions` 参数，缓存策略不再混进查询条件
+- **缓存兜底**：`src/utils/cacheManager.js` 为 IndexedDB 读取加 200ms 竞速回退，数据库被阻塞时直接回源而不是干等；把磁盘记录提升到内存时保留原过期时间（此前会重置为 5 分钟）；事务中止或报错按未命中处理；LRU 更新已有键时不再误逐其他条目
+- **跨站搜索**：新增 `src/utils/searchBrowserSession.js`，在打开浏览器之前注册 `browserPageLoaded`/`urlChangeEvent`/`closeEvent` 三个监听，拿到浏览器 id 后立即注入并按 150ms–20s 的间隔重试（最多 12 次），关闭时清理定时器与监听；`touchgalSearch.js`、`forumSearch.js` 改用它，注入脚本增加来源与 DOM 就绪判断，避免注入到 `about:blank`、其他标签页或未登录页面
+
+### 修复
+
+- **跨站搜索打开慢**：此前要等浏览器页面完全加载（含大量图片）才开始注入，TouchGal 与绯月首次注入分别落在 2.6 秒左右；现在拿到窗口即开始，实机首次注入降到百余毫秒
+- **连续点击重复开窗**：打开过程中再次点击只更新关键词，不会注入到另一个标签页，也不会留下第二个浏览器窗口
+- **关闭后仍在注入**：关闭指定浏览器后清理定时器与监听，不再对已关闭的窗口执行脚本
+
+### 测试
+
+- 新增 `scripts/test-loading-performance.mjs`（`node scripts/test-loading-performance.mjs`），覆盖请求归并、强制刷新竞态、私有数据不缓存、生产/沙箱隔离、列表缓存参数、失败请求释放并发位、IndexedDB 阻塞回退、TTL 不被延长、LRU 不误逐、浏览器提前注入与失败清理共 10 项，全部通过
+
 ## [1.0.14] - 2026-11-18
 
 收藏评分支持自定义小数输入，收藏状态、评分、编辑按钮合并到同一行；角色卡片名字下方显示声优并可跳转声优详情；修复系统三键导航遮挡详情页与底部弹层的问题；作品网格按屏幕宽度自动切换手机 3 列 / 平板 4 列，作品详情的开始与结束日期放到同一行。
