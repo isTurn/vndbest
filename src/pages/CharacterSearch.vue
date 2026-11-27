@@ -5,6 +5,7 @@ import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
+import AppHeader from '@/components/AppHeader.vue'
 import SearchBase from '@/components/SearchBase.vue'
 import BaseSelect from '@/components/BaseSelect.vue'
 import DualRangeSlider from '@/components/DualRangeSlider.vue'
@@ -345,7 +346,7 @@ function handleRemoveTrait(trait) {
 }
 
 function handleTraitDetail(trait) {
-  router.push(`/browse/characters?trait=${trait.id}`)
+  router.push(`/trait/${trait.id}`)
 }
 
 function handleTraitModalConfirm(traits) {
@@ -558,15 +559,18 @@ watch(sentinel, (el) => {
 // 性别展示
 const getSexIcon = (sex) => SEX_ICONS[sex] || null
 
+// 女=粉、男=蓝、双性=红（三者色相差得开，一眼能分辨）
 const getSexClass = (sex) => {
-  if (sex === 'f') return 'text-rose-400 bg-rose-50 border-rose-100 dark:bg-rose-900/30 dark:border-rose-800/50'
+  if (sex === 'f') return 'text-pink-500 bg-pink-50 border-pink-100 dark:bg-pink-900/30 dark:border-pink-800/50'
   if (sex === 'm') return 'text-blue-400 bg-blue-50 border-blue-100 dark:bg-blue-900/30 dark:border-blue-800/50'
+  if (sex === 'b') return 'text-red-500 bg-red-50 border-red-100 dark:bg-red-900/30 dark:border-red-800/50'
   return 'text-neutral-400 bg-neutral-50 border-neutral-100 dark:bg-neutral-800 dark:border-neutral-700'
 }
 </script>
 
 <template>
   <ion-page>
+  <AppHeader mode="back" :title="t('library.characters')" />
   <ion-content>
   <div class="page-container pb-24">
     <SearchBase
@@ -580,6 +584,7 @@ const getSexClass = (sex) => {
       @search="handleSearch"
       @clear="handleClear"
       @refresh="handleRefresh"
+      :show-header="false"
     >
       <template #filters>
         <div class="space-y-2 pb-2">
@@ -891,10 +896,10 @@ const getSexClass = (sex) => {
           v-for="item in results"
           :key="item.id"
           @click="goToDetail(item.id)"
-          class="group relative flex items-start p-3 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-950 shadow-xs active:scale-[0.99] transition-all cursor-pointer hover:border-neutral-200 dark:hover:border-neutral-700 hover:shadow-sm overflow-hidden"
+          class="group relative flex items-stretch gap-3 rounded-xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-950 shadow-xs active:scale-[0.99] transition-all cursor-pointer hover:border-neutral-200 dark:hover:border-neutral-700 hover:shadow-sm overflow-hidden p-2"
         >
-          <!-- Avatar/Image -->
-          <div class="shrink-0 w-16 h-20 rounded-lg bg-neutral-50 dark:bg-neutral-900 overflow-hidden border border-neutral-100 dark:border-neutral-700 mr-3 relative">
+          <!-- Avatar/Image：比卡片小一圈，四周留白，四角保持圆角 -->
+          <div class="relative shrink-0 overflow-hidden rounded-lg w-20 h-28 bg-neutral-50 dark:bg-neutral-900">
             <ion-img
               v-if="item.image?.url"
               :key="`char-img-${item.id}-${imageLoader.getRetryCount(`char-${item.id}`)}`"
@@ -924,7 +929,7 @@ const getSexClass = (sex) => {
             </div>
           </div>
 
-          <div class="flex-1 min-w-0 py-0.5">
+          <div class="flex-1 min-w-0 py-1 pr-1 min-h-28">
             <div class="flex items-center gap-2">
               <h3 class="font-bold text-sm text-neutral-900 dark:text-neutral-100 truncate">
                 {{ item.original || item.name }}

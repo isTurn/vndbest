@@ -130,7 +130,9 @@ export const CROSS_SEARCH_GROUPS = [
     key: 'adult',
     labelKey: 'vn.links.cross_adult',
     sites: [
-      { name: '绯月', url: (k) => `https://${HOST.kf}/index.php?search=${enc(k)}` },
+      // 绯月按 UA 分移动版/桌面版，且移动版没有搜索框、不消费 ?search=，
+      // 所以必须用桌面 UA 打开并注入填词（见 utils/forumSearch.js）
+      { name: '绯月', url: (k) => `https://${HOST.kf}/index.php?search=${enc(k)}`, desktopOnly: true },
       { name: '鲲galgame', url: (k) => `https://${HOST.kungal}/search?keywords=${enc(k)}` },
       { name: 'animeShare', url: (k) => `https://${HOST.animeshare}/search/3528560/?q=${enc(k)}&o=relevance` },
       { name: 'nyaa', url: (k) => `https://${HOST.nyaa}/?f=0&c=0_0&q=${enc(k)}` },
@@ -166,6 +168,8 @@ export function buildCrossSearchLinks(keyword, opts = {}) {
         url: s.url(siteKw),
         native: s.native || null,
         kw: s.kw || '',
+        // 桌面版专属站点：必须用桌面 UA 打开并注入填词
+        desktopOnly: !!s.desktopOnly,
         usedKeyword: siteKw
       }
     })
@@ -275,6 +279,22 @@ export async function openCrossSearchSite(site, keyword) {
       console.error('[crossSearch] native open failed:', e)
     }
   }
+
+  // 桌面版专属站点（绯月）：移动 UA 会拿到没有搜索框的移动皮肤，
+  // 必须用桌面 UA 打开并注入填词。这条路径自带内置 WebView，与浏览器设置无关。
+  if (site.desktopOnly) {
+    try {
+      const { openForumSearch } = await import('./forumSearch')
+      const handled = await openForumSearch(site.url, keyword, { title: site.name })
+      if (handled) return
+    } catch (e) {
+      console.error('[crossSearch] forum open failed:', e)
+    }
+  }
+
   // TouchGal 开关打开时即使回退也要进内置浏览器，否则用户会突然跳到外部浏览器
-  await openExternalUrl(site.url, { mode: touchgalForced ? LINK_BROWSER_INAPP : mode })
+  await openExternalUrl(site.url, {
+    mode: touchgalForced ? LINK_BROWSER_INAPP : mode,
+    desktopUserAgent: !!site.desktopOnly
+  })
 }

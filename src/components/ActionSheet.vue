@@ -252,7 +252,7 @@ onUnmounted(() => {
           </div>
 
           <!-- 底部按钮区 -->
-          <div class="p-3 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 flex items-center gap-2">
+          <div class="sheet-safe-bottom p-3 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 flex items-center gap-2">
             <button
               @click="close(false)"
               class="flex-1 py-2.5 px-4 text-xs font-semibold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition cursor-pointer text-center"

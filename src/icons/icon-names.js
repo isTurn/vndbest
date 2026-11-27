@@ -95,9 +95,12 @@ export const APP_ICON_NAMES = {
     pause: 'lucide:pause',
     ban: 'lucide:ban',
     droplets: 'lucide:droplets',
-    venus: 'lucide:circle',
-    mars: 'lucide:circle-dot',
-    venusMars: 'lucide:badge',
+    // 性别符号用自绘图标（lucide 没有 ♀/♂/⚥，用 circle/circle-dot/badge 顶替时小尺寸分不清）
+    venus: 'vndb:venus',
+    mars: 'vndb:mars',
+    venusMars: 'vndb:venus-mars',
+    // 无性（sex = "n"）也要有图标，否则徽章整块不显示
+    agender: 'vndb:agender',
     database: 'lucide:database',
     hardDrive: 'lucide:hard-drive',
     checkSquare: 'lucide:check-square',
@@ -139,7 +142,8 @@ export const PLACEHOLDER_ICONS = {
 export const SEX_ICONS = {
   f: APP_ICON_NAMES.common.venus,
   m: APP_ICON_NAMES.common.mars,
-  b: APP_ICON_NAMES.common.venusMars
+  b: APP_ICON_NAMES.common.venusMars,
+  n: APP_ICON_NAMES.common.agender
 }
 
 export const SETTINGS_SECTION_ICONS = {

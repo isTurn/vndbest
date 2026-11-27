@@ -24,7 +24,8 @@
     "count_vn": "{count} VNs",
     "count_char": "{count} characters",
     "count_vn_short": "{count} VNs",
-    "count_char_short": "{count} chars"
+    "count_char_short": "{count} chars",
+    "clear": "Clear"
   },
   "settings": {
     "title": "Settings",
@@ -220,10 +221,12 @@
     "browser_desc_custom": "External links are opened by the selected browser app without asking.",
     "browser_ask": "Ask every time",
     "browser_ask_desc": "Show the system “Open with” chooser each time",
-    "inapp_external_button": "Open in external browser",
-    "inapp_external_button_desc": "Shows a button at the right of the in-app browser toolbar; tap it to hand the current page over to the system browser (or your custom browser).",
     "touchgal_inapp": "Open TouchGal in the in-app browser",
-    "touchgal_inapp_desc": "On by default. When enabled, TouchGal always opens in the in-app browser regardless of the setting above, so you can load the page first and then hand it to an external browser from the toolbar."
+    "touchgal_inapp_desc": "On by default. When enabled, TouchGal always opens in the in-app browser regardless of the setting above, so you can load the page first and then hand it to an external browser from the toolbar.",
+    "recent_views": "Recently Viewed",
+    "recent_views_desc": "Show recently opened detail pages on the home screen and keep recording visits. Turn it off to stop recording; existing history is kept.",
+    "latest_chinese_card": "Latest translations card",
+    "latest_chinese_card_desc": "Show the “Latest translations” card on the dashboard. If you deleted it, turn this back on to restore it."
   },
   "nav": {
     "home": "Home",
@@ -247,6 +250,7 @@
     "upcoming_releases": "Upcoming Releases",
     "random_vn": "Random VN",
     "view_all": "View All",
+    "view_more": "View more",
     "no_results": "No search results",
     "saved_searches": "Saved Searches",
     "delete": "Delete",
@@ -259,7 +263,14 @@
     "no_birthday": "No characters have birthdays today",
     "birthday_age": "Age {age}",
     "random_vn_tip": "Feeling lucky? Jump to a random visual novel",
-    "stats_short": "Platform stats"
+    "stats_short": "Platform stats",
+    "recent_views": "Recently Viewed",
+    "recent_cleared": "Recent history cleared",
+    "recent_type_vn": "VN",
+    "recent_type_character": "Character",
+    "recent_type_release": "Release",
+    "recent_type_producer": "Producer",
+    "recent_type_staff": "Staff"
   },
   "library": {
     "title": "Search",
@@ -286,6 +297,37 @@
     "search_history": "Search History",
     "search_history_clear": "Clear All",
     "search_history_remove": "Remove this entry"
+  },
+  "image_search": {
+    "title": "Search by Image",
+    "subtitle": "Upload a screenshot or illustration to identify the work and open its VNDB page",
+    "entry": "Search by image",
+    "pick": "Choose image",
+    "pick_hint": "Screenshots, illustrations and covers (jpg / png / webp)",
+    "change": "Choose another",
+    "clear": "Clear",
+    "recognizing": "Recognizing…",
+    "works_found": "Found {count} work(s)",
+    "characters": "Characters: {names}",
+    "ai_generated": "Possibly AI-generated",
+    "not_confident": "Low confidence",
+    "vndb_matches": "VNDB matches",
+    "search_vndb": "Search VNDB for “{name}”",
+    "no_result": "No work recognized. Try a clearer image.",
+    "credits": "Image recognition by AnimeTrace",
+    "error_too_large": "The image is too large. Try a smaller one.",
+    "error_busy": "Recognition service is busy. Please try again later.",
+    "error_maintenance": "Recognition service is under maintenance. Please try again later.",
+    "error_format": "Unsupported image format. Try jpg / png / webp.",
+    "error_not_image": "This is not an image file.",
+    "error_too_many": "Too many characters in the image. Try another one.",
+    "error_limit": "Usage limit reached. Please try again later.",
+    "error_generic": "Recognition failed. Please try again later.",
+    "error_timeout": "Recognition timed out. Check your network and try again.",
+    "searchbox_characters": "Detected characters",
+    "searchbox_credits": "Recognition powered by SearchBox",
+    "searchbox_error_limit": "SearchBox usage limit reached. Please try again later.",
+    "searchbox_error_generic": "SearchBox recognition failed. Please try again later."
   },
   "producer_type": {
     "co": "Company",
@@ -338,7 +380,9 @@
       "started": "Date Started",
       "finished": "Date Finished",
       "vote": "Rating",
-      "title": "Title"
+      "title": "Title",
+      "votecount": "Vote Count",
+      "released": "Release Date"
     },
     "expand_n": "Expand all {count} items",
     "collapse": "Collapse",
@@ -403,7 +447,8 @@
       "reviews": "Reviews",
       "quotes": "Quotes",
       "links": "Links",
-      "stats": "Stats"
+      "stats": "Stats",
+      "similar": "Similar"
     },
     "links": {
       "resource_sites": "Resource Sites",
@@ -649,7 +694,9 @@
       "user_vote": "Your vote",
       "count": "{count} votes",
       "percent": "{percent}%"
-    }
+    },
+    "similar_hint": "Recommended by shared tags, for reference only",
+    "similar_empty": "No similar titles found"
   },
   "release": {
     "title": "Release Details",
@@ -729,7 +776,10 @@
       "translated": "Translation",
       "collab": "Collab",
       "ser": "Same Series",
-      "set": "Same Staff"
+      "set": "Same Staff",
+      "orig": "Original",
+      "par": "Parent Story",
+      "char": "Shares Characters"
     },
     "staff_role": {
       "scenario": "Scenario",
@@ -913,6 +963,11 @@
       "co": "Company",
       "in": "Individual",
       "ng": "Doujin"
+    },
+    "tag_category": {
+      "cont": "Content",
+      "tech": "Technical",
+      "ero": "Erotic"
     }
   },
   "favorites": {
@@ -984,11 +1039,15 @@
     "view_related_vns": "View related VNs",
     "no_results": "No tags found",
     "translation_match": "Translation match",
-    "translation_badge": "Translated"
+    "translation_badge": "Translated",
+    "detail": "Tag",
+    "related_vns": "Related VNs"
   },
   "trait": {
     "view_related_chars": "View related characters",
-    "no_results": "No traits found"
+    "no_results": "No traits found",
+    "detail": "Trait",
+    "related_chars": "Related Characters"
   },
   "character": {
     "no_results": "No characters found",

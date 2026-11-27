@@ -159,21 +159,21 @@ function goToLogin() {
 
 <template>
   <ion-page>
+  <AppHeader mode="page" icon="lucide:file-text" :title="t('list.title')" :subtitle="t('list.description')">
+    <template #actions>
+      <button
+        v-if="isLoggedIn"
+        @click="fetchList(true)"
+        :disabled="isLoading"
+        class="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 transition hover:bg-neutral-50 dark:hover:bg-neutral-700 active:bg-neutral-100 dark:active:bg-neutral-600 disabled:opacity-50"
+        :title="t('list.refresh')"
+      >
+        <Icon :icon="isLoading ? 'eos-icons:loading' : 'lucide:refresh-cw'" class="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
+      </button>
+    </template>
+  </AppHeader>
   <ion-content>
   <div class="page-container pb-24 space-y-6">
-    <AppHeader mode="page" icon="lucide:file-text" :title="t('list.title')" :subtitle="t('list.description')">
-      <template #actions>
-        <button
-          v-if="isLoggedIn"
-          @click="fetchList(true)"
-          :disabled="isLoading"
-          class="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 transition hover:bg-neutral-50 dark:hover:bg-neutral-700 active:bg-neutral-100 dark:active:bg-neutral-600 disabled:opacity-50"
-          :title="t('list.refresh')"
-        >
-          <Icon :icon="isLoading ? 'eos-icons:loading' : 'lucide:refresh-cw'" class="h-4 w-4 text-neutral-600 dark:text-neutral-400" />
-        </button>
-      </template>
-    </AppHeader>
 
     <!-- 未登录状态提示 -->
     <div v-if="!isLoggedIn" class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-8 text-center shadow-xs space-y-4">

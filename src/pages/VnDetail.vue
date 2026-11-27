@@ -5,7 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { translateError } from '@/utils/errorMessage'
 import { Icon } from '@iconify/vue'
 import AppHeader from '@/components/AppHeader.vue'
-import { getVnDetail, getVnReleases, getVnCharacters, getVnQuotes, getVnListItem, patchVnListItem, deleteVnListItem, getUserListLabels } from '@/api/vndb'
+import { getVnDetail, getVnReleases, getVnCharacters, getVnQuotes, getVnListItem, patchVnListItem, deleteVnListItem, getUserListLabels, getSimilarVns } from '@/api/vndb'
 import VnList from '@/components/VnList.vue'
 import LanguageFlag from '@/components/LanguageFlag.vue'
 import LengthVoteModal from '@/components/LengthVoteModal.vue'
@@ -23,6 +23,7 @@ import { openExternalUrl, getReleaseLinkBrowserMode, getCrossSearchBrowserMode }
 import { useClipboard } from '@/composables/useClipboard'
 import { useToast } from '@/composables/useToast'
 import { useFavorites } from '@/composables/useFavorites'
+import { useRecentViews } from '@/composables/useRecentViews'
 import { useUlistStatus } from '@/composables/useUlistStatus'
 import { IonPage, IonContent, IonImg, IonSpinner, IonToast } from '@ionic/vue'
 import { Capacitor, CapacitorHttp, registerPlugin } from '@capacitor/core'
@@ -53,6 +54,7 @@ const error = ref(null)
 const quoteTranslations = ref({})
 
 const { isFavorite, toggleFavorite } = useFavorites()
+const { record: recordRecent } = useRecentViews()
 
 const isCurrentVnFavorite = computed(() => {
   return isFavorite(vn.value?.id)
@@ -108,6 +110,10 @@ let ignoreNextOverlayPopState = false
 
 // 控制简介展开/收起
 const isDescriptionExpanded = ref(false)
+// 控制简介整块折叠（连翻译卡一起收起）—— 默认折叠
+const descriptionSectionOpen = ref(false)
+// 控制相关作品整块折叠 —— 默认折叠
+const relationsSectionOpen = ref(false)
 
 // 控制笔记展开/收起
 const notesExpanded = ref(false)
@@ -118,8 +124,8 @@ const translationLoading = ref(false)
 const translationError = ref('')
 const translationSourceText = ref('')
 
-// 相关作品：同人作开关（默认隐藏非官方关联）
-const showDoujin = ref(false)
+// 相关作品：同人作开关（默认显示全部关联，包括非官方/同人作）
+const showDoujin = ref(true)
 
 // 过滤后的相关作品（根据同人作开关）
 const filteredRelations = computed(() => {
@@ -453,7 +459,7 @@ let editSuccessTimer = null
 // 弹窗表单数据
 const editForm = ref({
   selectedLabelIds: [], // 状态标签 ID 列表
-  vote: '',            // 评分 1-10，空字符串表示未评分
+  vote: '',            // 评分 1-10（支持小数），空字符串表示未评分
   notes: '',           // 笔记
   started: '',         // 开始日期 YYYY-MM-DD
   finished: ''         // 结束日期 YYYY-MM-DD
@@ -464,7 +470,8 @@ const hoverVote = ref(null)
 
 // 设置评分（点击星星）
 const setVote = (val) => {
-  if (editForm.value.vote === val) {
+  const current = editForm.value.vote === '' ? null : Number(editForm.value.vote)
+  if (current !== null && current === val) {
     // 再次点击同一个星星 = 取消评分
     editForm.value.vote = ''
   } else {
@@ -475,6 +482,29 @@ const setVote = (val) => {
 // 清除评分
 const clearVote = () => {
   editForm.value.vote = ''
+}
+
+// 把表单里的 1-10（可含小数）换算成 API 需要的 10-100 整数
+const voteToApi = (raw) => {
+  if (raw === '' || raw === null || raw === undefined) return null
+  const num = Number(raw)
+  if (!Number.isFinite(num)) return null
+  return Math.min(100, Math.max(10, Math.round(num * 10)))
+}
+
+// 手写评分输入归一：支持小数，限制在 1-10，保留一位小数
+const normalizeVoteInput = () => {
+  const raw = editForm.value.vote
+  if (raw === '' || raw === null || raw === undefined) {
+    editForm.value.vote = ''
+    return
+  }
+  const num = Number(raw)
+  if (!Number.isFinite(num)) {
+    editForm.value.vote = ''
+    return
+  }
+  editForm.value.vote = Math.min(10, Math.max(1, Math.round(num * 10) / 10))
 }
 
 // 切换编辑弹窗内的标签勾选状态
@@ -516,7 +546,7 @@ const openEditModal = () => {
   const rawVote = collectionEntry.value?.vote
   editForm.value = {
     selectedLabelIds: [...currentLabelIds.value],
-    vote: rawVote ? Math.round(rawVote / 10) : '',
+    vote: rawVote ? rawVote / 10 : '',
     notes: collectionEntry.value?.notes || '',
     started: collectionEntry.value?.started || '',
     finished: collectionEntry.value?.finished || ''
@@ -571,8 +601,9 @@ const saveEditForm = async () => {
       if (newSelectedLabelIds.length > 0) {
         patchData.labels = newSelectedLabelIds
       }
-      if (form.vote !== '') {
-        patchData.vote = Math.round(Number(form.vote) * 10)
+      const createdVote = voteToApi(form.vote)
+      if (createdVote !== null) {
+        patchData.vote = createdVote
       }
       if (form.notes) {
         patchData.notes = form.notes
@@ -603,7 +634,7 @@ const saveEditForm = async () => {
 
       // 评分变更（仅在实际变更时发送）
       const oldVote = entry.vote  // 原始值为整数 10-100 或 null
-      const newVote = form.vote !== '' ? Math.round(Number(form.vote) * 10) : null
+      const newVote = voteToApi(form.vote)
       if (oldVote !== newVote) {
         patchData.vote = newVote
       }
@@ -1334,6 +1365,14 @@ const loadVnDetail = async (id) => {
     const data = await getVnDetail(id)
     if (data && data.results && data.results.length > 0) {
       vn.value = data.results[0]
+      // 记录到「最近浏览」（标题/封面用当前语言偏好解析后的结果）
+      recordRecent({
+        id: vn.value.id,
+        type: 'vn',
+        title: getTitle(vn.value),
+        subtitle: getAltTitle(vn.value),
+        image: vn.value.image?.url || vn.value.image?.thumbnail || ''
+      })
       // 默认激活版本发行
       activeTab.value = 'releases'
       spoilerLevel.value = 0
@@ -1531,6 +1570,30 @@ const statsMedian = computed(() => {
   return null
 })
 
+// 评分分布柱状图的逐档配色：1~4 分保持低饱和中性灰（低分不该抢眼），
+// 5~10 分统一走蓝绿色系，色相沿青→蓝绿→翠绿缓慢推进，相邻两档只差一小步，
+// 分数越高颜色略深，整排看过去是一条连贯的冷色渐变带，不用渐变填充。
+//
+// 这里不用 Tailwind 的 bg-emerald/teal/cyan 调色板，因为它们的亮度阶梯是跳跃的
+// （400→500 常常一下暗 20 多级），高分段 8/9/10 拼在一起过渡会显得生硬。
+// 改用 hsl() 自己算一条等亮度差的色带：色相每档 -6°，饱和度拉满保持纯度，
+// 亮度按「感知亮度 L 每档 -8」反解，实测每档 ΔL 都在 -7.3 ~ -8.6 之间，肉眼均匀。
+// 亮色用 S=95%、暗色用 S=90%（暗底上纯度过高会刺眼），色相两端保持同一条曲线。
+// 注意亮色整体停在 37%~57%：更暗在白底上会闷，高分段反而不好读。
+// 旧实现只有三档（>=8 绿、>=5 蓝、其余灰），5/6/7 与 8/9/10 两两糊成一片。
+const STATS_BAR_CLASS = {
+  10: 'bg-[hsl(160_95%_36.6%)] dark:bg-[hsl(160_90%_43.9%)]',
+  9: 'bg-[hsl(166_95%_38.4%)] dark:bg-[hsl(166_90%_45.6%)]',
+  8: 'bg-[hsl(172_95%_40%)] dark:bg-[hsl(172_90%_47.2%)]',
+  7: 'bg-[hsl(178_95%_41.8%)] dark:bg-[hsl(178_90%_49%)]',
+  6: 'bg-[hsl(184_95%_46.2%)] dark:bg-[hsl(184_90%_59.9%)]',
+  5: 'bg-[hsl(190_95%_56.7%)] dark:bg-[hsl(190_90%_71.9%)]'
+}
+
+const statsBarClass = (score) =>
+  STATS_BAR_CLASS[Number(score)] ||
+  (Number(score) >= 4 ? 'bg-neutral-400 dark:bg-neutral-500' : 'bg-neutral-300 dark:bg-neutral-600')
+
 const statsRows = computed(() =>
   (statsData.value?.distribution || []).map((d) => {
     const count = Number(d.count) || 0
@@ -1540,7 +1603,8 @@ const statsRows = computed(() =>
       score: d.score,
       count,
       percent: ((count / total) * 100).toFixed(1),
-      width: Math.max(2, Math.round((count / max) * 100))
+      width: Math.max(2, Math.round((count / max) * 100)),
+      barClass: statsBarClass(d.score)
     }
   })
 )
@@ -1588,9 +1652,37 @@ const loadStats = async (id, force = false) => {
 // 切到「统计」页时才去抓（避免进详情页就开隐藏 WebView）
 watch(activeTab, (tab) => {
   if (tab === 'stats' && vn.value?.id) loadStats(vn.value.id)
+  if (tab === 'similar' && vn.value?.id) loadSimilar()
 })
 
 const reloadStats = () => loadStats(vn.value?.id, true)
+
+// ── 相似作品 ───────────────────────────────────────────────────────────
+// VNDB 无「相似」端点，用共同标签做近似：取当前作品评分最高的 3 个非剧透标签，
+// 取交集（and），排除自身，评分 >= 70，按评分倒序。
+const similarVns = ref([])
+const similarLoading = ref(false)
+const similarError = ref('')
+const similarLoadedFor = ref('')
+
+async function loadSimilar(force = false) {
+  const id = vn.value?.id
+  if (!id) return
+  if (!force && similarLoadedFor.value === id) return
+  similarLoading.value = true
+  similarError.value = ''
+  try {
+    const res = await getSimilarVns(vn.value?.tags || [], id, { results: 12 })
+    similarVns.value = res?.results || []
+    similarLoadedFor.value = id
+  } catch (err) {
+    console.error('获取相似作品失败:', err)
+    similarError.value = translateError(err, t, 'common.error')
+    similarVns.value = []
+  } finally {
+    similarLoading.value = false
+  }
+}
 
 // 复制摘录内容
 const copiedQuoteId = ref(null)
@@ -1772,25 +1864,25 @@ watch(
 
 <template>
   <ion-page>
+  <AppHeader mode="center" :title="t('vn.details')">
+    <template #actions>
+      <button
+        v-if="vn"
+        type="button"
+        @click="handleToggleVnFavorite"
+        class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 active:bg-neutral-100 dark:active:bg-neutral-600 transition active:scale-95 cursor-pointer"
+        :title="isCurrentVnFavorite ? t('favorites.remove') : t('favorites.title')"
+      >
+        <Icon
+          :icon="isCurrentVnFavorite ? 'lucide:heart' : 'lucide:heart'"
+          class="h-4 w-4 transition"
+          :class="isCurrentVnFavorite ? 'fill-red-500 text-red-500' : 'text-neutral-500 dark:text-neutral-400'"
+        />
+      </button>
+    </template>
+  </AppHeader>
   <ion-content ref="ionContentRef">
   <div class="page-container space-y-4">
-    <AppHeader mode="center" :title="t('vn.details')">
-      <template #actions>
-        <button
-          v-if="vn"
-          type="button"
-          @click="handleToggleVnFavorite"
-          class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 active:bg-neutral-100 dark:active:bg-neutral-600 transition active:scale-95 cursor-pointer"
-          :title="isCurrentVnFavorite ? t('favorites.remove') : t('favorites.title')"
-        >
-          <Icon
-            :icon="isCurrentVnFavorite ? 'lucide:heart' : 'lucide:heart'"
-            class="h-4 w-4 transition"
-            :class="isCurrentVnFavorite ? 'fill-red-500 text-red-500' : 'text-neutral-500 dark:text-neutral-400'"
-          />
-        </button>
-      </template>
-    </AppHeader>
 
     <!-- 骨架屏 -->
     <div v-if="loading" class="animate-pulse space-y-4">
@@ -1817,7 +1909,8 @@ watch(
     <!-- 详情内容 (Notion Style Layout) -->
     <div v-else class="space-y-5">
       <!-- 1. 封面图与基本信息 (固定在选项卡上方) -->
-      <div class="flex flex-col items-center sm:flex-row sm:items-start gap-4 p-4 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800">
+      <!-- 不再套一层带边框/底色的卡片：上半区内容直接铺在页面上，避免多出一圈框 -->
+      <div class="flex flex-col items-center sm:flex-row sm:items-start gap-4">
         <div
           class="relative flex-shrink-0 overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-sm"
           :class="[ vn.image?.dims && vn.image.dims[0] > vn.image.dims[1] ? 'w-full max-w-[280px] aspect-[4/3]' : 'w-full max-w-[180px] aspect-[3/4]' ]"
@@ -2049,89 +2142,82 @@ watch(
               <!-- 骨架屏：加载中 -->
               <template v-if="collectionLoading">
                 <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.title') }}</span>
-                <div class="h-5 w-20 rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
-
-                <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.my_vote') }}</span>
-                <div class="h-4 w-16 rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
+                <div class="flex items-center gap-2">
+                  <div class="h-5 w-20 rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
+                  <div class="h-4 w-14 rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
+                  <div class="ml-auto h-5 w-14 rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
+                </div>
 
                 <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.notes') }}</span>
                 <div class="h-10 w-full rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
 
-                <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.started') }}</span>
-                <div class="h-4 w-20 rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
-
-                <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.finished_date') }}</span>
-                <div class="h-4 w-20 rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
-
-                <span></span>
-                <div class="h-5 w-14 rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
+                <div class="col-span-2 flex items-center gap-4">
+                  <div class="h-4 w-28 rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
+                  <div class="h-4 w-28 rounded bg-neutral-100 dark:bg-neutral-700 animate-pulse"></div>
+                </div>
               </template>
 
               <!-- 已加载 -->
               <template v-else>
+                <!-- 收藏状态 + 我的评分 + 编辑按钮：同一行 -->
                 <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.title') }}</span>
-                <div class="flex flex-col gap-1.5">
-                  <div class="flex items-center gap-2">
-                    <button
-                      type="button"
-                      @click="showStatusActionSheet = true"
-                      :disabled="statusLoading"
-                      class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-xs font-medium text-neutral-800 dark:text-neutral-200 hover:border-neutral-300 dark:hover:border-neutral-600 transition cursor-pointer max-w-[220px]"
-                    >
-                      <Icon
-                        :icon="currentSelectedLabels.length === 0 ? 'lucide:bookmark-plus' : (currentStatusLabel?.icon || 'lucide:tag')"
-                        class="h-3.5 w-3.5 shrink-0"
-                        :class="currentSelectedLabels.length === 0 ? 'text-neutral-400 dark:text-neutral-500' : (currentStatusLabel?.color || 'text-amber-500 dark:text-amber-400')"
-                      />
-                      <span class="truncate">{{ currentStatusLabel?.name || t('vn.status.none') }}</span>
-                      <Icon icon="lucide:chevron-down" class="h-3 w-3 text-neutral-400 dark:text-neutral-500 shrink-0 ml-0.5" />
-                    </button>
+                <div class="flex items-center gap-2 min-w-0">
+                  <button
+                    type="button"
+                    @click="showStatusActionSheet = true"
+                    :disabled="statusLoading"
+                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-xs font-medium text-neutral-800 dark:text-neutral-200 hover:border-neutral-300 dark:hover:border-neutral-600 transition cursor-pointer max-w-[180px]"
+                  >
                     <Icon
-                      v-if="statusLoading"
-                      icon="lucide:loader-2"
-                      class="h-4 w-4 animate-spin text-neutral-400 dark:text-neutral-500 flex-shrink-0"
+                      :icon="currentSelectedLabels.length === 0 ? 'lucide:bookmark-plus' : (currentStatusLabel?.icon || 'lucide:tag')"
+                      class="h-3.5 w-3.5 shrink-0"
+                      :class="currentSelectedLabels.length === 0 ? 'text-neutral-400 dark:text-neutral-500' : (currentStatusLabel?.color || 'text-amber-500 dark:text-amber-400')"
                     />
-                  </div>
-                  <!-- 多标签 Chips 展示 -->
-                  <div v-if="currentSelectedLabels.length > 1" class="flex flex-wrap gap-1 mt-0.5">
-                    <span
-                      v-for="lbl in currentSelectedLabels"
-                      :key="lbl.id"
-                      class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-200/60 dark:border-neutral-700/60 font-medium"
-                    >
-                      <Icon :icon="lbl.icon" class="h-2.5 w-2.5" :class="lbl.color" />
-                      {{ lbl.name }}
-                    </span>
-                  </div>
-                </div>
-
-                <!-- 我的评分：未收藏时先提示加入收藏，避免点了没反应 -->
-                <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.my_vote') }}</span>
-                <button
-                  v-if="collectionEntry"
-                  type="button"
-                  @click="openEditModal"
-                  class="inline-flex items-center gap-1.5 w-fit rounded-md px-1.5 py-0.5 -ml-1.5 text-left transition hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
-                  :title="t('vn.status.vote_hint')"
-                >
+                    <span class="truncate">{{ currentStatusLabel?.name || t('vn.status.none') }}</span>
+                    <Icon icon="lucide:chevron-down" class="h-3 w-3 text-neutral-400 dark:text-neutral-500 shrink-0 ml-0.5" />
+                  </button>
                   <Icon
-                    icon="lucide:star"
-                    class="h-3.5 w-3.5 shrink-0"
-                    :class="formattedVote != null ? 'text-amber-500 fill-amber-500' : 'text-neutral-300 dark:text-neutral-600'"
+                    v-if="statusLoading"
+                    icon="lucide:loader-2"
+                    class="h-4 w-4 animate-spin text-neutral-400 dark:text-neutral-500 flex-shrink-0"
                   />
-                  <span class="text-neutral-800 dark:text-neutral-200" :class="{ 'text-neutral-400 dark:text-neutral-500': !formattedVote }">
-                    {{ formattedVote != null ? `${formattedVote.toFixed(1)} / 10` : t('vn.status.add_vote') }}
-                  </span>
-                </button>
-                <button
-                  v-else
-                  type="button"
-                  @click="showStatusActionSheet = true"
-                  class="inline-flex items-center gap-1.5 w-fit rounded-md px-1.5 py-0.5 -ml-1.5 text-left transition hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
-                >
-                  <Icon icon="lucide:star" class="h-3.5 w-3.5 shrink-0 text-neutral-300 dark:text-neutral-600" />
-                  <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.vote_need_collect') }}</span>
-                </button>
+
+                  <!-- 我的评分：未收藏时先提示加入收藏，避免点了没反应 -->
+                  <button
+                    v-if="collectionEntry"
+                    type="button"
+                    @click="openEditModal"
+                    class="inline-flex items-center gap-1 shrink-0 rounded-md px-1.5 py-0.5 transition hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+                    :title="t('vn.status.vote_hint')"
+                  >
+                    <Icon
+                      icon="lucide:star"
+                      class="h-3.5 w-3.5 shrink-0"
+                      :class="formattedVote != null ? 'text-amber-500 fill-amber-500' : 'text-neutral-300 dark:text-neutral-600'"
+                    />
+                    <span class="text-neutral-800 dark:text-neutral-200 whitespace-nowrap" :class="{ 'text-neutral-400 dark:text-neutral-500': !formattedVote }">
+                      {{ formattedVote != null ? `${formattedVote.toFixed(1)}` : t('vn.status.add_vote') }}
+                    </span>
+                  </button>
+                  <button
+                    v-else
+                    type="button"
+                    @click="showStatusActionSheet = true"
+                    class="inline-flex items-center gap-1 shrink-0 rounded-md px-1.5 py-0.5 transition hover:bg-neutral-100 dark:hover:bg-neutral-800 cursor-pointer"
+                  >
+                    <Icon icon="lucide:star" class="h-3.5 w-3.5 shrink-0 text-neutral-300 dark:text-neutral-600" />
+                    <span class="text-neutral-400 dark:text-neutral-500 whitespace-nowrap">{{ t('vn.status.vote_need_collect') }}</span>
+                  </button>
+
+                  <!-- 编辑按钮：该行最右 -->
+                  <button
+                    @click="openEditModal"
+                    class="ml-auto inline-flex items-center gap-1 shrink-0 text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition cursor-pointer"
+                  >
+                    <Icon icon="lucide:pencil" class="h-3.5 w-3.5" />
+                    {{ t('vn.status.edit') }}
+                  </button>
+                </div>
 
                 <!-- 笔记 -->
                 <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.notes') }}</span>
@@ -2155,27 +2241,21 @@ watch(
                 </template>
                 <span v-else class="text-neutral-400 dark:text-neutral-500">—</span>
 
-                <!-- 开始日期 -->
-                <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.started') }}</span>
-                <span class="text-neutral-800 dark:text-neutral-200" :class="{ 'text-neutral-400 dark:text-neutral-500': !collectionEntry?.started }">
-                  {{ collectionEntry?.started || '—' }}
-                </span>
-
-                <!-- 结束日期 -->
-                <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.finished_date') }}</span>
-                <span class="text-neutral-800 dark:text-neutral-200" :class="{ 'text-neutral-400 dark:text-neutral-500': !collectionEntry?.finished }">
-                  {{ collectionEntry?.finished || '—' }}
-                </span>
-
-                <!-- 编辑按钮 -->
-                <span></span>
-                <button
-                  @click="openEditModal"
-                  class="flex items-center gap-1.5 text-xs text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 transition cursor-pointer w-fit"
-                >
-                  <Icon icon="lucide:pencil" class="h-3.5 w-3.5" />
-                  {{ t('vn.status.edit') }}
-                </button>
+                <!-- 开始日期 + 结束日期：同一行显示 -->
+                <div class="col-span-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <span class="inline-flex items-center gap-1.5">
+                    <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.started') }}</span>
+                    <span class="text-neutral-800 dark:text-neutral-200" :class="{ 'text-neutral-400 dark:text-neutral-500': !collectionEntry?.started }">
+                      {{ collectionEntry?.started || '—' }}
+                    </span>
+                  </span>
+                  <span class="inline-flex items-center gap-1.5">
+                    <span class="text-neutral-400 dark:text-neutral-500">{{ t('vn.status.finished_date') }}</span>
+                    <span class="text-neutral-800 dark:text-neutral-200" :class="{ 'text-neutral-400 dark:text-neutral-500': !collectionEntry?.finished }">
+                      {{ collectionEntry?.finished || '—' }}
+                    </span>
+                  </span>
+                </div>
               </template>
             </template>
           </div>
@@ -2185,64 +2265,93 @@ watch(
       <!-- 2. 简介 (固定在选项卡上方) -->
       <div class="space-y-1.5" v-if="vn.description">
         <div class="flex items-center justify-between gap-3">
-          <h3 class="text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">{{ t('vn.description') }}</h3>
+          <button
+            type="button"
+            class="flex min-w-0 items-center gap-1 rounded-md py-0.5 text-left transition-colors hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer"
+            :aria-expanded="descriptionSectionOpen"
+            @click="descriptionSectionOpen = !descriptionSectionOpen"
+          >
+            <Icon
+              :icon="descriptionSectionOpen ? 'lucide:chevron-down' : 'lucide:chevron-right'"
+              class="h-3.5 w-3.5 shrink-0 text-neutral-400 dark:text-neutral-500"
+            />
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">{{ t('vn.description') }}</h3>
+          </button>
           <button
             @click="translateDescription"
             :disabled="translationLoading"
-            class="inline-flex items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2.5 py-1 text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 transition disabled:cursor-not-allowed disabled:opacity-60 hover:border-neutral-300 hover:text-neutral-700 dark:hover:border-neutral-600 dark:hover:text-neutral-200"
+            class="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2.5 py-1 text-[10px] font-semibold text-neutral-500 dark:text-neutral-400 transition disabled:cursor-not-allowed disabled:opacity-60 hover:border-neutral-300 hover:text-neutral-700 dark:hover:border-neutral-600 dark:hover:text-neutral-200"
           >
             <Icon :icon="translationLoading ? 'lucide:loader-circle' : 'lucide:languages'" class="h-3.5 w-3.5" :class="{ 'animate-spin': translationLoading }" />
             {{ translationLoading ? t('vn.translation.loading') : (translatedDescription ? t('vn.translation.retranslate') : t('vn.translation.action')) }}
           </button>
         </div>
-        <div class="relative">
-          <div
-            class="relative border-l-3 border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-800 px-4 py-3 text-xs leading-relaxed text-neutral-600 dark:text-neutral-400 whitespace-pre-wrap bbcode-container selectable-text transition-all duration-300"
-            :class="[isDescriptionExpanded ? 'rounded-lg' : 'max-h-32 overflow-hidden rounded-t-lg rounded-b-none']"
-          >
-            <div v-html="parseBBCode(vn.description)"></div>
-            <!-- 渐变蒙层，移至简介卡片内部以适配圆角裁剪 -->
+
+        <div v-show="descriptionSectionOpen" class="space-y-1.5">
+          <div class="relative">
             <div
-              v-if="!isDescriptionExpanded"
-              class="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-neutral-50 dark:from-neutral-800 to-transparent pointer-events-none"
-            ></div>
-          </div>
-          <button
-            @click="isDescriptionExpanded = !isDescriptionExpanded"
-            class="mt-1 text-[10px] font-bold text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 flex items-center gap-0.5 transition-colors"
-          >
-            <Icon :icon="isDescriptionExpanded ? 'lucide:chevron-up' : 'lucide:chevron-down'" class="h-3 w-3" />
-            {{ isDescriptionExpanded ? t('vn.collapse') : t('vn.expand') }}
-          </button>
-        </div>
-
-        <div v-if="translatedDescription || translationError || translationLoading" class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3 space-y-2">
-          <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-violet-500 dark:text-violet-400">
-            <Icon icon="lucide:languages" class="h-3.5 w-3.5" />
-            <span>{{ t('vn.translation.title') }}</span>
-          </div>
-
-          <div v-if="translationLoading" class="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
-            <Icon icon="lucide:loader-circle" class="h-4 w-4 animate-spin" />
-            <span>{{ t('vn.translation.loading') }}</span>
+              class="relative border-l-3 border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-800 px-4 py-3 text-xs leading-relaxed text-neutral-600 dark:text-neutral-400 whitespace-pre-wrap bbcode-container selectable-text transition-all duration-300"
+              :class="[isDescriptionExpanded ? 'rounded-lg' : 'max-h-32 overflow-hidden rounded-t-lg rounded-b-none']"
+            >
+              <div v-html="parseBBCode(vn.description)"></div>
+              <!-- 渐变蒙层，移至简介卡片内部以适配圆角裁剪 -->
+              <div
+                v-if="!isDescriptionExpanded"
+                class="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-neutral-50 dark:from-neutral-800 to-transparent pointer-events-none"
+              ></div>
+            </div>
+            <button
+              @click="isDescriptionExpanded = !isDescriptionExpanded"
+              class="mt-1 text-[10px] font-bold text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300 flex items-center gap-0.5 transition-colors cursor-pointer"
+            >
+              <Icon :icon="isDescriptionExpanded ? 'lucide:chevron-up' : 'lucide:chevron-down'" class="h-3 w-3" />
+              {{ isDescriptionExpanded ? t('vn.collapse') : t('vn.expand') }}
+            </button>
           </div>
 
-          <div v-else-if="translationError" class="text-xs leading-relaxed text-rose-500 dark:text-rose-400">
-            {{ translationError }}
-          </div>
+          <div v-if="translatedDescription || translationError || translationLoading" class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3 space-y-2">
+            <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-violet-500 dark:text-violet-400">
+              <Icon icon="lucide:languages" class="h-3.5 w-3.5" />
+              <span>{{ t('vn.translation.title') }}</span>
+            </div>
 
-          <p v-else class="text-xs leading-relaxed text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap selectable-text">
-            {{ translatedDescription }}
-          </p>
+            <div v-if="translationLoading" class="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+              <Icon icon="lucide:loader-circle" class="h-4 w-4 animate-spin" />
+              <span>{{ t('vn.translation.loading') }}</span>
+            </div>
+
+            <div v-else-if="translationError" class="text-xs leading-relaxed text-rose-500 dark:text-rose-400">
+              {{ translationError }}
+            </div>
+
+            <p v-else class="text-xs leading-relaxed text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap selectable-text">
+              {{ translatedDescription }}
+            </p>
+          </div>
         </div>
       </div>
 
       <!-- 3. 相关作品 (固定在选项卡上方) -->
       <div class="space-y-1.5" v-if="vn.relations && vn.relations.length > 0">
         <div class="flex items-center justify-between">
-          <h3 class="text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">{{ t('vn.relations') }}</h3>
+          <button
+            type="button"
+            class="flex min-w-0 items-center gap-1 rounded-md py-0.5 text-left transition-colors hover:text-neutral-600 dark:hover:text-neutral-300 cursor-pointer"
+            :aria-expanded="relationsSectionOpen"
+            @click="relationsSectionOpen = !relationsSectionOpen"
+          >
+            <Icon
+              :icon="relationsSectionOpen ? 'lucide:chevron-down' : 'lucide:chevron-right'"
+              class="h-3.5 w-3.5 shrink-0 text-neutral-400 dark:text-neutral-500"
+            />
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">{{ t('vn.relations') }}</h3>
+            <span
+              v-if="filteredRelations.length"
+              class="ml-0.5 shrink-0 rounded-full bg-neutral-100 dark:bg-neutral-800 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-neutral-500 dark:text-neutral-400"
+            >{{ filteredRelations.length }}</span>
+          </button>
           <!-- 同人作开关 -->
-          <label class="flex items-center gap-1.5 cursor-pointer select-none">
+          <label class="flex shrink-0 items-center gap-1.5 cursor-pointer select-none">
             <span class="text-[10px] text-neutral-400 dark:text-neutral-500">{{ t('vn.show_doujin', '同人作') }}</span>
             <button
               @click="showDoujin = !showDoujin"
@@ -2258,19 +2367,21 @@ watch(
             </button>
           </label>
         </div>
-        <VnList
-          :items="filteredRelations"
-          :show-sort="false"
-          :compact="true"
-          :show-footer-status="false"
-          :max-items="8"
-          :empty-title="t('vn.relations_empty_title', '暂无相关作品')"
-          :empty-desc="t('vn.relations_empty_desc', '该作品没有相关联的其他作品')"
-          default-layout="list"
-          title-mode="ja-romaji"
-          show-status
-          storage-key="vndb_vn_relations_layout_v2"
-        />
+        <div v-show="relationsSectionOpen">
+          <VnList
+            :items="filteredRelations"
+            :show-sort="false"
+            :compact="true"
+            :show-footer-status="false"
+            :max-items="8"
+            :empty-title="t('vn.relations_empty_title', '暂无相关作品')"
+            :empty-desc="t('vn.relations_empty_desc', '该作品没有相关联的其他作品')"
+            default-layout="list"
+            title-mode="ja-romaji"
+            show-status
+            storage-key="vndb_vn_relations_layout_v2"
+          />
+        </div>
       </div>
 
       <!-- 4. 跨站搜索已内联到上方信息卡，不再单独占区块 -->
@@ -2287,6 +2398,7 @@ watch(
               { id: 'covers', name: t('vn.tabs.covers') },
               { id: 'screenshots', name: t('vn.tabs.screenshots') },
               { id: 'quotes', name: t('vn.tabs.quotes') },
+              { id: 'similar', name: t('vn.tabs.similar') },
               { id: 'stats', name: t('vn.tabs.stats') },
             ]"
             :key="tab.id"
@@ -2994,7 +3106,47 @@ watch(
           </div>
         </div>
 
-        <!-- 8. 用户统计 Tab：评分分布柱状图 -->
+        <!-- 8. 相似作品 Tab：按共同标签推荐的同类型作品 -->
+        <div v-else-if="activeTab === 'similar'" class="space-y-3">
+          <div v-if="similarLoading" class="flex flex-col items-center justify-center py-10 gap-2">
+            <Icon icon="eos-icons:loading" class="h-6 w-6 text-neutral-300 dark:text-neutral-600" />
+            <span class="text-[10px] text-neutral-400 dark:text-neutral-500 font-bold uppercase tracking-widest">{{ t('common.loading') }}</span>
+          </div>
+
+          <div v-else-if="similarError" class="flex flex-col items-center justify-center gap-2 py-8 text-center">
+            <Icon icon="lucide:alert-triangle" class="h-5 w-5 text-amber-500 dark:text-amber-400" />
+            <p class="text-[11px] text-neutral-500 dark:text-neutral-400">{{ similarError }}</p>
+            <button
+              @click="loadSimilar(true)"
+              class="inline-flex items-center gap-1 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-2.5 py-1 text-[10px] font-semibold text-neutral-600 dark:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-600 transition cursor-pointer"
+            >
+              <Icon icon="lucide:refresh-cw" class="h-3 w-3" />
+              {{ t('common.retry') }}
+            </button>
+          </div>
+
+          <div v-else-if="!similarVns.length" class="text-center py-6 text-xs text-neutral-400 dark:text-neutral-500">
+            {{ t('vn.similar_empty') }}
+          </div>
+
+          <template v-else>
+            <p class="text-[11px] leading-relaxed text-neutral-400 dark:text-neutral-500">
+              {{ t('vn.similar_hint') }}
+            </p>
+            <VnList
+              :items="similarVns"
+              :show-sort="false"
+              :compact="true"
+              :max-items="12"
+              default-layout="list"
+              title-mode="ja-romaji"
+              show-status
+              storage-key="vndb_vn_similar_layout"
+            />
+          </template>
+        </div>
+
+        <!-- 9. 用户统计 Tab：评分分布柱状图 -->
         <div v-else-if="activeTab === 'stats'" class="space-y-3">
           <!-- 加载中 -->
           <div v-if="statsLoading" class="flex flex-col items-center justify-center py-10 gap-2">
@@ -3057,7 +3209,7 @@ watch(
                   <div class="relative h-3.5 min-w-0 flex-1 overflow-hidden rounded-sm bg-neutral-100 dark:bg-neutral-800">
                     <div
                       class="h-full rounded-sm transition-all duration-300"
-                      :class="row.score >= 8 ? 'bg-emerald-400 dark:bg-emerald-500' : row.score >= 5 ? 'bg-sky-400 dark:bg-sky-500' : 'bg-neutral-400 dark:bg-neutral-500'"
+                      :class="row.barClass"
                       :style="{ width: row.width + '%' }"
                     ></div>
                   </div>
@@ -3337,7 +3489,24 @@ watch(
 
               <!-- 评分 -->
               <div class="space-y-2.5">
-                <label class="text-xs font-medium text-neutral-500 dark:text-neutral-400">{{ t('vn.status.my_vote') }}</label>
+                <div class="flex items-center justify-between gap-2">
+                  <label class="text-xs font-medium text-neutral-500 dark:text-neutral-400">{{ t('vn.status.my_vote') }}</label>
+                  <!-- 自定义评分输入（支持小数） -->
+                  <div class="flex items-center gap-1">
+                    <input
+                      v-model="editForm.vote"
+                      type="number"
+                      inputmode="decimal"
+                      min="1"
+                      max="10"
+                      step="0.1"
+                      placeholder="—"
+                      @blur="normalizeVoteInput"
+                      class="w-16 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 px-2 py-1 text-xs text-center outline-none transition focus:border-neutral-400 dark:focus:border-neutral-500 focus:bg-white dark:focus:bg-neutral-700 placeholder-neutral-400 dark:placeholder-neutral-500"
+                    />
+                    <span class="text-[11px] text-neutral-400 dark:text-neutral-500">/ 10</span>
+                  </div>
+                </div>
                 <div class="flex items-center justify-center gap-1">
                   <!-- 取消评分按钮 -->
                   <button
@@ -3365,8 +3534,8 @@ watch(
                     <Icon
                       icon="solar:star-bold"
                       class="h-6 w-6 transition-colors"
-                      :class="(hoverVote !== null ? n <= hoverVote : n <= editForm.vote) ? 'text-amber-400' : 'text-neutral-200 dark:text-neutral-700'"
-                      :style="(hoverVote !== null ? n <= hoverVote : n <= editForm.vote)
+                      :class="(hoverVote !== null ? n <= hoverVote : n <= Number(editForm.vote || 0)) ? 'text-amber-400' : 'text-neutral-200 dark:text-neutral-700'"
+                      :style="(hoverVote !== null ? n <= hoverVote : n <= Number(editForm.vote || 0))
                         ? { fill: '#fbbf24' }
                         : { fill: '#e5e5e5' }"
                     />
@@ -3407,7 +3576,7 @@ watch(
             </div>
 
             <!-- 底部按钮 -->
-            <div class="flex items-center justify-end gap-2 px-4 py-3 border-t border-neutral-100 dark:border-neutral-800">
+            <div class="sheet-safe-bottom flex items-center justify-end gap-2 px-4 py-3 border-t border-neutral-100 dark:border-neutral-800">
               <button
                 @click="closeEditModal"
                 class="px-4 py-2 text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition cursor-pointer"

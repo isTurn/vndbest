@@ -2,6 +2,7 @@
 import { ref, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useRecentViews } from '@/composables/useRecentViews'
 import { Icon } from '@iconify/vue'
 import AppHeader from '@/components/AppHeader.vue'
 import { getStaffDetail, getVnListByStaff } from '@/api/vndb'
@@ -47,6 +48,8 @@ const page = ref(1)
 const resultsPerPage = 20
 
 // 排序状态
+const { record: recordRecent } = useRecentViews()
+
 const sortBy = ref('released')
 const reverse = ref(true)
 
@@ -56,6 +59,13 @@ async function fetchStaffInfo() {
     const res = await getStaffDetail(staffId.value)
     if (res && res.results && res.results.length > 0) {
       staff.value = res.results[0]
+      recordRecent({
+        id: staff.value.id,
+        type: 'staff',
+        title: staff.value.name || '',
+        subtitle: staff.value.original || '',
+        image: ''
+      })
     }
   } catch (err) {
     console.error('获取人物详情失败:', err)
@@ -137,29 +147,29 @@ const sortOptions = [
 
 <template>
   <ion-page>
+  <AppHeader
+    mode="detail"
+    :title="staff?.name || t('library.staff')"
+    :subtitle="String(staffId)"
+  >
+    <template #actions>
+      <button
+        v-if="staff"
+        type="button"
+        @click="handleToggleStaffFavorite"
+        class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-xs hover:bg-neutral-50 dark:hover:bg-neutral-700 active:scale-95 transition cursor-pointer"
+        :title="isCurrentStaffFavorite ? t('favorites.remove') : t('favorites.title')"
+      >
+        <Icon
+          :icon="isCurrentStaffFavorite ? 'lucide:heart' : 'lucide:heart'"
+          class="h-4 w-4 transition"
+          :class="isCurrentStaffFavorite ? 'fill-red-500 text-red-500' : 'text-neutral-500 dark:text-neutral-400'"
+        />
+      </button>
+    </template>
+  </AppHeader>
   <ion-content>
   <div class="page-container space-y-6">
-    <AppHeader
-      mode="detail"
-      :title="staff?.name || t('library.staff')"
-      :subtitle="String(staffId)"
-    >
-      <template #actions>
-        <button
-          v-if="staff"
-          type="button"
-          @click="handleToggleStaffFavorite"
-          class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-xs hover:bg-neutral-50 dark:hover:bg-neutral-700 active:scale-95 transition cursor-pointer"
-          :title="isCurrentStaffFavorite ? t('favorites.remove') : t('favorites.title')"
-        >
-          <Icon
-            :icon="isCurrentStaffFavorite ? 'lucide:heart' : 'lucide:heart'"
-            class="h-4 w-4 transition"
-            :class="isCurrentStaffFavorite ? 'fill-red-500 text-red-500' : 'text-neutral-500 dark:text-neutral-400'"
-          />
-        </button>
-      </template>
-    </AppHeader>
 
     <div v-if="isStaffLoading" class="flex justify-center py-20">
       <Icon icon="eos-icons:loading" class="h-8 w-8 text-neutral-300 dark:text-neutral-600" />

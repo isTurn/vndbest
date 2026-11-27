@@ -1,0 +1,112 @@
+name: Sync Release Notes
+
+# 用途：把 docs/release-notes/<版本>.md 的内容同步到已存在的 GitHub Release 正文。
+#
+# 为什么单独做一个 workflow：
+# release.yml 只管「打 tag 时新建 release + 构建 APK」。但有时候只需要订正**已发布**版本的
+# 说明文字，不希望为了改几个字重新构建一次 APK——重新构建会换掉 Release 上已有的 apk 资产，
+# 用户已经下载的包就不该被悄悄替换。所以这里做成「只改正文、不碰资产」的独立任务。
+#
+# 触发方式：docs/release-notes/*.md 有变更推到 main 时，只同步**这次改动到的**那几个版本，
+# 不会去动其它历史版本的正文（避免把 1.0.7/1.0.8 之类本该保持原样的 release 一起刷）。
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/release-notes/*.md'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '只同步这个 tag（如 v1.0.10），留空则同步全部手写说明'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          # 需要 git diff 找出这次推送改了哪些发布说明
+          fetch-depth: 2
+
+      - name: Sync release bodies
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ONLY_TAG: ${{ github.event.inputs.tag }}
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: |
+          set -u
+          shopt -s nullglob
+
+          # 1) 决定要处理哪些说明文件
+          declare -a FILES=()
+          if [ -n "${ONLY_TAG:-}" ]; then
+            # 手动触发：只处理指定 tag，允许带或不带 v 前缀
+            VERSION="${ONLY_TAG#v}"
+            FILES=("docs/release-notes/${VERSION}.md")
+          elif [ -n "${BEFORE_SHA:-}" ] && [ "${BEFORE_SHA}" != "0000000000000000000000000000000000000000" ]; then
+            # push 触发：只看这次提交改了哪些 md
+            while IFS= read -r CHANGED; do
+              FILES+=("$CHANGED")
+            done < <(git diff --name-only "${BEFORE_SHA}" "${AFTER_SHA}" -- 'docs/release-notes/*.md')
+          else
+            # 例如首次推送/强制推送导致 before 无效：退化成只处理最新一个版本
+            LATEST=$(ls -1 docs/release-notes/*.md 2>/dev/null | sort -V | tail -1)
+            [ -n "${LATEST:-}" ] && FILES=("$LATEST")
+          fi
+
+          if [ "${#FILES[@]}" -eq 0 ]; then
+            echo "没有需要同步的发布说明"
+            exit 0
+          fi
+
+          updated=0
+          skipped=0
+          failed=0
+          for FILE in "${FILES[@]}"; do
+            [ -f "$FILE" ] || { echo "skip $FILE: 文件不存在（可能被删除）"; skipped=$((skipped + 1)); continue; }
+            VERSION=$(basename "$FILE" .md)
+            TAG="v$VERSION"
+            if [ -n "${ONLY_TAG:-}" ] && [ "$TAG" != "$ONLY_TAG" ] && [ "$VERSION" != "$ONLY_TAG" ]; then
+              continue
+            fi
+            if ! gh release view "$TAG" >/dev/null 2>&1; then
+              echo "skip $TAG: release 还没发（或已被删除）"
+              skipped=$((skipped + 1))
+              continue
+            fi
+            # 先比长度，一致就不写，避免产生无意义的 edit
+            BODY_LEN=$(gh release view "$TAG" --json body -q '.body | length' 2>/dev/null || echo -1)
+            FILE_LEN=$(jq -R -s 'length' < "$FILE")
+            DIFF=$((BODY_LEN - FILE_LEN))
+            if [ "$DIFF" -ge -5 ] && [ "$DIFF" -le 5 ]; then
+              echo "ok   $TAG: 正文已一致（$BODY_LEN 字符）"
+              skipped=$((skipped + 1))
+              continue
+            fi
+            echo "sync $TAG: 正文 $BODY_LEN 字符 -> 文件 $FILE_LEN 字符"
+            if gh release edit "$TAG" --notes-file "$FILE"; then
+              NEW_LEN=$(gh release view "$TAG" --json body -q '.body | length')
+              echo "     now $NEW_LEN 字符"
+              if [ "$((NEW_LEN - FILE_LEN))" -ge -5 ] && [ "$((NEW_LEN - FILE_LEN))" -le 5 ]; then
+                updated=$((updated + 1))
+              else
+                echo "::error::$TAG 写入后长度仍不一致"
+                failed=$((failed + 1))
+              fi
+            else
+              echo "::error::$TAG 更新失败"
+              failed=$((failed + 1))
+            fi
+          done
+          echo "updated=$updated skipped=$skipped failed=$failed"
+          if [ "$failed" -gt 0 ]; then
+            exit 1
+          fi

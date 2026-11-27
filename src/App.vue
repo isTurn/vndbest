@@ -69,12 +69,19 @@ function navigate(path) {
       </Transition>
     </Teleport>
 
-    <!-- 移动端优先的 Notion-Style 底部 TabBar；底部必须用 env(safe-area-inset-bottom) 避开手势条/Home Indicator -->
+    <!-- 移动端优先的 Notion-Style 底部 TabBar；底部必须用 env(safe-area-inset-bottom) 避开手势条/Home Indicator
+         滚动时漂移的两个已知诱因都在这里规避：
+         1) 不给这个 fixed 元素本身加 backdrop-filter（模糊底衬拆到内层 absolute 子元素上）；
+         2) 在 .app-tab-bar 里用 translateZ(0) 把它提升为独立合成层，避免跟随内容层重绘而「拖影」。 -->
     <nav
       v-if="showTabBar"
-      class="app-tab-bar fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-200 dark:border-neutral-700 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md"
+      class="app-tab-bar fixed bottom-0 left-0 right-0 z-50"
     >
-      <div class="mx-auto max-w-2xl flex h-14 items-center justify-around px-2">
+      <div
+        class="absolute inset-0 border-t border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900"
+        aria-hidden="true"
+      ></div>
+      <div class="relative mx-auto max-w-2xl flex h-14 items-center justify-around px-2">
         <button
           v-for="tab in tabs"
           :key="tab.path"
@@ -97,9 +104,16 @@ function navigate(path) {
 </template>
 
 <style>
-/* TabBar 底部安全区：避开 iOS Home Indicator / Android 手势导航条 */
+/* TabBar 底部安全区：避开 iOS Home Indicator / Android 手势导航条
+   同时把这条栏提升成独立合成层：否则在 Android WebView 里，
+   fixed 元素会和内容层一起参与滚动重绘，拖动页面时看起来像「跟着走」。
+   注意：底衬用不透明纯色，不要用 backdrop-filter —— 它会把元素拉进滚动内容层，
+   滚动/回弹时会和内容一起重绘，表现为按钮栏被「拉变形」。 */
 .app-tab-bar {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 .app-toast-box {

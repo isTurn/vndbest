@@ -2,12 +2,170 @@
 
 本文件记录本 fork（[isTurn/vndbest](https://github.com/isTurn/vndbest)）相对上游的功能演进。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
-## [1.0.8] - 2026-10-19
+## [1.0.14] - 2026-11-18
 
-搜索页的分类浏览补上了作品入口，作品图标统一成手柄，跨站搜索脚本同步到上游 v2.8.0（新增 Nysoure / GalZY / SakuGAL 三个资源站，站点数 35 → 38；含此前 v2.7.4 的稻荷迁域、SearchGal 自动补搜索、TouchGal 外链改写）。
+收藏评分支持自定义小数输入，收藏状态、评分、编辑按钮合并到同一行；角色卡片名字下方显示声优并可跳转声优详情；修复系统三键导航遮挡详情页与底部弹层的问题；作品网格按屏幕宽度自动切换手机 3 列 / 平板 4 列，作品详情的开始与结束日期放到同一行。
 
 ### 新增
 
+- **自定义评分（支持小数）**：编辑收藏的「我的评分」增加可直接输入数字的输入框（`inputmode="decimal"`、`step="0.1"`），与星星按钮联动；API 只接受 10–100 的整数，保存时按 `Math.round(评分×10)` 写回，回显时除以 10，小数不再被吞掉
+- **角色卡片显示声优**：角色详情名字下方列出该角色的声优（`lucide:mic` 图标），点击跳转到 `/staff/:id` 声优详情；声优数据通过 `POST /vn` 的 `va[]` 反查（`POST /character` 不支持 `va` 字段）
+- **网格模式自适应列数**：作品列表与发售列表的瀑布流网格，手机宽度（<768 CSS px）显示 3 列、平板宽度（≥768 CSS px）显示 4 列，窗口尺寸变化时自动重排
+
+### 变更
+
+- **收藏状态区合并成一行**：「收藏状态」「我的评分」「编辑」放到同一行（状态下拉按钮 + 评分 + 最右侧编辑按钮），去掉原来重复列出已选标签的 chips（主按钮已经带 `(+N)`）
+- **开始/结束日期同行**：作品详情里「开始日期」和「结束日期」合并到一行显示，骨架屏占位同步调整
+
+### 修复
+
+- **虚拟导航键遮挡详情页底部**：开启系统三键导航时，导航栏悬浮在 WebView 之上盖住页面最后约 44 CSS px。给 `ion-content` 的底部内边距加上 `var(--safe-area-inset-bottom)`（Capacitor SystemBars 注入，优先于 `env()`），详情页内容不再被遮挡
+- **底部弹层按钮被导航栏压住**：给 7 处贴底弹层（操作表、时长投票、标签/特征筛选、制作组详情、浏览器选择、收藏编辑）的底部按钮区加 `.sheet-safe-bottom`，宽屏时回落为普通间距，避免居中弹层底部留白
+
+## [1.0.13] - 2026-11-09
+
+作品页上半区不再套一层卡片框，列表封面缩小后四周留白、四角仍是圆角；游戏时长弹窗的「投票类型」和「阅读速度」都改成左边标题、右边分段按钮；跨站搜索点开绯月会以桌面版打开并自动填入关键词。
+
+### 新增
+
+- **绯月走桌面版并自动填词**：新增 `src/utils/forumSearch.js`，用桌面 UA 打开绯月的内置 WebView（`@capgo/inappbrowser` 的 `headers['User-Agent']` 会被原生层 `setUserAgentString`，站内翻页也保持桌面版），页面加载后注入脚本找搜索框、写值、提交。`crossSearch.js` 给绯月条目加了 `desktopOnly` 标记，`openCrossSearchSite` 据此分流
+
+### 变更
+
+- **时长弹窗的投票类型改成分段切换**：`LengthVoteModal.vue` 里原来三个带边框的圆角方块按钮改成与「阅读速度」完全一致的胶囊分段，标题在左、按钮在右
+- **阅读速度按钮不再换行**：标题与分段按钮同一行左对齐、按钮 `shrink-0` 不被压缩，长文案也不折行
+- **作品页上半区去掉卡片框**：`VnDetail.vue` 封面与基本信息那一块不再套 `rounded-xl border bg-neutral-50` 的底色框，内容直接铺在页面上
+- **列表封面缩小留白**：`VnList.vue`、`ReleaseList.vue`、`CharacterSearch.vue` 的列表卡片加 `p-2`，封面从「撑满卡片高度、贴边」改为固定尺寸（`h-28 w-20`，紧凑 `h-20 w-14`，角色 `w-20 h-28`）并保留 `rounded-lg`，四周留出白
+- **瀑布流封面改成固定比例**：两列布局的封面改用 `aspect-[3/4]` 比例盒 + `absolute inset-0` 铺满，高度不再随图片原图比例变化
+- **瀑布流封面下沿不再有分隔线**
+
+### 修复
+
+- **绯月进去是移动版、关键词没填**：该站按 User-Agent 返回两套页面，移动 UA 拿到的是 `ys/mobilestyle201228.css` 的移动皮肤，顶栏没有搜索框也不认 `?search=`。现在固定用桌面 UA 打开并注入填词，未登录时会停在登录页，登录成功后重新加载再自动填
+- **瀑布流卡片看不到作品名**：两列布局里封面原先用 `w-full h-auto max-h-96`，高度由图片自身比例决定，3:4 的竖版封面在手机宽度下能撑到 1000+ 物理像素，把下面的标题、副标题、徽章整块挤出卡片可视范围（被 `overflow-hidden` 裁掉），只剩封面和右下角评分。现在封面放在固定 `aspect-[3/4]` 比例盒里，标题区始终可见
+
+## [1.0.12] - 2026-10-25
+
+仪表盘的「即将发布」多了查看全部入口，「最新汉化」卡片删掉后能在设置里重新打开；相关作品默认显示同人作并在条目上标注，关系标签全部汉化，无性别角色补齐图标。
+
+### 新增
+
+- **即将发布可查看全部**：`src/pages/Home.vue` 的「即将发布」标题右侧加「查看全部」按钮，跳 `/browse/releases?dateFrom=today&sort=released&reverse=0`（与「刚刚发布」的 `dateTo=today` 对称，复用 `ReleaseSearch` 已有的 query 传参）
+- **同人作默认显示**：`src/pages/VnDetail.vue` 的 `showDoujin` 初值由 `false` 改为 `true`，进入作品页即可看到非官方/同人关联，不用每次手动打开
+- **关联作品标注「同人作」**：`src/components/VnList.vue` 在 `relation_official === false` 的条目上加琥珀色「同人作」小徽章，与关系标签并排
+- **无性别角色补齐图标**：`src/icons/gender-icons.js` 新增 agender（圆 + 横线）SVG，注册为 `vndb:agender`；`SEX_ICONS` 补 `n` 映射，未知/无性角色不再空着
+- **「最新汉化」卡片开关**：设置页新增「最新汉化卡片」开关（`vndb_latest_chinese_enabled`，默认开），关掉即移除仪表盘上的默认卡片、打开即恢复。`useSavedSearches` 把默认卡片抽成 `createDefaultSavedSearches()`，新增 `setLatestChineseEnabled()` / `latestChineseEnabled`，并在启动时按开关补回缺失的卡片
+- **「最新汉化」卡片只留「查看更多」**：`src/pages/Home.vue` 里这张内置卡片的标题栏只渲染「查看更多」按钮（跳到该保存搜索的完整列表），不再显示刷新与「更多」菜单（删除/编辑对它没有意义）
+
+### 变更
+
+- **关系标签全部汉化**：`metadata.relation` 补上 VNDB 的 10 个关系枚举（`seq` 续作 / `preq` 前作 / `set` 同设定 / `alt` 另版 / `char` 共享角色 / `side` 外传·番外 / `par` 本篇 / `ser` 系列 / `fan` 同人 / `orig` 原作），`VnList.getBadge` 改为查表 + 缺键时回退英文原码；顺带修掉关系 `side`（外传）与角色 `side`（配角）撞表导致外传显示成配角的问题
+- **发售列表支持 sort / reverse 传参**：`src/pages/ReleaseSearch.vue` 的 `onMounted` 读取 `route.query.sort` 与 `route.query.reverse`（`0` / `false` 视为升序），让外部入口能指定排序，不用进页面再手动点一次
+
+### 修复
+
+- **「即将发布」查看全部的排序反了**：该页默认 `reverse=true`（新发售的排前面），对「即将发售」来说等于把最远的排最前。改为跳转时带上 `sort=released&reverse=0`，现在是从最近要发售的开始排
+- **「最新汉化」卡片删掉后找不回来**：它是内置的默认卡片，不是用户自建的搜索，删掉之后既没有入口恢复、也没法照着条件重建。现在这张卡片不再提供删除，标题栏只保留「查看更多」；想让它从仪表盘消失，去「设置 → 外观与语言」关掉「最新汉化卡片」开关，需要时再打开即可恢复（`remove()` 删到这张卡片时也会同步把开关关掉，避免下次启动又自己冒出来）
+
+## [1.0.11] - 2026-10-23
+
+分类浏览改成两列并去掉多余小字，性别图标换成能一眼分辨的 ♀ / ♂ / ⚥，以图搜作品新增 SearchBox 识别源、可在搜索页直接选图、结果页可全屏看大图。
+
+### 新增
+
+- **SearchBox 识别源**：`src/utils/searchboxSearch.js` 接入 `https://api.searchbox.club/ai/chat`（该站前端在 www.searchbox.club，真实后端是 api. 域）。请求体为 JSON，`images` 里放 base64 dataURL，最长边压到 1024、JPEG 0.85，受接口 `imageBase64Chars` 上限约束。响应是 NDJSON 逐行事件（`status` / `block` / `delta` / `error`），用流式 reader 按行切分解析：`block.kind === 'image'` 归为角色候选，`block.kind === 'media'` 里命中 `vndb.org/vNNN` 的归为作品条目，`delta` 拼成整段说明文字。识别页顶部可切换 `AnimeTrace` / `SearchBox`，选择存 `localStorage['vndb_image_search_source']`
+- **SearchBox 结果分区**：VNDB 匹配（封面 / 标题 / 原名 + 年份评分 / tag 胶囊，点击进 `/vn/:id`）、识别到的角色、AI 说明正文；识别中遮罩显示服务端下发的进度文案
+- **搜索页直接选图**：`Library.vue` 的「以图搜作品」入口改为直接 `click()` 隐藏的 `<input type="file">`，选完把文件塞进 `pendingSharedImage` 再跳 `/browse/image`，省掉先进空页面再点一次的步骤
+- **全屏看大图**：`ImageSearch.vue` 预览图加 `cursor-zoom-in`，点击后用 `Teleport` 打开黑底大图层，点任意处或右上关闭
+
+### 变更
+
+- **分类浏览两列**：`Library.vue` 的 `libraryItems` 网格从 `grid-cols-1 sm:grid-cols-2` 固定为 `grid-cols-2`，卡片由竖排居中改为左图标右标题（`flex items-center gap-3`，图标容器 h-10 w-10、图标 h-5 w-5，标题加 `truncate`）
+- **去掉「查看 X 列表」小字**：分类卡片不再渲染 `t('library.view_list', ...)` 与右侧 chevron；i18n 键保留未删
+- **二级页去掉副标题**：7 个搜索页与 `SearchBase.vue` 不再给 `AppHeader` 传 `:subtitle="t('search.subtitle', ...)"`
+- **角色排到人物前**：顺序改为 作品 / 版本 / 角色 / 人物 / 标签 / 特征
+- **性别图标重绘**：`lucide` 图标集里没有 ♀ / ♂ / ⚥，原来借用 `circle` / `circle-dot` / `badge`，小尺寸几乎不可分辨。新增 `src/icons/gender-icons.js` 自绘 24×24 stroke SVG，注册名 `vndb:venus` / `vndb:mars` / `vndb:venus-mars`，替换 `icon-names.js` 里原有的三个映射
+- **性别配色**：女=粉（`pink-500` 系）、男=蓝（`blue-400` 系）、双性=红（`red-500` 系），三处 `getSexClass`（`CharacterDetail` / `CharacterSearch` / `TraitDetail`）统一
+
+### 修复
+
+- **识别超时显示英文原文**：`imageSearch.js` 的 `AbortController` 超时抛的是 `AbortError`（message 为 `signal is aborted without reason`），原来不满足 `isNetworkLayerError` 判定，既没本地化也没走原生重试。现在 `AbortError` 转为 `image_search.error_timeout`，并把该情况纳入 `CapacitorHttp` 重试条件——实测部分设备 WebView 的 fetch 连不上识别接口，但系统网络本身通，原生请求能拿到结果
+
+## [1.0.10] - 2026-10-22
+
+搜索页多了「以图搜作品」——上传截图或插画，识别出作品名后直接给出 VNDB 作品页；别的应用（相册、QQ、文件管理器……）里看到图，也能直接「分享」过来识别。内置浏览器里的下载改为交给 1DM+ / ADM 接管。
+
+### 新增
+
+- **以图搜作品**：底部「搜索」页的搜索框下方新增入口（`src/pages/Library.vue`），跳转 `/browse/image`（`src/pages/ImageSearch.vue`）。选图后先在本地压缩（最长边 1280、JPEG 0.85，`src/utils/imageSearch.js` 的 `prepareImageFile`），再 POST 到 `https://api.animetrace.com/v1/search` 做识别（`is_multi=1`、`ai_detect=1`）；返回的 `data[].character[].work` 按作品名归并、按命中次数排序，每个作品名再用 `getVnList(['search', '=', work], { results: 3 })` 反查 VNDB 条目，列出封面 / 标题 / 原名 / 年份，点击进 `/vn/:id`；没匹配上的作品给「在 VNDB 搜索」入口跳 `/browse/vn?q=`。
+- **图片上传走 WebView 原生文件选择器**：用 H5 `<input type="file" accept="image/*" class="sr-only">`（不能用 `hidden` / `display:none`，否则 WebView 里 `click()` 不触发），由 Capacitor 的 `BridgeWebChromeClient.onShowFileChooser` 调起系统相册，未引入相机插件。
+- **识别请求双通道**：优先 `fetch` + `FormData`（AnimeTrace 已开 CORS）；只有在原生平台出现网络层错误（`TypeError` / `failed to fetch`）时才回退到 `CapacitorHttp.request` 的 `dataType: 'formData'` + `base64File`。
+- **识别错误码映射**：`17701` 图过大、`17702` 服务器繁忙、`17704` 维护中、`17705` 格式不支持、`17708` / `17731` 人物过多、`17724` 非图片文件、`17728` 使用上限，统一映射到 `image_search.error_*` 三语文案，失败时可重试。
+- **置信度与 AI 提示**：`box.not_confident` 全为真时标「置信度较低」，`ai: true` 时标「可能是 AI 生成图」。
+- **从其他应用分享图片直接以图搜作品**：`AndroidManifest.xml` 新增 `<activity-alias android:name=".ShareImageAlias">`（targetActivity 指向 `MainActivity`，label 单独设成「以图搜作品」，桌面图标仍是 VNDB），注册 `ACTION_SEND` / `ACTION_SEND_MULTIPLE` + `image/*` 两个 filter；系统分享面板里该项显示为「VNDB / 以图搜作品」两行
+- **原生侧接住分享的图片**：新增 `android/app/src/main/java/com/vndb/ShareImagePlugin.java`（`@CapacitorPlugin(name = "ShareImage")`）。`handleOnNewIntent()` 只接 `ACTION_SEND` / `ACTION_SEND_MULTIPLE`，把 Intent 副本存在静态 `pendingIntent` 里并用 `notifyListeners("shareImage", ..., true)` 保留事件到监听器注册；`@PluginMethod getPending()` 消费它，在 `getBridge().execute(...)` 里把 `content://` 流复制到 `getCacheDir()/shared-image/shared-<时间戳>.<扩展名>`，返回 `{ path, name, mimeType }`。分享 URI 带的是临时读权限，必须尽快复制到自己的缓存目录，不能在 JS 侧直接长期持有
+- **取图位置四路兜底**：`extractFirstUri()` 依次尝试「EXTRA_STREAM 是单个 Uri」「EXTRA_STREAM 是 Uri 列表，取第一张」「Intent 的 data」「ClipData 第一项」。实测 ZUI 分享面板对 `ACTION_SEND_MULTIPLE` 也可能只塞单个 Uri，不能按 action 死取
+- **JS 侧接收与跳转**：新增 `src/utils/sharedImage.js`（`pendingSharedImage` ref、`consumeSharedImage()`、`installSharedImageWatcher(router)`）。三条触发路径互为保险——原生 `shareImage` 事件（热启动）、`@capacitor/app` 的 `appStateChange` 回前台再拉一次（事件丢失兜底）、`router.isReady()` 后拉一次（冷启动）。取到后用 `Capacitor.convertFileSrc()` + `fetch` 转成 `File`，`router.push('/browse/image')`
+- **页面自动开跑**：`src/pages/ImageSearch.vue` 加 `watch(pendingSharedImage, takeSharedImage)` + `onMounted(takeSharedImage)`，取走文件后立刻清空 ref，避免返回本页时重跑；直接调用已有的 `runSearch(file)`
+
+### 变更
+
+- **内置浏览器下载交给下载管理器**：`scripts/patch-inappbrowser.cjs` 新增两处补丁（独立标记 `[vndbest patch:download]` / `[vndbest patch:download-route]`）——把 `WebViewDialog.java` 里原本被 `if (_options.getHandleDownloads())` 包住的 `setDownloadListener` 改为无条件注册；新增 `routeDownloadToExternalApp()`，下载时优先用显式组件 `Intent(ACTION_VIEW)` + `setClassName("idm.internet.download.manager.plus", "idm.internet.download.manager.UrlHandlerDownloader")` 交给 1DM+，失败再按 `DOWNLOAD_MANAGER_PACKAGES`（`idm.internet.download.manager.plus` / `idm.internet.download.manager` / `com.dv.adm.pay` / `com.dv.adm`）用 `setPackage` 逐个试，仍不行则按 `handleDownloads` 开关决定是否由插件自己落盘，最后退回系统 `ACTION_VIEW`。这样内置浏览器里的下载行为与「检查更新」的 APK 下载一致。
+- **下载管理器包可见性声明**：`android/app/src/main/AndroidManifest.xml` 的 `<queries>` 补上上述 4 个下载器包名（Android 11+ 不声明就无法定位到对应组件）。
+- **补丁脚本支持逐补丁标记**：`patchOne()` 新增 `marker` 参数（默认仍是全局 `[vndbest patch]`），避免同一个 `WebViewDialog.java` 里的后续补丁被「整文件已含 MARKER」直接跳过。
+- **`MainActivity` 注册新插件**：`registerPlugin(ShareImagePlugin.class)` 加在 `super.onCreate(savedInstanceState)` 之前
+- **分享入口的本地化文案**：`android/app/src/main/res/values/strings.xml` 新增 `share_image_label` =「以图搜作品」
+
+### 修复
+
+- **内置浏览器点下载没反应**：插件默认不装 `DownloadListener`（`handleDownloads` 默认 false），`Content-Disposition: attachment` 与 `<a download>` 链接会被静默丢弃；补丁 3 无条件注册后不再丢失。
+- **分享进来的图片读不到**：`EXTRA_STREAM` 的类型在不同发送方之间并不统一（单个 Uri / Uri 列表），原先按 action 分支取会在对不上的组合上直接返回 null（分享后停在首页、不识别）；改成四路兜底后冷启动与热启动、单图与多图都正常
+
+---
+
+## [1.0.9] - 2026-10-21
+
+顶栏与底部 TabBar 从滚动内容里彻底拆出来，来回拖动时只有中间的内容在动；顺带修掉顶栏压住通知栏的问题，并给评分分布柱状图换成逐档递进的配色。
+
+### 变更
+
+- **顶栏固定在内容之上，不跟随拖动**：顶栏原来渲染在 `ion-content` 里靠 `position: sticky` 贴顶，滚动到底继续下拉时会被弹性位移一起带走。现改为 `ion-page` 的直接子节点（渲染在内容之外），`src/components/AppHeader.vue` 拆成「外层 `.app-header` 承担背景 / 模糊 / 安全区内边距」+「内层 `barClass` 承担居中与排布」两层；拖动、回弹、切页都不再影响它
+- **顶栏不再压住通知栏**：`@capacitor/android` 的 `SystemBars` 注入的是 CSS 变量 `--safe-area-inset-top`，而原代码只写了 `env(safe-area-inset-top)`，在 WebView 里取到 0，于是顶栏顶进状态栏。现统一改成 `var(--safe-area-inset-top, env(safe-area-inset-top, 0px))`（`src/style.css` 的 `.app-header` / `.app-header--lg`、`src/App.vue` 的 `.app-tab-bar`）
+- **中间内容保留弹性回弹**：新增 `src/utils/elasticScroll.js`，只在 `ion-content` 的 `.inner-scroll` 上做阻尼位移 + 回弹，弹性只作用在中间内容层，顶栏与 TabBar 不动；文档层继续 `overscroll-behavior: none`，避免整幅画面被视口 stretch
+- **底部 TabBar 不再被拉伸**：底衬从 `bg-white/80 + backdrop-blur-md` 改成一个不透明纯色子层（`absolute inset-0`），`.app-tab-bar` 加 `translateZ(0)` / `backface-visibility: hidden` 提升为独立合成层，滚动时不再和内容一起重绘
+- **原生层关闭 WebView 过度滚动**：`MainActivity.onCreate` 里 `getBridge().getWebView().setOverScrollMode(OVER_SCROLL_NEVER)`，与 CSS 侧双层收敛
+- **评分分布柱状图逐档配色**：`VnDetail.vue` 的 5～10 分从三档（≥8 绿、≥5 蓝、其余灰）改为每档独立颜色。不用 Tailwind 的 emerald / teal / cyan 调色板（其亮度阶梯跳跃，8/9/10 拼在一起会有台阶），改用 `hsl()` 自算等亮度差色带：色相每档 −6°（190° → 160°），亮色 S=95% / 暗色 S=90%，按「感知亮度每档 −8」反解亮度，实测相邻两档 ΔL 稳定在 −7.3 ~ −8.6；10 分不再用渐变
+- **7 个搜索页自己渲染顶栏**：`VnSearch` / `CharacterSearch` / `ProducerSearch` / `ReleaseSearch` / `StaffSearch` / `TagSearch` / `TraitSearch` 把 `AppHeader` 提到 `ion-content` 之外，并给 `SearchBase` 传 `:show-header="false"`（`SearchBase.vue` 新增 `showHeader` prop）
+- **标签 / 特征详情页同步改造**：`TagDetail.vue` / `TraitDetail.vue` 的 `AppHeader` 一并移到 `ion-content` 之外
+- **内置浏览器「用外部浏览器打开」按钮改为常驻**：删掉 `vndb_inapp_external_button` 设置项与 `get/setInAppExternalButtonEnabled`，`buildExternalButtonOption()` 不再读开关。遇到 Cloudflare 挑战或站点跳转异常时，这是唯一能把当前页交给系统浏览器的出口，不该被关掉
+
+### 新增
+
+- **语言筛选显示国旗**：新增 `src/components/LanguageFlag.vue`；`BaseSelect.vue` 加 `showLangFlag` prop 与 `flagOf()`（`all` 不显示），当前值与选项前渲染国旗；`VnSearch` / `ReleaseSearch` 传 `show-lang-flag`，`Home.vue` 的语言徽章与搜索结果 badges、`Settings.vue` 的语言列表同步显示
+- **作品简介与相关作品整块折叠**：`VnDetail.vue` 新增 `descriptionSectionOpen` / `relationsSectionOpen`（默认 `false`），标题改为带 chevron 的按钮，整块 `v-show` 收起
+- **最近浏览开关**：「外观与语言」新增 `vndb_recent_views_enabled`（默认开）。关掉后不再记录新足迹、首页那一栏隐藏，已有历史保留，重新打开即恢复；`useRecentViews` 增加单例 `enabled` 状态，设置页用可写 computed 直连，首页与五个详情页共享同一个 ref
+
+### 修复
+
+- **顶栏与通知栏重叠**：改用 WebView 实际上报的安全区高度（见上文「变更」）
+- **下拉回弹时底部按钮栏变形**：TabBar 独立成合成层后不再参与内容重绘
+- **标签 / 特征详情页顶栏跟随滚动**：与其余页面统一为固定顶栏结构
+
+---
+
+## [1.0.8] - 2026-10-20
+
+本站内容跳转更闭环：新增「最近浏览」「相似作品」与标签 / 特征详情页。
+
+同一版本还包含 10-19 那批改动：搜索页的分类浏览补上了作品入口，作品图标统一成手柄，跨站搜索脚本同步到上游 v2.8.0（新增 Nysoure / GalZY / SakuGAL 三个资源站，站点数 35 → 38；含此前 v2.7.4 的稻荷迁域、SearchGal 自动补搜索、TouchGal 外链改写）。
+
+### 新增
+
+- **最近浏览**：访问过的作品 / 角色 / 版本 / 会社 / 职员会自动记进首页「最近浏览」横向卡片条（`vndb_recent_views`，最多 30 条，重复访问提到最前，右上角可一键清空）。封面优先用原图，版本没有截图时回退到关联作品封面
+- **相似作品**：作品详情页选项卡新增「相似」页签，按共同标签（spoiler ≤ 1）反查其它作品，再按标签重合度与评分排序，最多 20 部；页面标注「按共同标签推荐，仅供参考」
+- **标签详情页 `/tag/:id`**：标签中文名、分类徽章（内容 / 技术 / 性内容）、作品数、别名、清理过 BBCode 的简介与翻译按钮，下方接作品列表（排序 / 升降序 / 三种布局 / 触底分页）。此前点标签只会跳去「搜索该标签的作品」，没有落点
+- **特征详情页 `/trait/:id`**：特征名、所属分组、角色数、别名、简介与翻译，下方是角色卡片（头像、原名、罗马音、性别图标、触底加载）
+- 新增 `src/composables/useRecentViews.js`、`src/pages/TagDetail.vue`、`src/pages/TraitDetail.vue`，`src/api/vndb.js` 增加 `getSimilarVns`
 - **搜索页「分类浏览」补上作品入口**：分类卡片原本只有版本 / 会社 / 人物 / 角色 / 标签 / 特征六项，作品得靠首页或全局搜索进；现在「作品」是分类里的第一张卡片，指向 `/browse/vn`，和其余分类同尺寸排列
 - **作品页排序可按链接指定**：支持 `?sort=rating&reverse=1` 这样的参数直接落到指定排序（票数 / 相关度 / 评分 / 发售日 / 标题，升降序）；排序本身不做记忆，每次从分类卡进来仍是默认的票数倒序
 - **SearchGal 搜索自动补一次回车**：SearchGal 会读 `?s=` 把关键词填进搜索框，但**不会自己发起搜索**，页面停在空白结果（已核对站点 bundle：`?s=` 只赋值给搜索框的 ref）。新增 `src/utils/siteSearchInject.js`，内置浏览器加载完 `searchgal.top` 后注入「填值 + 回车 + 兜底提交表单」，与用户脚本 v2.7.4 的 searchgal 分支等价
@@ -21,11 +179,17 @@
 
 ### 修复
 
+- **标签详情页排序会 400**：`/vn` 端点不支持 `length` / `lastmod` / `added` 排序，选项只保留 `rating` / `votecount` / `released` / `title`
+- **版本详情的最近浏览卡片是空白灰块**：原来只认 `images[0]`，改用 `getReleaseImageUrl` 回退到关联作品封面
 - **稻荷在应用内打不开**：站点已从 `amoebi.com` 迁到 `inarigal.com`（旧域 301），且新域支持 `?search=` 直接出结果页；应用内 URL 已改到新域并带上关键词
 - **「忧郁的弟弟」条目点了报证书错误**：`ttloli.com` 证书已过期（`CERT_HAS_EXPIRED`），用户脚本 v2.7.4 也已移除该站，应用内一并删除
 - **TouchGal 外链仍可能落到过渡页**：补上 v2.7.4 的 `rewriteRedirectLinks`——把中转链接的 `href` 直接改写成真实地址（MutationObserver 跟踪动态节点），这样即使站点的 JS 抢走点击、或用户长按 / 键盘打开，`href` 本身也已是真实地址，不会再进等待页；轮询从 240 次降到 160 次，`hasWaitMarker` 加 800ms 缓存避免每 50ms 读一遍 body
 - **鲲galgame 关键词参数不对**：从 `?q=` 改回 `?keywords=`，与站点实际参数一致
 - **GalZY 一度被怀疑不消费 `?q=`**：核对站点 bundle 后确认 `/games` 用 `validateSearch` 声明了 `q` 字段并把它传给服务端 loader（无关关键词会返回「没有找到」），所以直接拼 URL 即可
+
+---
+
+---
 
 ---
 

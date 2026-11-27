@@ -6,16 +6,18 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Icon } from '@iconify/vue'
 import AppHeader from '@/components/AppHeader.vue'
+import LanguageFlag from '@/components/LanguageFlag.vue'
 import { PLACEHOLDER_ICONS } from '@/icons/icon-names'
 import { getStats, getReleaseList, getRandomVn, getVnList, getCharacterList, getProducerList, getStaffList } from '@/api/vndb'
 import { usePrivacy, getImageNsfwLevel } from '@/composables/usePrivacy'
-import { useSavedSearches, SEARCH_TYPE_MAP } from '@/composables/useSavedSearches'
+import { useSavedSearches, SEARCH_TYPE_MAP, DEFAULT_LATEST_CHINESE_ID } from '@/composables/useSavedSearches'
 import { IonPage, IonContent, IonImg, IonSpinner } from '@ionic/vue'
 import { useImageLoader } from '@/composables/useImageLoader'
 import { prefetchFromItems } from '@/utils/imagePrefetch'
 import { getReleaseImage, getReleaseImageUrl } from '@/utils/releaseImage'
 import { useToast } from '@/composables/useToast'
 import { useAppUpdate } from '@/composables/useAppUpdate'
+import { useRecentViews } from '@/composables/useRecentViews'
 import UpdateDialog from '@/components/UpdateDialog.vue'
 
 const router = useRouter()
@@ -23,6 +25,7 @@ const { t } = useI18n()
 const { showToast } = useToast()
 const { getCardAction } = usePrivacy()
 const { list: savedSearches, remove: removeSavedSearch } = useSavedSearches()
+const { list: recentViews, isEmpty: recentEmpty, clear: clearRecentViews, toPath: recentViewPath } = useRecentViews()
 const imageLoader = useImageLoader()
 const {
   updateState,
@@ -240,7 +243,7 @@ function getResultDisplay(search, item) {
       image: null,
       title: item.name,
       subtitle: item.type || '',
-      badges: (item.languages || []).slice(0, 2),
+      badges: (item.languages || []).slice(0, 2).map(l => typeof l === 'string' ? l : l.lang),
       blur: false,
       placeholderIcon: PLACEHOLDER_ICONS.producers
     }
@@ -375,6 +378,24 @@ function handleReleaseClick(release) {
 
 function handleCharacterClick(character) {
   router.push(`/character/${character.id}`)
+}
+
+// 「最近浏览」卡片类型图标（无封面时用作占位）
+const RECENT_TYPE_ICONS = {
+  vn: 'lucide:book-open',
+  character: 'lucide:user-round',
+  release: 'lucide:package',
+  producer: 'lucide:building-2',
+  staff: 'lucide:users-round'
+}
+
+function openRecentView(item) {
+  router.push(recentViewPath(item))
+}
+
+function clearRecentViewsConfirm() {
+  clearRecentViews()
+  showToast(t('home.recent_cleared'), 'info')
 }
 
 function navigateToBirthdaySearch(month, day) {
@@ -540,9 +561,9 @@ function getFilterSummary(item) {
 
 <template>
   <ion-page>
+  <AppHeader mode="page" icon="lucide:home" :title="t('home.title')" :subtitle="t('home.subtitle')" />
   <ion-content>
   <div class="page-container pb-24 space-y-6">
-    <AppHeader mode="page" icon="lucide:home" :title="t('home.title')" :subtitle="t('home.subtitle')" />
 
     <div class="flex items-stretch gap-2">
       <div class="h-12 min-w-0 flex-1 overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-1.5 shadow-xs">
@@ -585,6 +606,58 @@ function getFilterSummary(item) {
       >
         <Icon :icon="loadingSections.random ? 'eos-icons:loading' : 'lucide:dices'" class="h-5 w-5" />
       </button>
+    </div>
+
+    <!-- 最近浏览：横向卡片条，点卡片回到对应详情页 -->
+    <div v-if="!recentEmpty" class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 shadow-xs">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
+          <Icon icon="lucide:history" class="h-4 w-4 text-sky-500" />
+          {{ t('home.recent_views') }}
+          <span class="text-[10px] font-normal text-neutral-400 dark:text-neutral-500 tabular-nums">{{ recentViews.length }}</span>
+        </h2>
+        <button
+          @click="clearRecentViewsConfirm"
+          class="flex items-center gap-1 text-[10px] text-neutral-400 hover:text-red-500 dark:text-neutral-500 dark:hover:text-red-400 transition"
+        >
+          <Icon icon="lucide:trash-2" class="h-3 w-3" />
+          {{ t('common.clear') }}
+        </button>
+      </div>
+
+      <div class="flex gap-3 overflow-x-auto pb-1 -mb-1">
+        <button
+          v-for="item in recentViews"
+          :key="`${item.type}-${item.id}`"
+          @click="openRecentView(item)"
+          class="w-[84px] shrink-0 text-left group"
+        >
+          <div class="relative aspect-[3/4] w-full overflow-hidden rounded-lg border border-neutral-200/60 dark:border-neutral-700/60 bg-neutral-100 dark:bg-neutral-800">
+            <ion-img
+              v-if="item.image"
+              :key="`rv-${item.type}-${item.id}`"
+              :src="imageLoader.resolveSrc(`rv-${item.type}-${item.id}`, item.image)"
+              :alt="item.title || 'cover'"
+              class="h-full w-full object-cover"
+              @ionImgWillLoad="imageLoader.onWillLoad(`rv-${item.type}-${item.id}`)"
+              @ionImgDidLoad="imageLoader.onLoad(`rv-${item.type}-${item.id}`)"
+              @ionError="imageLoader.onError(`rv-${item.type}-${item.id}`)"
+            />
+            <div v-else class="absolute inset-0 flex items-center justify-center">
+              <Icon :icon="RECENT_TYPE_ICONS[item.type] || 'lucide:file-text'" class="h-6 w-6 text-neutral-300 dark:text-neutral-600" />
+            </div>
+            <span
+              v-if="item.type !== 'vn'"
+              class="absolute left-1 top-1 rounded bg-black/55 px-1 py-0.5 text-[8px] leading-none text-white backdrop-blur-sm"
+            >
+              {{ t(`home.recent_type_${item.type}`) }}
+            </span>
+          </div>
+          <div class="mt-1 line-clamp-2 text-[11px] leading-tight font-medium text-neutral-700 dark:text-neutral-300 group-hover:text-neutral-950 dark:group-hover:text-neutral-100">
+            {{ item.title || item.id }}
+          </div>
+        </button>
+      </div>
     </div>
 
     <!-- 角色生日板块 -->
@@ -790,7 +863,8 @@ function getFilterSummary(item) {
               <div class="flex items-center gap-2">
                 <div class="text-[10px] text-neutral-400 dark:text-neutral-500">{{ item.released }}</div>
                 <div class="flex flex-wrap gap-1">
-                  <span v-for="lang in item.languages" :key="lang.lang" class="text-[8px] px-1 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
+                  <span v-for="lang in item.languages" :key="lang.lang" class="inline-flex items-center gap-1 text-[8px] px-1 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
+                    <LanguageFlag :lang="lang.lang" class="h-2 w-2" />
                     {{ t(`settings.lang_names.${lang.lang}`, lang.lang) }}
                   </span>
                 </div>
@@ -807,6 +881,9 @@ function getFilterSummary(item) {
             <Icon icon="lucide:calendar-days" class="h-4 w-4 text-blue-500" />
             {{ t('home.upcoming_releases') }}
           </h2>
+          <button @click="router.push('/browse/releases?dateFrom=today&sort=released&reverse=0')" class="text-[10px] text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition">
+            {{ t('home.view_all') }}
+          </button>
         </div>
         
         <div v-if="loadingSections.releases" class="space-y-2">
@@ -853,7 +930,8 @@ function getFilterSummary(item) {
               <div class="flex items-center gap-2">
                 <div class="text-[10px] text-neutral-400 dark:text-neutral-500">{{ item.released }}</div>
                 <div class="flex flex-wrap gap-1">
-                  <span v-for="lang in item.languages" :key="lang.lang" class="text-[8px] px-1 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
+                  <span v-for="lang in item.languages" :key="lang.lang" class="inline-flex items-center gap-1 text-[8px] px-1 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
+                    <LanguageFlag :lang="lang.lang" class="h-2 w-2" />
                     {{ t(`settings.lang_names.${lang.lang}`, lang.lang) }}
                   </span>
                 </div>
@@ -877,19 +955,30 @@ function getFilterSummary(item) {
             </span>
           </h2>
           <div class="flex items-center gap-1">
+            <!-- 内置的「最新汉化」卡片只保留「查看更多」：刷新/更多菜单（删除）对它没意义 -->
             <button
-              @click.stop="refreshSingleSearch(search)"
-              class="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-              :class="{ 'animate-spin': savedSearchLoading[search.id] }"
+              v-if="search.id === DEFAULT_LATEST_CHINESE_ID"
+              @click.stop="navigateToSavedSearch(search)"
+              class="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
             >
-              <Icon icon="lucide:refresh-cw" class="h-3.5 w-3.5" />
+              {{ t('home.view_more') }}
+              <Icon icon="lucide:chevron-right" class="h-3 w-3" />
             </button>
-            <button
-              @click.stop="openMoreActions(search)"
-              class="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
-            >
-              <Icon icon="lucide:ellipsis" class="h-3.5 w-3.5" />
-            </button>
+            <template v-else>
+              <button
+                @click.stop="refreshSingleSearch(search)"
+                class="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+                :class="{ 'animate-spin': savedSearchLoading[search.id] }"
+              >
+                <Icon icon="lucide:refresh-cw" class="h-3.5 w-3.5" />
+              </button>
+              <button
+                @click.stop="openMoreActions(search)"
+                class="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition"
+              >
+                <Icon icon="lucide:ellipsis" class="h-3.5 w-3.5" />
+              </button>
+            </template>
           </div>
         </div>
 
@@ -959,8 +1048,9 @@ function getFilterSummary(item) {
                   <span
                     v-for="badge in getResultDisplay(search, item).badges"
                     :key="badge"
-                    class="text-[8px] px-1 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 whitespace-nowrap"
+                    class="inline-flex items-center gap-1 text-[8px] px-1 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 whitespace-nowrap"
                   >
+                    <LanguageFlag :lang="badge" class="h-2 w-2" />
                     {{ t(`settings.lang_names.${badge}`, badge) }}
                   </span>
                 </div>
@@ -984,7 +1074,7 @@ function getFilterSummary(item) {
     <Transition name="slide-up">
       <div
         v-if="showBottomSheet"
-        class="fixed bottom-0 inset-x-0 z-50 rounded-t-2xl bg-white dark:bg-neutral-900 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-xl"
+        class="fixed bottom-0 inset-x-0 z-50 rounded-t-2xl bg-white dark:bg-neutral-900 p-4 pb-[max(1rem,var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))] shadow-xl"
       >
         <div class="mx-auto mb-4 h-1 w-10 rounded-full bg-neutral-300 dark:bg-neutral-600" aria-hidden="true"></div>
         <div class="grid gap-2">

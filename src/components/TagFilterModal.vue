@@ -319,7 +319,7 @@ async function fetchPopularTags() {
           </div>
 
           <!-- 底部确认栏 -->
-          <div class="flex items-center justify-between px-4 py-3 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50/80 dark:bg-neutral-800/80">
+          <div class="sheet-safe-bottom flex items-center justify-between px-4 py-3 border-t border-neutral-100 dark:border-neutral-800 bg-neutral-50/80 dark:bg-neutral-800/80">
             <span class="text-xs text-neutral-500 dark:text-neutral-400">
               {{ t('filter.selected') }} <span class="font-bold text-neutral-900 dark:text-neutral-100">{{ localSelected.length }}</span> {{ t('filter.tags_unit') }}
             </span>

@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useRecentViews } from '@/composables/useRecentViews'
 import { translateError } from '@/utils/errorMessage'
 import { Icon } from '@iconify/vue'
 import AppHeader from '@/components/AppHeader.vue'
@@ -42,6 +43,7 @@ const releaseId = ref(route.params.id)
 const release = ref(null)
 const loading = ref(true)
 const error = ref(null)
+const { record: recordRecent } = useRecentViews()
 
 const fetchReleaseDetail = async () => {
   loading.value = true
@@ -50,6 +52,13 @@ const fetchReleaseDetail = async () => {
     const data = await getReleaseDetail(releaseId.value)
     if (data && data.results && data.results.length > 0) {
       release.value = data.results[0]
+      recordRecent({
+        id: release.value.id,
+        type: 'release',
+        title: release.value.alttitle || release.value.title || '',
+        subtitle: release.value.title || '',
+        image: getReleaseImageUrl(release.value) || ''
+      })
     } else {
       error.value = t('vn.not_found')
     }
@@ -215,25 +224,25 @@ watch(
 
 <template>
   <ion-page>
+  <AppHeader mode="center" :title="t('release.title')" :on-back="goBack">
+    <template #actions>
+      <button
+        v-if="release"
+        type="button"
+        @click="handleToggleReleaseFavorite"
+        class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 active:bg-neutral-100 dark:active:bg-neutral-600 transition active:scale-95 cursor-pointer"
+        :title="isCurrentReleaseFavorite ? t('favorites.remove') : t('favorites.title')"
+      >
+        <Icon
+          :icon="isCurrentReleaseFavorite ? 'lucide:heart' : 'lucide:heart'"
+          class="h-4 w-4 transition"
+          :class="isCurrentReleaseFavorite ? 'fill-red-500 text-red-500' : 'text-neutral-500 dark:text-neutral-400'"
+        />
+      </button>
+    </template>
+  </AppHeader>
   <ion-content>
   <div class="page-container space-y-4">
-    <AppHeader mode="center" :title="t('release.title')" :on-back="goBack">
-      <template #actions>
-        <button
-          v-if="release"
-          type="button"
-          @click="handleToggleReleaseFavorite"
-          class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 active:bg-neutral-100 dark:active:bg-neutral-600 transition active:scale-95 cursor-pointer"
-          :title="isCurrentReleaseFavorite ? t('favorites.remove') : t('favorites.title')"
-        >
-          <Icon
-            :icon="isCurrentReleaseFavorite ? 'lucide:heart' : 'lucide:heart'"
-            class="h-4 w-4 transition"
-            :class="isCurrentReleaseFavorite ? 'fill-red-500 text-red-500' : 'text-neutral-500 dark:text-neutral-400'"
-          />
-        </button>
-      </template>
-    </AppHeader>
 
     <!-- 骨架屏 (参考 VnDetail) -->
     <div v-if="loading" class="animate-pulse space-y-4">

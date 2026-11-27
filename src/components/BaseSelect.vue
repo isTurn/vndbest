@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { Icon } from '@iconify/vue'
+import LanguageFlag from '@/components/LanguageFlag.vue'
 
 const props = defineProps({
   modelValue: {
@@ -15,6 +16,11 @@ const props = defineProps({
   labelRenderer: {
     type: Function,
     default: (label) => label
+  },
+  // 语言筛选类下拉：在选项与当前值前显示国旗（opt.value 即 VNDB 语言代码，'all' 不显示）
+  showLangFlag: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -36,6 +42,13 @@ const currentOption = computed(() => {
 const currentLabel = computed(() => {
   return currentOption.value ? props.labelRenderer(currentOption.value.label) : ''
 })
+
+// 国旗只在语言筛选里出现；'all'（全部）没有对应国家
+function flagOf(option) {
+  if (!props.showLangFlag || !option) return ''
+  const value = String(option.value)
+  return value === 'all' ? '' : value
+}
 
 function closeMenu() {
   isOpen.value = false
@@ -183,6 +196,7 @@ onUnmounted(() => {
       class="flex w-full items-center justify-between gap-1.5 px-2 py-1 rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-700 transition text-xs font-medium text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200 cursor-pointer"
     >
       <slot name="prefix"></slot>
+      <LanguageFlag v-if="flagOf(currentOption)" :lang="flagOf(currentOption)" class="h-3 w-3" />
       <span>{{ currentLabel }}</span>
       <Icon 
         icon="lucide:chevron-down" 
@@ -205,7 +219,10 @@ onUnmounted(() => {
           class="flex w-full items-center justify-between px-2.5 py-1.5 text-left text-xs font-medium rounded-md transition cursor-pointer"
           :class="modelValue === opt.value ? 'bg-neutral-100 dark:bg-neutral-700 text-neutral-900 dark:text-neutral-100' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-700 hover:text-neutral-900 dark:hover:text-neutral-100'"
         >
-          <span>{{ labelRenderer(opt.label) }}</span>
+          <span class="flex items-center gap-1.5 min-w-0">
+            <LanguageFlag v-if="flagOf(opt)" :lang="flagOf(opt)" class="h-3 w-3" />
+            <span class="truncate">{{ labelRenderer(opt.label) }}</span>
+          </span>
           <Icon v-if="modelValue === opt.value" icon="lucide:check" class="h-3.5 w-3.5 text-neutral-700 dark:text-neutral-300" />
         </button>
       </div>
