@@ -11,6 +11,17 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
+  build: {
+    rolldownOptions: {
+      treeshake: {
+        // Ionic registers elements through the used Vue wrappers. Its generated
+        // component modules only prepare exported classes; unused ones can go.
+        moduleSideEffects: [
+          { test: /[\\/]@ionic[\\/]core[\\/]components[\\/]ion-[^\\/]+\.js$/, sideEffects: false },
+        ],
+      },
+    },
+  },
   server: {
     proxy: {
       // 代理 VNDB API 请求，解决 CORS 问题（PATCH/DELETE 方法）

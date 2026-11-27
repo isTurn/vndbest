@@ -18,6 +18,7 @@
 import { Capacitor } from '@capacitor/core'
 import { InAppBrowser, ToolBarType } from '@capgo/inappbrowser'
 import { DESKTOP_USER_AGENT } from './linkOpener'
+import { openSearchBrowserSession } from './searchBrowserSession'
 
 /** 同一时间只保留一个论坛 WebView，避免连续点击叠出多个 */
 let active = null
@@ -29,8 +30,9 @@ let active = null
  * 绯月是 PHPWind 系（login.php 里的 pwuser/pwpwd、thread.php?fid=、read.php?tid=），
  * 搜索框通常是 `input[name=srchtxt]` 或 `input[name=keyword]`。
  */
-function buildFillCode(keyword) {
+function buildFillCode(keyword, origin) {
   return `(function () {
+  if (location.origin !== ${JSON.stringify(origin)}) return;
   var KEYWORD = ${JSON.stringify(String(keyword))};
   /* 用 sessionStorage 记「这个词已经填过」：window 上的标记每次跳页都会丢，
      搜索提交后跳到结果页会再次注入、再次提交，变成反复搜索的死循环。 */
@@ -169,13 +171,20 @@ export async function openForumSearch(url, keyword, opts = {}) {
   const kw = String(keyword || '').trim()
   if (!href || !kw) return false
   if (!Capacitor.isNativePlatform()) return false
+  let origin
+  try {
+    const target = new URL(href)
+    if (!['http:', 'https:'].includes(target.protocol)) return false
+    origin = target.origin
+  } catch (e) { return false }
 
   const { buildExternalButtonOption, noteBrowserUrl } = await import('./inAppBrowserTools')
 
   // 已经开着同一个论坛：复用，只换关键词重新注入
-  if (active) {
+  if (active && active.origin === origin) {
     active.keyword = kw
     const targetId = active.webviewId
+    if (!targetId) return true
     try {
       // 先清掉「已填过」标记，否则同一 WebView 里换词不会重新注入；
       // 若关键词没变也清掉，这样用户重复点同一站点能重来一次
@@ -188,7 +197,7 @@ export async function openForumSearch(url, keyword, opts = {}) {
     }
     try {
       await InAppBrowser.executeScript({
-        code: buildFillCode(kw),
+        code: buildFillCode(kw, origin),
         ...(targetId ? { id: targetId } : {})
       })
     } catch (e) {
@@ -197,70 +206,27 @@ export async function openForumSearch(url, keyword, opts = {}) {
     return true
   }
 
-  let webviewId = null
-  let injectCount = 0
-  const MAX_INJECT = 8
-  let loadedHandle = null
-  let closeHandle = null
-  let disposed = false
-
-  const state = { keyword: kw, webviewId: null }
+  const state = { keyword: kw, webviewId: null, origin }
   active = state
-
-  const cleanup = async () => {
-    if (disposed) return
-    disposed = true
-    if (active === state) active = null
-    try { await loadedHandle?.remove() } catch (e) { /* 忽略 */ }
-    try { await closeHandle?.remove() } catch (e) { /* 忽略 */ }
-  }
-
   try {
-    const res = await InAppBrowser.openWebView({
+    const session = await openSearchBrowserSession(InAppBrowser, {
       url: href,
       title: opts.title || '',
       toolbarType: ToolBarType.NAVIGATION,
       activeNativeNavigationForWebview: true,
-      isPresentAfterPageLoad: false,
       backgroundColor: 'white',
-      // 桌面 UA：原生层看到 user-agent 头会直接 setUserAgentString，
-      // 之后所有站内跳转都保持桌面版，不会翻一页又变回移动皮肤
       headers: { 'User-Agent': DESKTOP_USER_AGENT },
       ...buildExternalButtonOption()
+    }, {
+      getCode: () => buildFillCode(state.keyword, origin),
+      onClose: () => { if (active === state) active = null }
     })
-    webviewId = res?.id ?? null
-    state.webviewId = webviewId
-    noteBrowserUrl(webviewId, href)
+    state.webviewId = session.id
+    noteBrowserUrl(session.id, href)
+    return true
   } catch (e) {
     console.error('[forumSearch] openWebView failed:', e)
     if (active === state) active = null
     return false
   }
-
-  const inject = async () => {
-    if (disposed || injectCount >= MAX_INJECT) return
-    injectCount++
-    try {
-      await InAppBrowser.executeScript({
-        code: buildFillCode(state.keyword),
-        ...(webviewId ? { id: webviewId } : {})
-      })
-    } catch (e) {
-      console.error('[forumSearch] executeScript failed:', e)
-    }
-  }
-
-  loadedHandle = await InAppBrowser.addListener('browserPageLoaded', (event) => {
-    if (webviewId && event?.id && event.id !== webviewId) return
-    inject()
-  })
-  closeHandle = await InAppBrowser.addListener('closeEvent', (event) => {
-    if (webviewId && event?.id && event.id !== webviewId) return
-    cleanup()
-  })
-
-  // browserPageLoaded 偶发不派发（站内无刷新跳转），按梯度补注入兜底
-  ;[2500, 6000, 12000, 20000].forEach((ms) => setTimeout(inject, ms))
-
-  return true
 }

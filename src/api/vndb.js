@@ -132,8 +132,11 @@ function generateCacheKey(path, method, body) {
   } else if (body && typeof body === 'object') {
     bodyStr = JSON.stringify(body)
   }
-  return `${method}:${path}:${bodyStr}`
+  return `${getEndpoint()}:${method}:${path}:${bodyStr}`
 }
+
+// A refresh owns the next cache write; an older response must not replace it.
+const cacheWriteOwners = new Map()
 
 /**
  * 通用请求发送函数
@@ -158,24 +161,28 @@ export async function request(path, options = {}) {
 
   const cacheKey = cachePolicy ? generateCacheKey(path, method, requestBody) : null
 
-  // 1. 如果没有强制刷新且启用了缓存策略，尝试读取缓存
-  if (cachePolicy && !cachePolicy.forceReload && cacheKey) {
-    try {
-      const cached = await cacheManager.get(cacheKey, { persistent: cachePolicy.persistent })
-      if (cached !== null && cached !== undefined) {
-        return cached
-      }
-    } catch (e) {
-      console.warn('[VNDB API Cache] Read error:', e)
-    }
+  const refreshKey = cacheKey ? `${cacheKey}:refresh` : null
+  const inFlightKey = cacheKey ? (cachePolicy.forceReload ? refreshKey : `${cacheKey}:read`) : null
+  if (cacheKey && cacheManager.inFlightRequests.has(refreshKey)) {
+    return cacheManager.inFlightRequests.get(refreshKey)
   }
-
-  // 2. 处理并发相同的 In-Flight 请求（防击穿）
-  if (cacheKey && cacheManager.inFlightRequests.has(cacheKey)) {
-    return cacheManager.inFlightRequests.get(cacheKey)
+  if (inFlightKey && cacheManager.inFlightRequests.has(inFlightKey)) {
+    return cacheManager.inFlightRequests.get(inFlightKey)
   }
+  const writeOwner = {}
+  if (cacheKey) cacheWriteOwners.set(cacheKey, writeOwner)
 
   const executeRequest = async () => {
+    // Coalesce the cache lookup too, before any asynchronous work starts.
+    if (cachePolicy && !cachePolicy.forceReload) {
+      try {
+        const cached = await cacheManager.get(cacheKey, { persistent: cachePolicy.persistent })
+        if (cached !== null && cached !== undefined) return cached
+      } catch (e) {
+        console.warn('[VNDB API Cache] Read error:', e)
+      }
+    }
+
     let signal
     let timer
     if (timeout) {
@@ -283,7 +290,7 @@ export async function request(path, options = {}) {
       }
 
       // 3. 请求成功，写入两级缓存
-      if (cachePolicy && cacheKey && result) {
+      if (cachePolicy && cacheKey && result && cacheWriteOwners.get(cacheKey) === writeOwner) {
         cacheManager.set(cacheKey, result, {
           ttl: cachePolicy.ttl,
           persistent: cachePolicy.persistent,
@@ -315,11 +322,14 @@ export async function request(path, options = {}) {
     }
   }
 
-  if (cacheKey) {
-    const promise = executeRequest().finally(() => {
-      cacheManager.inFlightRequests.delete(cacheKey)
+  if (inFlightKey) {
+    const promise = Promise.resolve().then(executeRequest).finally(() => {
+      if (cacheManager.inFlightRequests.get(inFlightKey) === promise) {
+        cacheManager.inFlightRequests.delete(inFlightKey)
+      }
+      if (cacheWriteOwners.get(cacheKey) === writeOwner) cacheWriteOwners.delete(cacheKey)
     })
-    cacheManager.inFlightRequests.set(cacheKey, promise)
+    cacheManager.inFlightRequests.set(inFlightKey, promise)
     return promise
   }
 
@@ -330,8 +340,8 @@ export async function request(path, options = {}) {
  * 1. 获取系统统计信息
  * GET /stats
  */
-export async function getStats() {
-  return request('/stats')
+export async function getStats(requestOptions = {}) {
+  return request('/stats', requestOptions)
 }
 
 /**
@@ -374,7 +384,7 @@ export async function getLatestVn(params = {}) {
  * 2.2 通用 VN 列表查询 (根据 filters)
  * POST /vn
  */
-export async function getVnList(filters = [], params = {}) {
+export async function getVnList(filters = [], params = {}, requestOptions = {}) {
   const payload = {
     fields: 'id, title, alttitle, titles{lang,title,latin}, image{url,thumbnail,sexual}, released, olang, rating',
     results: 20,
@@ -384,6 +394,7 @@ export async function getVnList(filters = [], params = {}) {
     payload.filters = filters
   }
   return request('/vn', {
+    ...requestOptions,
     method: 'POST',
     body: JSON.stringify(payload)
   })
@@ -448,7 +459,7 @@ export async function getVnReleases(vnId) {
  * 3.1.1 通用 Release 列表查询
  * POST /release
  */
-export async function getReleaseList(filters = [], params = {}) {
+export async function getReleaseList(filters = [], params = {}, requestOptions = {}) {
   const payload = {
     fields: 'id, title, alttitle, released, languages{lang}, platforms, official, patch, freeware, notes, uncensored, minage, extlinks{url,label,name}, images{url,dims,type,languages,sexual,thumbnail,thumbnail_dims}, vns{id,title,alttitle,image{url,thumbnail,sexual,dims}}',
     results: 20,
@@ -458,6 +469,7 @@ export async function getReleaseList(filters = [], params = {}) {
     payload.filters = filters
   }
   return request('/release', {
+    ...requestOptions,
     method: 'POST',
     body: JSON.stringify(payload)
   })
@@ -577,7 +589,7 @@ export async function searchCharacters(query, params = {}) {
  * 3.6 通用 Character 列表查询
  * POST /character
  */
-export async function getCharacterList(filters = [], params = {}) {
+export async function getCharacterList(filters = [], params = {}, requestOptions = {}) {
   const payload = {
     fields: 'id, name, original, description, image{url,dims,sexual}, sex, blood_type, height, weight, bust, waist, hips, cup, age, birthday',
     results: 20,
@@ -587,6 +599,7 @@ export async function getCharacterList(filters = [], params = {}) {
     payload.filters = filters
   }
   return request('/character', {
+    ...requestOptions,
     method: 'POST',
     body: JSON.stringify(payload)
   })
@@ -684,7 +697,7 @@ export async function getProducerDetail(id) {
  * 7.2 通用 Producer 列表查询
  * POST /producer
  */
-export async function getProducerList(filters = [], params = {}) {
+export async function getProducerList(filters = [], params = {}, requestOptions = {}) {
   const payload = {
     fields: 'id, name, original, aliases, lang, type, description',
     results: 20,
@@ -694,6 +707,7 @@ export async function getProducerList(filters = [], params = {}) {
     payload.filters = filters
   }
   return request('/producer', {
+    ...requestOptions,
     method: 'POST',
     body: JSON.stringify(payload)
   })
@@ -734,7 +748,7 @@ export async function getStaffDetail(id) {
  * 8.2 通用 Staff 列表查询
  * POST /staff
  */
-export async function getStaffList(filters = [], params = {}) {
+export async function getStaffList(filters = [], params = {}, requestOptions = {}) {
   // 确保包含 ismain 过滤以避免重复人物，除非显式提供 filters
   const finalFilters = (filters && Array.isArray(filters) && filters.length > 0) ? filters : ['ismain', '=', 1]
   const payload = {
@@ -744,6 +758,7 @@ export async function getStaffList(filters = [], params = {}) {
     ...params
   }
   return request('/staff', {
+    ...requestOptions,
     method: 'POST',
     body: JSON.stringify(payload)
   })

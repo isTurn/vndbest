@@ -28,7 +28,7 @@ class MemoryCache {
     if (!entry) return null
 
     // 检查过期
-    if (entry.expireAt && Date.now() > entry.expireAt) {
+    if (entry.expireAt && Date.now() >= entry.expireAt) {
       this.cache.delete(key)
       return null
     }
@@ -40,6 +40,7 @@ class MemoryCache {
   }
 
   set(key, data, ttl) {
+    this.cache.delete(key)
     if (this.cache.size >= this.maxSize) {
       // 淘汰最久未使用的项 (第一个 key)
       const oldestKey = this.cache.keys().next().value
@@ -136,6 +137,7 @@ class IdbStorage {
         const tx = db.transaction(this.storeName, 'readonly')
         const store = tx.objectStore(this.storeName)
         const request = store.get(key)
+        tx.onabort = tx.onerror = () => resolve(null)
 
         request.onsuccess = () => {
           const record = request.result
@@ -145,14 +147,14 @@ class IdbStorage {
           }
 
           // 检查过期时间
-          if (record.expireAt && Date.now() > record.expireAt) {
+          if (record.expireAt && Date.now() >= record.expireAt) {
             // 异步清除过期记录
             this.delete(key).catch(() => {})
             resolve(null)
             return
           }
 
-          resolve(record.data)
+          resolve(record)
         }
 
         request.onerror = () => resolve(null)
@@ -318,11 +320,26 @@ class CacheManager {
 
     // 2. 查 IndexedDB
     if (persistent) {
-      const idbData = await this.idb.get(key)
-      if (idbData !== null && idbData !== undefined) {
-        // 回写到内存缓存（使用默认短 TTL 以节省内存并保持快速二次访问）
-        this.memory.set(key, idbData, CACHE_TTL.SHORT)
-        return idbData
+      // IndexedDB is only an optimization: blocked upgrades or slow storage
+      // must not hold up the actual API request indefinitely.
+      let timer
+      let record
+      try {
+        record = await Promise.race([
+          this.idb.get(key),
+          new Promise(resolve => { timer = setTimeout(() => resolve(null), 200) })
+        ])
+      } finally {
+        clearTimeout(timer)
+      }
+      if (record && record.data !== null && record.data !== undefined) {
+        // Preserve the original expiry when promoting a disk entry to memory.
+        const remaining = record.expireAt == null ? CACHE_TTL.SHORT : record.expireAt - Date.now()
+        if (remaining <= 0) return null
+        const newerData = this.memory.get(key)
+        if (newerData !== null && newerData !== undefined) return newerData
+        this.memory.set(key, record.data, Math.min(CACHE_TTL.SHORT, remaining))
+        return record.data
       }
     }
 

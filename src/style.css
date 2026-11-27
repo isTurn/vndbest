@@ -1,4 +1,6 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
+@source "./";
+@source "../index.html";
 @import "@ionic/vue/css/core.css";
 
 /* 启用 class-based 深色模式 */

@@ -4,7 +4,7 @@
  * 背景：TouchGal 的搜索框是 React 受控组件，站点本身不消费 `?tgq=` 这类深链参数
  * （原用户脚本 VNDB跨站搜索.js 是在 TouchGal 页面内注入 JS 才实现「填入 + 回车」）。
  * 跳到系统浏览器后无法注入脚本，所以这里改用 @capgo/inappbrowser 的内嵌 WebView，
- * 页面加载完成后通过 executeScript 注入等价逻辑。
+ * WebView 打开后尽早通过 executeScript 注入，脚本自行等待 DOM 和 React 就绪。
  *
  * 注入脚本与用户脚本 v2.8.0 的 TouchGal 分支保持一致：
  * tgOnInputReady（等 React hydrate）→ tgFillAndSubmit（填入 + 校验 + 回车 + 观察）
@@ -13,6 +13,7 @@
 
 import { Capacitor } from '@capacitor/core'
 import { InAppBrowser, ToolBarType } from '@capgo/inappbrowser'
+import { openSearchBrowserSession } from './searchBrowserSession'
 
 /** TouchGal 搜索页（与用户脚本保持一致） */
 const TG_SEARCH_URL = 'https://www.touchgal.ink/search'
@@ -25,6 +26,7 @@ function buildInjectCode(keyword) {
   return `(function () {
   var KEYWORD = ${JSON.stringify(String(keyword))};
   var ORIGIN = 'https://www.touchgal.ink';
+  if (location.origin !== ORIGIN || !document.body || !document.documentElement) return;
   var SEARCH_PATH = '/search';
   var INPUT_SEL = 'input[role="combobox"][aria-label="搜索 Galgame"]';
   var REACT_READY_TIMEOUT = 4000;
@@ -413,6 +415,7 @@ export async function openTouchGalSearch(keyword) {
      只换关键词重新注入，避免叠出多个 WebView 让界面卡顿 */
   if (active) {
     active.keyword = kw
+    if (!active.webviewId) return true
     try {
       await InAppBrowser.executeScript({
         code: buildInjectCode(kw),
@@ -424,77 +427,27 @@ export async function openTouchGalSearch(keyword) {
     return true
   }
 
-  let webviewId = null
-  let injectCount = 0
-  // Cloudflare 挑战可能多次重载页面，注入次数留足余量
-  const MAX_INJECT = 8
-  let loadedHandle = null
-  let closeHandle = null
-  let disposed = false
-
-  const state = { keyword: kw, webviewId: null, disposed: false }
+  const state = { keyword: kw, webviewId: null }
   active = state
-
-  const cleanup = async () => {
-    if (disposed) return
-    disposed = true
-    state.disposed = true
-    if (active === state) active = null
-    try { await loadedHandle?.remove() } catch (e) { /* 忽略 */ }
-    try { await closeHandle?.remove() } catch (e) { /* 忽略 */ }
-  }
-
   try {
-    // 工具栏上的「用外部浏览器打开」按钮：TouchGal 页面经常有 Cloudflare 挑战、
-    // 资源加载不全，用户需要一个「页面能看但功能不对」时的出口。
     const { buildExternalButtonOption, noteBrowserUrl } = await import('./inAppBrowserTools')
-    const res = await InAppBrowser.openWebView({
+    const session = await openSearchBrowserSession(InAppBrowser, {
       url: TG_SEARCH_URL,
       title: 'TouchGal',
       toolbarType: ToolBarType.NAVIGATION,
       activeNativeNavigationForWebview: true,
-      // 立即弹出 WebView（页面在里面加载），否则要等整页加载完才出现，
-      // 用户会以为点了没反应。注入仍然等 browserPageLoaded 之后再做。
-      isPresentAfterPageLoad: false,
       backgroundColor: 'white',
       ...buildExternalButtonOption()
+    }, {
+      getCode: () => buildInjectCode(state.keyword),
+      onClose: () => { if (active === state) active = null }
     })
-    webviewId = res?.id ?? null
-    state.webviewId = webviewId
-    // 按钮点击事件不带 url，先把入口地址记下来
-    noteBrowserUrl(webviewId, TG_SEARCH_URL)
+    state.webviewId = session.id
+    noteBrowserUrl(session.id, TG_SEARCH_URL)
+    return true
   } catch (e) {
     console.error('[touchgal] openWebView failed:', e)
     if (active === state) active = null
     return false
   }
-
-  const inject = async () => {
-    if (disposed || injectCount >= MAX_INJECT) return
-    injectCount++
-    try {
-      await InAppBrowser.executeScript({
-        code: buildInjectCode(state.keyword),
-        ...(webviewId ? { id: webviewId } : {})
-      })
-    } catch (e) {
-      console.error('[touchgal] executeScript failed:', e)
-    }
-  }
-
-  // 页面每次加载完成都尝试注入（Cloudflare 挑战页通过后会再触发一次）
-  loadedHandle = await InAppBrowser.addListener('browserPageLoaded', (event) => {
-    if (webviewId && event?.id && event.id !== webviewId) return
-    inject()
-  })
-  closeHandle = await InAppBrowser.addListener('closeEvent', (event) => {
-    if (webviewId && event?.id && event.id !== webviewId) return
-    cleanup()
-  })
-
-  // 兜底：browserPageLoaded 未派发时按梯度延迟补注入几次
-  // （Cloudflare 挑战页会先返回一次「Just a moment」，注入脚本自身会跳过，等真页面再执行）
-  ;[2500, 6000, 12000, 20000].forEach((ms) => setTimeout(inject, ms))
-
-  return true
 }

@@ -51,11 +51,14 @@ const loadingSections = ref({
   stats: true,
   releases: true,
   random: true,
-  birthday: true
+  birthday: true,
+  tomorrowBirthday: true
 })
 
 const savedSearchResults = ref({})
 const savedSearchLoading = ref({})
+// Keep public homepage data across app restarts without making it long-lived.
+const HOME_CACHE_OPTIONS = { cache: { persistent: true, ttl: 5 * 60 * 1000 } }
 
 function getTodayStr() {
   const d = new Date()
@@ -168,39 +171,37 @@ async function fetchSavedSearchResults() {
   const searches = displayedSavedSearches.value
   if (!searches.length) return
 
-  for (const search of searches) {
-    savedSearchLoading.value[search.id] = true
-
-    try {
-      const { filters: apiFilters, sort, reverse } = buildFiltersFromSaved(search)
-      const params = { results: 5, sort, reverse }
-
-      let res
-      switch (search.type) {
-        case 'releases':
-          res = await getReleaseList(apiFilters, params)
-          break
-        case 'vn':
-          res = await getVnList(apiFilters, params)
-          break
-        case 'characters':
-          res = await getCharacterList(apiFilters, params)
-          break
-        case 'producers':
-          res = await getProducerList(apiFilters, params)
-          break
-        case 'staff':
-          res = await getStaffList(apiFilters, params)
-          break
-      }
-
-      savedSearchResults.value[search.id] = res?.results || []
-    } catch (err) {
-      console.error(`获取搜索结果失败 [${search.name}]:`, err)
-      savedSearchResults.value[search.id] = []
-    } finally {
-      savedSearchLoading.value[search.id] = false
+  // Start every card in its loading state, but limit API concurrency so a slow
+  // saved search does not block all the cards after it or flood the endpoint.
+  for (const search of searches) savedSearchLoading.value[search.id] = true
+  let nextIndex = 0
+  const loadNext = async () => {
+    while (nextIndex < searches.length) {
+      const search = searches[nextIndex++]
+      await loadSavedSearch(search)
     }
+  }
+  await Promise.all(Array.from({ length: Math.min(2, searches.length) }, loadNext))
+}
+
+async function loadSavedSearch(search, requestOptions = HOME_CACHE_OPTIONS) {
+  try {
+    const { filters: apiFilters, sort, reverse } = buildFiltersFromSaved(search)
+    const params = { results: 5, sort, reverse }
+    const loaders = {
+      releases: getReleaseList,
+      vn: getVnList,
+      characters: getCharacterList,
+      producers: getProducerList,
+      staff: getStaffList
+    }
+    const res = await loaders[search.type]?.(apiFilters, params, requestOptions)
+    savedSearchResults.value[search.id] = res?.results || []
+  } catch (err) {
+    console.error(`获取搜索结果失败 [${search.name}]:`, err)
+    savedSearchResults.value[search.id] = []
+  } finally {
+    savedSearchLoading.value[search.id] = false
   }
 }
 
@@ -297,7 +298,7 @@ function deduplicateCharacters(chars) {
 onMounted(async () => {
   const today = new Date().toISOString().split('T')[0]
 
-  getStats().then(res => {
+  getStats(HOME_CACHE_OPTIONS).then(res => {
     stats.value = res
     loadingSections.value.stats = false
   }).catch(err => {
@@ -306,7 +307,7 @@ onMounted(async () => {
   })
 
   // 刚刚发布：按发售日倒序取今天及以前
-  getReleaseList(['released', '<=', today], { sort: 'released', reverse: true, results: 5 })
+  getReleaseList(['released', '<=', today], { sort: 'released', reverse: true, results: 5 }, HOME_CACHE_OPTIONS)
     .then(res => {
       justReleased.value = res.results
       prefetchFromItems(res.results, it => getReleaseImageUrl(it), 5, { priority: true })
@@ -317,7 +318,7 @@ onMounted(async () => {
     })
 
   // 即将发布：按发售日正序取今天以后
-  getReleaseList(['released', '>', today], { sort: 'released', reverse: false, results: 5 })
+  getReleaseList(['released', '>', today], { sort: 'released', reverse: false, results: 5 }, HOME_CACHE_OPTIONS)
     .then(res => {
       upcomingReleases.value = res.results
       prefetchFromItems(res.results, it => getReleaseImageUrl(it), 5)
@@ -328,19 +329,25 @@ onMounted(async () => {
   const [todayMonth, todayDay] = getBirthdayParams(0)
   const [tomorrowMonth, tomorrowDay] = getBirthdayParams(1)
 
-  Promise.all([
-    getCharacterList(['birthday', '=', [todayMonth, todayDay]], { sort: 'name', results: 50 }),
-    getCharacterList(['birthday', '=', [tomorrowMonth, tomorrowDay]], { sort: 'name', results: 50 })
-  ]).then(([todayRes, tomorrowRes]) => {
-    todayBirthdays.value = deduplicateCharacters(todayRes.results || [])
-    tomorrowBirthdays.value = deduplicateCharacters(tomorrowRes.results || [])
-    prefetchFromItems(todayBirthdays.value, it => it.image?.url, 12, { priority: true })
-    prefetchFromItems(tomorrowBirthdays.value, it => it.image?.url, 8)
-  }).catch(err => {
-    console.error('获取生日角色失败:', err)
-  }).finally(() => {
-    loadingSections.value.birthday = false
-  })
+  getCharacterList(['birthday', '=', [todayMonth, todayDay]], { sort: 'name', results: 50 }, HOME_CACHE_OPTIONS)
+    .then(res => {
+      todayBirthdays.value = deduplicateCharacters(res.results || [])
+      prefetchFromItems(todayBirthdays.value, it => it.image?.url, 10, { priority: true })
+    }).catch(err => {
+      console.error('获取今日生日角色失败:', err)
+    }).finally(() => {
+      loadingSections.value.birthday = false
+    })
+
+  getCharacterList(['birthday', '=', [tomorrowMonth, tomorrowDay]], { sort: 'name', results: 50 }, HOME_CACHE_OPTIONS)
+    .then(res => {
+      tomorrowBirthdays.value = deduplicateCharacters(res.results || [])
+      prefetchFromItems(tomorrowBirthdays.value, it => it.image?.url, 8)
+    }).catch(err => {
+      console.error('获取明日生日角色失败:', err)
+    }).finally(() => {
+      loadingSections.value.tomorrowBirthday = false
+    })
 
   fetchSavedSearchResults()
 
@@ -447,34 +454,7 @@ const deleteConfirmSearch = ref(null)
 
 async function refreshSingleSearch(search) {
   savedSearchLoading.value[search.id] = true
-  try {
-    const { filters: apiFilters, sort, reverse } = buildFiltersFromSaved(search)
-    const params = { results: 5, sort, reverse }
-    let res
-    switch (search.type) {
-      case 'releases':
-        res = await getReleaseList(apiFilters, params)
-        break
-      case 'vn':
-        res = await getVnList(apiFilters, params)
-        break
-      case 'characters':
-        res = await getCharacterList(apiFilters, params)
-        break
-      case 'producers':
-        res = await getProducerList(apiFilters, params)
-        break
-      case 'staff':
-        res = await getStaffList(apiFilters, params)
-        break
-    }
-    savedSearchResults.value[search.id] = res?.results || []
-  } catch (err) {
-    console.error(`刷新搜索结果失败 [${search.name}]:`, err)
-    savedSearchResults.value[search.id] = []
-  } finally {
-    savedSearchLoading.value[search.id] = false
-  }
+  await loadSavedSearch(search, { ...HOME_CACHE_OPTIONS, forceReload: true })
 }
 
 function openMoreActions(search) {
@@ -661,7 +641,7 @@ function getFilterSummary(item) {
     </div>
 
     <!-- 角色生日板块 -->
-    <div v-if="todayBirthdays.length > 0 || tomorrowBirthdays.length > 0 || loadingSections.birthday" class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 shadow-xs">
+    <div v-if="todayBirthdays.length > 0 || tomorrowBirthdays.length > 0 || loadingSections.birthday || loadingSections.tomorrowBirthday" class="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4 shadow-xs">
       <h2 class="text-sm font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-2">
         <Icon icon="lucide:cake" class="h-4 w-4 text-pink-500" />
         {{ t('home.birthday') }}
@@ -758,7 +738,13 @@ function getFilterSummary(item) {
             </button>
           </div>
 
-          <div v-if="tomorrowBirthdays.length === 0" class="text-[11px] text-neutral-400 dark:text-neutral-500 py-1">
+          <div v-if="loadingSections.tomorrowBirthday" class="flex gap-2 overflow-x-auto pb-1">
+            <div v-for="i in 4" :key="i" class="animate-pulse shrink-0 w-16 text-center">
+              <div class="w-12 h-12 mx-auto rounded-xl bg-neutral-100 dark:bg-neutral-800 mb-1"></div>
+              <div class="h-2.5 w-10 mx-auto rounded bg-neutral-100 dark:bg-neutral-800"></div>
+            </div>
+          </div>
+          <div v-else-if="tomorrowBirthdays.length === 0" class="text-[11px] text-neutral-400 dark:text-neutral-500 py-1">
             {{ t('home.no_birthday') }}
           </div>
           <div v-else class="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
