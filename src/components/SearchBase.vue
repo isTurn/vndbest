@@ -31,15 +31,6 @@ const props = defineProps({
   filters: {
     type: Object,
     default: () => ({})
-  },
-  /**
-   * 是否由 SearchBase 自己渲染顶栏。
-   * 顶栏必须放在 <ion-content> 外面才不会被内容回弹拖走，所以搜索页现在
-   * 自己渲染 <AppHeader> 并传 :show-header="false"。默认 true 只是兜底。
-   */
-  showHeader: {
-    type: Boolean,
-    default: true
   }
 })
 
@@ -106,7 +97,7 @@ defineExpose({
 
 <template>
   <div class="space-y-6">
-    <AppHeader v-if="showHeader" mode="back" :title="title" />
+    <AppHeader mode="back" :title="title" :subtitle="t('search.subtitle', { title })" />
 
     <!-- Search Input -->
     <div class="relative">

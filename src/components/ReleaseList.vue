@@ -206,21 +206,18 @@ const filteredItems = computed(() => {
   })
 })
 
-// ── 瀑布流列数：手机 3 列，平板（>=768px）4 列 ──
-const waterfallColumnCount = ref(3)
-function updateWaterfallColumns() {
-  if (typeof window === 'undefined') return
-  waterfallColumnCount.value = window.innerWidth >= 768 ? 4 : 3
-}
-
-// ── 瀑布流分列分配，按列数轮流放入 ──
+// ── 瀑布流双列分配 ──
 const waterfallColumns = computed(() => {
-  const count = waterfallColumnCount.value
-  const cols = Array.from({ length: count }, () => [])
+  const leftCol = []
+  const rightCol = []
   filteredItems.value.forEach((item, index) => {
-    cols[index % count].push(item)
+    if (index % 2 === 0) {
+      leftCol.push(item)
+    } else {
+      rightCol.push(item)
+    }
   })
-  return cols
+  return { leftCol, rightCol }
 })
 
 // ── 排序 ──
@@ -244,8 +241,6 @@ const sentinel = ref(null)
 let observer = null
 
 onMounted(() => {
-  updateWaterfallColumns()
-  window.addEventListener('resize', updateWaterfallColumns)
   observer = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting && props.hasMore && !props.isLoading) {
       emit('loadMore')
@@ -256,7 +251,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', updateWaterfallColumns)
   if (observer) observer.disconnect()
 })
 </script>
@@ -325,15 +319,16 @@ onUnmounted(() => {
         <div
           v-for="item in filteredItems"
           :key="item.id"
-          class="relative rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-xs hover:border-neutral-300 dark:hover:border-neutral-600 transition cursor-pointer overflow-hidden p-2"
+          class="relative rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-xs hover:border-neutral-300 dark:hover:border-neutral-600 transition cursor-pointer overflow-hidden"
+          :class="isCompact ? 'p-2' : 'p-3'"
           @click="handleItemClick(item)"
         >
-          <div class="flex items-stretch gap-3">
+          <div class="flex items-start gap-3">
 
-            <!-- 封面：比卡片小一圈，四周留出白，四角保持圆角 -->
+            <!-- 封面 -->
             <div
-              class="relative shrink-0 overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-800"
-              :class="isCompact ? 'h-20 w-14' : 'h-28 w-20'"
+              class="rounded-lg bg-neutral-50 dark:bg-neutral-800 overflow-hidden border border-neutral-100 dark:border-neutral-700 shrink-0"
+              :class="isCompact ? 'h-16 w-12' : 'h-24 w-18'"
             >
               <template v-if="isIconPlaceholder(item)">
                 <div class="h-full w-full flex items-center justify-center bg-neutral-100 dark:bg-neutral-700">
@@ -372,8 +367,8 @@ onUnmounted(() => {
 
             <!-- 内容区域 -->
             <div
-              class="min-w-0 flex-1 flex flex-col justify-between py-1 pr-1"
-              :class="isCompact ? 'min-h-20' : 'min-h-28'"
+              class="min-w-0 flex-1 flex flex-col justify-between"
+              :class="isCompact ? 'h-16 py-0.5' : 'h-24 py-0.5'"
             >
               <!-- 标题区 -->
               <div class="space-y-0.5">
@@ -473,15 +468,11 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- ═══════════ 2. 响应式瀑布流布局：手机 3 列 / 平板 4 列 ═══════════ -->
-      <div
-        v-else-if="filteredItems.length > 0 && isWaterfall"
-        class="grid gap-3 items-start"
-        :class="waterfallColumnCount === 4 ? 'grid-cols-4' : 'grid-cols-3'"
-      >
-        <div v-for="(col, colIndex) in waterfallColumns" :key="colIndex" class="flex flex-col gap-3">
+      <!-- ═══════════ 2. 瀑布流布局 (waterfall) ═══════════ -->
+      <div v-else-if="filteredItems.length > 0 && isWaterfall" class="grid grid-cols-2 gap-3 items-start">
+        <div class="flex flex-col gap-3">
           <div
-            v-for="item in col"
+            v-for="item in waterfallColumns.leftCol"
             :key="item.id"
             class="relative rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 overflow-hidden shadow-xs hover:border-neutral-300 dark:hover:border-neutral-600 transition cursor-pointer"
             @click="handleItemClick(item)"
@@ -498,25 +489,25 @@ onUnmounted(() => {
                   <div class="absolute inset-0">
                     <ion-img
                       v-if="hasCover(item)"
-                      :key="`card-${colIndex}-${item.id}-${imageLoader.getRetryCount('card-' + colIndex + '-' + item.id)}`"
-                      :src="imageLoader.resolveSrc('card-' + colIndex + '-' + item.id, getImage(item).thumbnail || getImage(item).url)"
+                      :key="`card-${item.id}-${imageLoader.getRetryCount('card-' + item.id)}`"
+                      :src="imageLoader.resolveSrc('card-' + item.id, getImage(item).thumbnail || getImage(item).url)"
                       alt="cover"
                       class="absolute inset-0 w-full h-full object-cover border-b border-neutral-100 dark:border-neutral-800 transition-opacity duration-500"
-                      :class="{ 'opacity-0': !imageLoader.isSuccess('card-' + colIndex + '-' + item.id) }"
-                      @ionImgWillLoad="imageLoader.onWillLoad('card-' + colIndex + '-' + item.id)"
-                      @ionImgDidLoad="imageLoader.onLoad('card-' + colIndex + '-' + item.id)"
-                      @ionError="imageLoader.onError('card-' + colIndex + '-' + item.id)"
+                      :class="{ 'opacity-0': !imageLoader.isSuccess('card-' + item.id) }"
+                      @ionImgWillLoad="imageLoader.onWillLoad('card-' + item.id)"
+                      @ionImgDidLoad="imageLoader.onLoad('card-' + item.id)"
+                      @ionError="imageLoader.onError('card-' + item.id)"
                     />
                     <div v-else class="absolute inset-0 flex items-center justify-center bg-neutral-50 dark:bg-neutral-800 text-neutral-200 dark:text-neutral-600 border-b border-neutral-100 dark:border-neutral-800">
                       <Icon icon="lucide:package" class="h-10 w-10" />
                     </div>
-                    <div v-if="imageLoader.isLoading('card-' + colIndex + '-' + item.id) && !imageLoader.isError('card-' + colIndex + '-' + item.id)" class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
+                    <div v-if="imageLoader.isLoading('card-' + item.id) && !imageLoader.isError('card-' + item.id)" class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
                       <ion-spinner name="crescent" class="h-5 w-5 text-neutral-400" />
                     </div>
                     <button
-                      v-if="imageLoader.isError('card-' + colIndex + '-' + item.id)"
+                      v-if="imageLoader.isError('card-' + item.id)"
                       class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 cursor-pointer"
-                      @click.stop="imageLoader.retry('card-' + colIndex + '-' + item.id)"
+                      @click.stop="imageLoader.retry('card-' + item.id)"
                     >
                       <Icon icon="lucide:refresh-cw" class="h-5 w-5 text-neutral-400" />
                     </button>
@@ -569,6 +560,100 @@ onUnmounted(() => {
               </div>
             </div>
             <!-- 整卡模糊遮罩 -->
+            <div v-if="shouldBlurCard(item)" class="absolute inset-0 rounded-xl bg-white/50 dark:bg-neutral-900/70 backdrop-blur-md flex items-center justify-center z-10 pointer-events-none">
+              <Icon icon="lucide:eye-off" class="h-8 w-8 text-neutral-400" />
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-3">
+          <div
+            v-for="item in waterfallColumns.rightCol"
+            :key="item.id"
+            class="relative rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 overflow-hidden shadow-xs hover:border-neutral-300 dark:hover:border-neutral-600 transition cursor-pointer"
+            @click="handleItemClick(item)"
+          >
+            <div class="relative">
+              <div class="w-full relative" style="padding-top: 150%;">
+                <template v-if="isIconPlaceholder(item)">
+                  <div class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-100 dark:border-neutral-800">
+                    <Icon icon="lucide:eye-off" class="h-6 w-6 text-neutral-400 dark:text-neutral-500" />
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="absolute inset-0">
+                    <ion-img
+                      v-if="hasCover(item)"
+                      :key="`mag-${item.id}-${imageLoader.getRetryCount('mag-' + item.id)}`"
+                      :src="imageLoader.resolveSrc('mag-' + item.id, getImage(item).thumbnail || getImage(item).url)"
+                      alt="cover"
+                      class="absolute inset-0 w-full h-full object-cover border-b border-neutral-100 dark:border-neutral-800 transition-opacity duration-500"
+                      :class="{ 'opacity-0': !imageLoader.isSuccess('mag-' + item.id) }"
+                      @ionImgWillLoad="imageLoader.onWillLoad('mag-' + item.id)"
+                      @ionImgDidLoad="imageLoader.onLoad('mag-' + item.id)"
+                      @ionError="imageLoader.onError('mag-' + item.id)"
+                    />
+                    <div v-else class="absolute inset-0 flex items-center justify-center bg-neutral-50 dark:bg-neutral-800 text-neutral-200 dark:text-neutral-600 border-b border-neutral-100 dark:border-neutral-800">
+                      <Icon icon="lucide:package" class="h-10 w-10" />
+                    </div>
+                    <div v-if="imageLoader.isLoading('mag-' + item.id) && !imageLoader.isError('mag-' + item.id)" class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
+                      <ion-spinner name="crescent" class="h-5 w-5 text-neutral-400" />
+                    </div>
+                    <button
+                      v-if="imageLoader.isError('mag-' + item.id)"
+                      class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 cursor-pointer"
+                      @click.stop="imageLoader.retry('mag-' + item.id)"
+                    >
+                      <Icon icon="lucide:refresh-cw" class="h-5 w-5 text-neutral-400" />
+                    </button>
+                  </div>
+                </template>
+                <div class="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[8px] font-bold"
+                  :class="item.official ? 'bg-blue-600 text-white' : 'bg-neutral-600 text-white'"
+                >
+                  {{ item.official ? t('vn.releases.official') : t('vn.releases.unofficial') }}
+                </div>
+              </div>
+            </div>
+            <div class="p-2.5 space-y-1.5">
+              <span class="text-xs font-semibold text-neutral-900 dark:text-neutral-100 block line-clamp-2 leading-tight">{{ getTitle(item) }}</span>
+              <p v-if="getAltTitle(item)" class="text-[11px] text-neutral-400 dark:text-neutral-500 line-clamp-1 leading-tight">{{ getAltTitle(item) }}</p>
+              <p v-if="getVnTitle(item)" class="text-[10px] text-neutral-400 dark:text-neutral-500 line-clamp-1 leading-tight">
+                <Icon icon="lucide:link" class="h-2.5 w-2.5 inline-block mr-0.5 -mt-px" />
+                {{ getVnTitle(item) }}
+              </p>
+              <div class="flex flex-wrap gap-1">
+                <span
+                  v-for="lang in item.languages.slice(0, 3)"
+                  :key="lang.lang"
+                  class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400"
+                >
+                  <LanguageFlag :lang="lang.lang" class="h-3 w-3" />
+                  <span>{{ t(`metadata.lang.${lang.lang}`, lang.lang) }}</span>
+                </span>
+              </div>
+              <div class="flex items-center justify-between text-[10px] text-neutral-400 dark:text-neutral-500">
+                <div class="flex items-center gap-1 min-w-0">
+                  <span v-if="item.released" class="truncate">{{ item.released }}</span>
+                  <AgeRating
+                    v-if="item.minage !== null && item.minage !== undefined"
+                    :minage="item.minage"
+                    :uncensored="item.uncensored"
+                    compact
+                    :show-text="false"
+                  />
+                </div>
+                <div class="flex gap-1 shrink-0">
+                  <Icon
+                    v-for="plat in (item.platforms?.slice(0, 4))"
+                    :key="plat"
+                    :icon="getPlatformIcon(plat)"
+                    :title="t(`metadata.platform.${plat}`, plat)"
+                    class="h-2.5 w-2.5 text-neutral-300 dark:text-neutral-600"
+                  />
+                </div>
+              </div>
+            </div>
             <div v-if="shouldBlurCard(item)" class="absolute inset-0 rounded-xl bg-white/50 dark:bg-neutral-900/70 backdrop-blur-md flex items-center justify-center z-10 pointer-events-none">
               <Icon icon="lucide:eye-off" class="h-8 w-8 text-neutral-400" />
             </div>

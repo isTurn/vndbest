@@ -98,16 +98,6 @@
         <package android:name="com.transsion.phoenix" />
         <package android:name="com.transsion.browser" />
         <package android:name="com.android.htmlviewer" />
-
-        <!--
-          下载管理器（内置浏览器点下载时优先交给它们）。
-          Android 11+ 起，不在这里声明就看不到对方的 activity，
-          setClassName 启动会被当成不存在的组件。1DM+ 与 ADM 的包名。
-        -->
-        <package android:name="idm.internet.download.manager.plus" />
-        <package android:name="idm.internet.download.manager" />
-        <package android:name="com.dv.adm.pay" />
-        <package android:name="com.dv.adm" />
     </queries>
 
     <application
@@ -132,32 +122,6 @@
             </intent-filter>
 
         </activity>
-
-        <!--
-            分享面板里的「以图搜作品」入口。
-            用 activity-alias 而不是给 MainActivity 直接加 filter：alias 可以单独设 label，
-            分享面板显示「以图搜作品」，桌面图标仍然是 VNDB。
-            收到图片后由 ShareImagePlugin 复制到缓存目录，JS 侧切到 /browse/image 自动识别。
-        -->
-        <activity-alias
-            android:name=".ShareImageAlias"
-            android:targetActivity=".MainActivity"
-            android:label="@string/share_image_label"
-            android:exported="true">
-
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="image/*" />
-            </intent-filter>
-
-            <intent-filter>
-                <action android:name="android.intent.action.SEND_MULTIPLE" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="image/*" />
-            </intent-filter>
-
-        </activity-alias>
 
         <provider
             android:name="androidx.core.content.FileProvider"

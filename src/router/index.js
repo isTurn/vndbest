@@ -13,16 +13,13 @@ const VnDetail = () => import('@/pages/VnDetail.vue')
 const CharacterDetail = () => import('@/pages/CharacterDetail.vue')
 const ProducerDetail = () => import('@/pages/ProducerDetail.vue')
 const VnSearch = () => import('@/pages/VnSearch.vue')
-const ImageSearch = () => import('@/pages/ImageSearch.vue')
 const ReleaseSearch = () => import('@/pages/ReleaseSearch.vue')
 const ProducerSearch = () => import('@/pages/ProducerSearch.vue')
 const StaffSearch = () => import('@/pages/StaffSearch.vue')
 const StaffDetail = () => import('@/pages/StaffDetail.vue')
 const CharacterSearch = () => import('@/pages/CharacterSearch.vue')
 const TagSearch = () => import('@/pages/TagSearch.vue')
-const TagDetail = () => import('@/pages/TagDetail.vue')
 const TraitSearch = () => import('@/pages/TraitSearch.vue')
-const TraitDetail = () => import('@/pages/TraitDetail.vue')
 const ReleaseDetail = () => import('@/pages/ReleaseDetail.vue')
 
 const routes = [
@@ -123,12 +120,6 @@ const routes = [
     meta: { showTabBar: true }
   },
   {
-    path: '/browse/image',
-    name: 'ImageSearch',
-    component: ImageSearch,
-    meta: { showTabBar: true }
-  },
-  {
     path: '/browse/releases',
     name: 'ReleaseSearch',
     component: ReleaseSearch,
@@ -165,22 +156,10 @@ const routes = [
     meta: { showTabBar: true }
   },
   {
-    path: '/tag/:id',
-    name: 'TagDetail',
-    component: TagDetail,
-    meta: { showTabBar: false }
-  },
-  {
     path: '/browse/traits',
     name: 'TraitSearch',
     component: TraitSearch,
     meta: { showTabBar: true }
-  },
-  {
-    path: '/trait/:id',
-    name: 'TraitDetail',
-    component: TraitDetail,
-    meta: { showTabBar: false }
   },
   // 兜底：未匹配的路径重定向回首页，避免白屏
   {

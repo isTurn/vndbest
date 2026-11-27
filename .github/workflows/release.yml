@@ -138,7 +138,7 @@ jobs:
             echo "::error::Release APK not found"
             exit 1
           fi
-          OUT="vndb-${{ steps.version.outputs.version }}.apk"
+          OUT="vndbest-${{ steps.version.outputs.version }}.apk"
           cp "$SRC" "$OUT"
           ls -l "$OUT"
           # 确认已签名（未签名 APK 无法安装），并强制校验用的是仓库内置 keystore：
@@ -177,20 +177,21 @@ jobs:
             ${{ steps.find-apk.outputs.signature_file }}
           retention-days: 14
 
-      # 发布说明直接用 body_path 让 action 自己读文件，不再经 $GITHUB_OUTPUT 中转：
-      # 之前用多行 heredoc 写 output，一旦 output 为空，action 会退回「保留已有 release 的正文」，
-      # 于是 release 被更新成旧文案却仍然报 success（v1.0.10 就这样丢过一次正文）。
       - name: Resolve release notes
         id: notes
         run: |
           FILE="docs/release-notes/${GITHUB_REF_NAME#v}.md"
           if [ -f "$FILE" ]; then
             echo "Using hand-written notes: $FILE"
-            echo "body_path=$FILE" >> "$GITHUB_OUTPUT"
+            # 多行内容经 GITHUB_OUTPUT 用分隔符写法传给下一步
+            {
+              echo "body<<VNDB_RELEASE_NOTES_EOF"
+              cat "$FILE"
+              echo "VNDB_RELEASE_NOTES_EOF"
+            } >> "$GITHUB_OUTPUT"
             echo "has_body=true" >> "$GITHUB_OUTPUT"
           else
             echo "No $FILE, will fall back to auto-generated notes"
-            echo "body_path=" >> "$GITHUB_OUTPUT"
             echo "has_body=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -199,57 +200,10 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: VNDB ${{ steps.version.outputs.version }}
-          body_path: ${{ steps.notes.outputs.body_path }}
+          name: VNDBest ${{ steps.version.outputs.version }}
+          body: ${{ steps.notes.outputs.body }}
           draft: false
           prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') || contains(github.ref_name, 'rc') }}
           generate_release_notes: ${{ steps.notes.outputs.has_body != 'true' }}
           files: |
             ${{ steps.find-apk.outputs.apk_path }}
-
-      # 上面那个 action 在「release 已存在」时，如果它拿到的正文为空，会静默保留旧正文
-      # 却照样报 success（v1.0.10 的正文就这么丢过一次）。所以这里再显式用 gh 写一遍正文，
-      # 不依赖 action 的行为：只改正文和名字，不动已上传的 APK 资产。
-      - name: Force release body
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -e
-          TAG="${GITHUB_REF_NAME}"
-          FILE="docs/release-notes/${TAG#v}.md"
-          if [ ! -f "$FILE" ]; then
-            echo "No $FILE, keep auto-generated notes"
-            exit 0
-          fi
-          gh release edit "$TAG" \
-            --notes-file "$FILE" \
-            --title "VNDB ${{ steps.version.outputs.version }}"
-          echo "Release body written from $FILE"
-
-      # 最后回查一次 API，正文必须和文件近似相等（不再用「至少一半」这种宽松阈值，
-      # 旧文案 846 字符能骗过 1362/2 的判据）。
-      - name: Verify release body
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -e
-          TAG="${GITHUB_REF_NAME}"
-          FILE="docs/release-notes/${TAG#v}.md"
-          gh release view "$TAG" --json tagName,name,url -q '"Release " + .tagName + " (" + .name + ") " + .url'
-          if [ ! -f "$FILE" ]; then
-            echo "No $FILE, skip body check"
-            exit 0
-          fi
-          BODY_LEN=$(gh release view "$TAG" --json body -q '.body | length')
-          # 用 jq 数字符（与 API 的 body 长度口径一致），不要用 wc -m（受 locale 影响会数成字节）
-          FILE_LEN=$(jq -R -s 'length' < "$FILE")
-          DIFF=$((BODY_LEN - FILE_LEN))
-          echo "Release body length: $BODY_LEN, notes file length: $FILE_LEN, diff: $DIFF"
-          # gh 写正文时可能吃掉/补上任一结尾换行，留 5 字符容差
-          if [ "$DIFF" -lt -5 ] || [ "$DIFF" -gt 5 ]; then
-            echo "::error::Release 正文与发布说明不一致（正文 $BODY_LEN 字符，文件 $FILE_LEN 字符）"
-            exit 1
-          fi
-          echo "Release body matches notes file"

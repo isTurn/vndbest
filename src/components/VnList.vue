@@ -119,7 +119,7 @@ const props = defineProps({
 const emit = defineEmits(['loadMore', 'sortChange', 'reverseChange', 'retry'])
 
 const router = useRouter()
-const { t, te } = useI18n()
+const { t } = useI18n()
 
 // 布局状态：'list', 'waterfall', 'compact'；'text' 会规范化为 'compact'
 const normalizeLayout = (layout) => {
@@ -187,21 +187,18 @@ function isIconPlaceholder(item) {
   return shouldBlurCover(item) && !shouldBlurCard(item)
 }
 
-// 瀑布流列数：手机 3 列，平板（>=768px）4 列
-const waterfallColumnCount = ref(3)
-function updateWaterfallColumns() {
-  if (typeof window === 'undefined') return
-  waterfallColumnCount.value = window.innerWidth >= 768 ? 4 : 3
-}
-
-// 瀑布流分列分配（使用 displayItems 以支持折叠），按列数轮流放入
+// 瀑布流双列分配（使用 displayItems 以支持折叠）
 const waterfallColumns = computed(() => {
-  const count = waterfallColumnCount.value
-  const cols = Array.from({ length: count }, () => [])
+  const leftCol = []
+  const rightCol = []
   displayItems.value.forEach((item, index) => {
-    cols[index % count].push(item)
+    if (index % 2 === 0) {
+      leftCol.push(item)
+    } else {
+      rightCol.push(item)
+    }
   })
-  return cols
+  return { leftCol, rightCol }
 })
 
 // 处理评分显示
@@ -220,8 +217,9 @@ function formatDate(timestamp) {
 // 统一项点击处理
 function handleItemClick(item) {
   const id = item.vn?.id || item.id
-  if (!id) return
-  router.push(`/vn/${id}`)
+  if (id) {
+    router.push(`/vn/${id}`)
+  }
 }
 
 // 统一属性获取
@@ -323,26 +321,14 @@ function getBadge(item) {
   return item.role || item.relation || null
 }
 
-// VNDB 的 relations 里 relation_official 为 false 表示非官方关联（同人作），
-// 光看「续作 / 番外」这种关系词分不出来，需要单独标一个「同人作」徽章。
-function isDoujinRelation(item) {
-  return item?.relation_official === false
-}
-
-// 关联作品的关系词（relation：seq/preq/orig/par…）和角色列表里的定位词（role：main/side…）
-// 共用同一套徽章样式，但两者的取值会撞名 —— relation 的 side 是「外传」，role 的 side 是「配角」，
-// 所以翻译时必须按字段来源分别查表，不能先查 role 再回落 relation，否则外传会被显示成配角。
-const translateBadgeOf = (item) => {
-  if (!item) return null
-  if (item.relation) {
-    const key = `metadata.relation.${String(item.relation).toLowerCase()}`
-    return te(key) ? t(key) : item.relation
-  }
-  if (item.role) {
-    const key = `metadata.role.${String(item.role).toLowerCase()}`
-    return te(key) ? t(key) : item.role
-  }
-  return null
+const translateBadge = (val) => {
+  if (!val) return null
+  // 尝试翻译 role 或 relation
+  return t(`metadata.role.${val.toLowerCase()}`, val) !== val.toLowerCase()
+    ? t(`metadata.role.${val.toLowerCase()}`)
+    : (t(`metadata.relation.${val.toLowerCase()}`, val) !== val.toLowerCase()
+        ? t(`metadata.relation.${val.toLowerCase()}`)
+        : val)
 }
 
 // ==================== 收藏状态（在玩 / 已通关 / 想玩…） ====================
@@ -424,8 +410,6 @@ const sentinel = ref(null)
 let observer = null
 
 onMounted(() => {
-  updateWaterfallColumns()
-  window.addEventListener('resize', updateWaterfallColumns)
   observer = new IntersectionObserver((entries) => {
     if (entries[0].isIntersecting && props.hasMore && !props.isLoading) {
       emit('loadMore')
@@ -440,7 +424,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', updateWaterfallColumns)
   if (observer) {
     observer.disconnect()
   }
@@ -530,13 +513,13 @@ function toggleReverse() {
         <div
           v-for="item in displayItems"
           :key="item.id"
-          class="relative flex items-stretch gap-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-xs hover:border-neutral-300 dark:hover:border-neutral-600 transition cursor-pointer overflow-hidden p-2"
+          class="relative flex items-start gap-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-xs hover:border-neutral-300 dark:hover:border-neutral-600 transition cursor-pointer overflow-hidden"
+          :class="[compact ? 'p-2.5' : 'p-4']"
           @click="handleItemClick(item)"
         >
-          <!-- 封面：比卡片小一圈，四周留出白，四角保持圆角 -->
           <div
-            class="relative shrink-0 overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-800"
-            :class="[compact ? 'h-20 w-14' : 'h-28 w-20']"
+            class="rounded-lg bg-neutral-50 dark:bg-neutral-800 overflow-hidden border border-neutral-200 dark:border-neutral-700 shrink-0"
+            :class="[compact ? 'h-20 w-15' : 'h-28 w-21']"
           >
             <template v-if="isIconPlaceholder(item)">
               <div class="h-full w-full flex items-center justify-center bg-neutral-100 dark:bg-neutral-700">
@@ -578,8 +561,8 @@ function toggleReverse() {
           </div>
 
           <div
-            class="min-w-0 flex-1 flex flex-col justify-between py-1 pr-1"
-            :class="[compact ? 'min-h-20' : 'min-h-28']"
+            class="min-w-0 flex-1 flex flex-col justify-between py-0.5"
+            :class="[compact ? 'h-20' : 'h-28']"
           >
             <div class="space-y-0.5">
               <div class="flex items-start justify-between gap-2">
@@ -595,13 +578,7 @@ function toggleReverse() {
                           : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border border-neutral-200/50 dark:border-neutral-700/50'
                       ]"
                     >
-                      {{ translateBadgeOf(item) }}
-                    </span>
-                    <span
-                      v-if="isDoujinRelation(item)"
-                      class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/50"
-                    >
-                      {{ t('vn.show_doujin') }}
+                      {{ translateBadge(getBadge(item)) }}
                     </span>
                     <span
                       v-if="getStatusLabel(item)"
@@ -675,50 +652,44 @@ function toggleReverse() {
         </div>
       </div>
 
-      <!-- 2. 响应式瀑布流布局：手机 3 列 / 平板 4 列 -->
-      <div
-        v-else-if="displayItems.length > 0 && layoutMode === 'waterfall'"
-        class="grid gap-3 items-start"
-        :class="waterfallColumnCount === 4 ? 'grid-cols-4' : 'grid-cols-3'"
-      >
-        <div v-for="(col, colIndex) in waterfallColumns" :key="colIndex" class="flex flex-col gap-3">
+      <!-- 2. 双列瀑布流布局 -->
+      <div v-else-if="displayItems.length > 0 && layoutMode === 'waterfall'" class="grid grid-cols-2 gap-3.5 items-start">
+        <div class="flex flex-col gap-3.5">
           <div
-            v-for="item in col"
+            v-for="item in waterfallColumns.leftCol"
             :key="item.id"
             class="relative rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 overflow-hidden shadow-xs hover:border-neutral-300 dark:hover:border-neutral-600 transition cursor-pointer"
             @click="handleItemClick(item)"
           >
             <div class="relative">
               <template v-if="isIconPlaceholder(item)">
-                <div class="w-full aspect-[3/4] flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
+                <div class="w-full h-32 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-100 dark:border-neutral-800">
                   <Icon icon="lucide:eye-off" class="h-6 w-6 text-neutral-400 dark:text-neutral-500" />
                 </div>
               </template>
               <template v-else>
-                <!-- 封面固定成 3:4 比例盒：以前用 h-auto 让图片按自身比例撑高，
-                     竖版封面会把下面的标题区挤到卡片外，看起来「只有封面和评分」 -->
-                <div class="relative w-full aspect-[3/4] overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                <div class="relative">
                   <ion-img
                     v-if="getImage(item)?.url"
-                    :key="`card-${colIndex}-${item.id}-${imageLoader.getRetryCount('card-' + colIndex + '-' + item.id)}`"
-                    :src="imageLoader.resolveSrc('card-' + colIndex + '-' + item.id, getImage(item).thumbnail || getImage(item).url)"
+                    :key="`card-left-${item.id}-${imageLoader.getRetryCount('card-left-' + item.id)}`"
+                    :src="imageLoader.resolveSrc('card-left-' + item.id, getImage(item).thumbnail || getImage(item).url)"
                     alt="cover"
-                    class="absolute inset-0 h-full w-full object-cover transition-opacity duration-500"
-                    :class="{ 'opacity-0': !imageLoader.isSuccess('card-' + colIndex + '-' + item.id) }"
-                    @ionImgWillLoad="imageLoader.onWillLoad('card-' + colIndex + '-' + item.id)"
-                    @ionImgDidLoad="imageLoader.onLoad('card-' + colIndex + '-' + item.id)"
-                    @ionError="imageLoader.onError('card-' + colIndex + '-' + item.id)"
+                    class="w-full h-auto object-cover max-h-72 border-b border-neutral-100 dark:border-neutral-800 transition-opacity duration-500"
+                    :class="{ 'opacity-0': !imageLoader.isSuccess('card-left-' + item.id) }"
+                    @ionImgWillLoad="imageLoader.onWillLoad('card-left-' + item.id)"
+                    @ionImgDidLoad="imageLoader.onLoad('card-left-' + item.id)"
+                    @ionError="imageLoader.onError('card-left-' + item.id)"
                   />
-                  <div v-else class="absolute inset-0 flex items-center justify-center bg-neutral-50 dark:bg-neutral-800 text-neutral-300 dark:text-neutral-600">
+                  <div v-else class="w-full h-32 flex items-center justify-center bg-neutral-50 dark:bg-neutral-800 text-neutral-300 dark:text-neutral-600 border-b border-neutral-100 dark:border-neutral-800">
                     <Icon icon="lucide:image" class="h-6 w-6" />
                   </div>
-                  <div v-if="imageLoader.isLoading('card-' + colIndex + '-' + item.id) && !imageLoader.isError('card-' + colIndex + '-' + item.id)" class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
+                  <div v-if="imageLoader.isLoading('card-left-' + item.id) && !imageLoader.isError('card-left-' + item.id)" class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
                     <ion-spinner name="crescent" class="h-5 w-5 text-neutral-400" />
                   </div>
                   <button
-                    v-if="imageLoader.isError('card-' + colIndex + '-' + item.id)"
+                    v-if="imageLoader.isError('card-left-' + item.id)"
                     class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 cursor-pointer"
-                    @click.stop="imageLoader.retry('card-' + colIndex + '-' + item.id)"
+                    @click.stop="imageLoader.retry('card-left-' + item.id)"
                   >
                     <Icon icon="lucide:refresh-cw" class="h-5 w-5 text-neutral-400" />
                   </button>
@@ -743,13 +714,7 @@ function toggleReverse() {
                       : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border border-neutral-200/50 dark:border-neutral-700/50'
                   ]"
                 >
-                  {{ translateBadgeOf(item) }}
-                </span>
-                <span
-                  v-if="isDoujinRelation(item)"
-                  class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/50"
-                >
-                  {{ t('vn.show_doujin') }}
+                  {{ translateBadge(getBadge(item)) }}
                 </span>
                 <span
                   v-if="getStatusLabel(item)"
@@ -768,9 +733,94 @@ function toggleReverse() {
                 </span>
               </div>
             </div>
-            <!-- 整卡模糊遮罩 -->
+            <!-- 整卡模糊遮罩 (左列) -->
             <div v-if="shouldBlurCard(item)" class="absolute inset-0 rounded-xl bg-white/50 dark:bg-neutral-900/70 backdrop-blur-md flex items-center justify-center z-10 pointer-events-none">
               <Icon icon="lucide:eye-off" class="h-8 w-8 text-neutral-400 dark:text-neutral-500" />
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-3.5">
+          <div
+            v-for="item in waterfallColumns.rightCol"
+            :key="item.id"
+            class="relative rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 overflow-hidden shadow-xs hover:border-neutral-300 dark:hover:border-neutral-600 transition cursor-pointer"
+            @click="handleItemClick(item)"
+          >
+            <div class="relative">
+              <template v-if="isIconPlaceholder(item)">
+                <div class="w-full h-32 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 border-b border-neutral-100 dark:border-neutral-800">
+                  <Icon icon="lucide:eye-off" class="h-6 w-6 text-neutral-400 dark:text-neutral-500" />
+                </div>
+              </template>
+              <template v-else>
+                <div class="relative">
+                  <ion-img
+                    v-if="getImage(item)?.url"
+                    :key="`card-right-${item.id}-${imageLoader.getRetryCount('card-right-' + item.id)}`"
+                    :src="imageLoader.resolveSrc('card-right-' + item.id, getImage(item).thumbnail || getImage(item).url)"
+                    alt="cover"
+                    class="w-full h-auto object-cover max-h-72 border-b border-neutral-100 dark:border-neutral-800 transition-opacity duration-500"
+                    :class="{ 'opacity-0': !imageLoader.isSuccess('card-right-' + item.id) }"
+                    @ionImgWillLoad="imageLoader.onWillLoad('card-right-' + item.id)"
+                    @ionImgDidLoad="imageLoader.onLoad('card-right-' + item.id)"
+                    @ionError="imageLoader.onError('card-right-' + item.id)"
+                  />
+                  <div v-else class="w-full h-32 flex items-center justify-center bg-neutral-50 dark:bg-neutral-800 text-neutral-300 dark:text-neutral-600 border-b border-neutral-100 dark:border-neutral-800">
+                    <Icon icon="lucide:image" class="h-6 w-6" />
+                  </div>
+                  <div v-if="imageLoader.isLoading('card-right-' + item.id) && !imageLoader.isError('card-right-' + item.id)" class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800">
+                    <ion-spinner name="crescent" class="h-5 w-5 text-neutral-400" />
+                  </div>
+                  <button
+                    v-if="imageLoader.isError('card-right-' + item.id)"
+                    class="absolute inset-0 flex items-center justify-center bg-neutral-100 dark:bg-neutral-800 cursor-pointer"
+                    @click.stop="imageLoader.retry('card-right-' + item.id)"
+                  >
+                    <Icon icon="lucide:refresh-cw" class="h-5 w-5 text-neutral-400" />
+                  </button>
+                </div>
+              </template>
+              <div v-if="!shouldBlurCard(item) && (getRating(item) || getUserVote(item))" class="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/60 text-white text-[9px] font-bold backdrop-blur-xs flex items-center gap-0.5">
+                <Icon icon="lucide:star" class="h-2.5 w-2.5 fill-yellow-400 stroke-yellow-400" />
+                {{ formatRating(getUserVote(item) || getRating(item)) }}
+              </div>
+            </div>
+            <div class="p-3 space-y-1.5">
+              <span class="text-xs font-semibold text-neutral-900 dark:text-neutral-100 block line-clamp-2 leading-tight">{{ getTitle(item) }}</span>
+              <span v-if="getAltTitle(item)" class="text-[10px] text-neutral-400 dark:text-neutral-500 block line-clamp-1 leading-tight">{{ getAltTitle(item) }}</span>
+              <div v-if="getBadge(item) || getStatusLabel(item) || getPlayTime(item)" class="flex flex-wrap gap-1">
+                <span
+                  v-if="getBadge(item)"
+                  class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0"
+                  :class="[
+                    getBadge(item) === 'main'
+                      ? 'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/50'
+                      : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border border-neutral-200/50 dark:border-neutral-700/50'
+                  ]"
+                >
+                  {{ translateBadge(getBadge(item)) }}
+                </span>
+                <span
+                  v-if="getStatusLabel(item)"
+                  class="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border"
+                  :class="statusStyle(item)"
+                >
+                  <Icon v-if="statusIcon(item)" :icon="statusIcon(item)" class="h-2.5 w-2.5 shrink-0" :class="statusIconColor(item)" />
+                  {{ labelText(getStatusLabel(item)) }}
+                </span>
+                <span
+                  v-if="getPlayTime(item)"
+                  class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 border-sky-100 dark:border-sky-900/50 inline-flex items-center gap-0.5"
+                >
+                  <Icon icon="lucide:clock" class="h-2.5 w-2.5" />
+                  {{ getPlayTime(item) }}
+                </span>
+              </div>
+              <!-- 整卡模糊遮罩 (右列) -->
+              <div v-if="shouldBlurCard(item)" class="absolute inset-0 rounded-xl bg-white/50 dark:bg-neutral-900/70 backdrop-blur-md flex items-center justify-center z-10 pointer-events-none">
+                <Icon icon="lucide:eye-off" class="h-8 w-8 text-neutral-400" />
+              </div>
             </div>
           </div>
         </div>
@@ -796,13 +846,7 @@ function toggleReverse() {
                     : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 border border-neutral-200/50 dark:border-neutral-700/50'
                 ]"
               >
-                {{ translateBadgeOf(item) }}
-              </span>
-              <span
-                v-if="isDoujinRelation(item)"
-                class="text-[9px] px-1.5 py-0.5 rounded-full flex-shrink-0 border bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-900/50"
-              >
-                {{ t('vn.show_doujin') }}
+                {{ translateBadge(getBadge(item)) }}
               </span>
               <span
                 v-if="getStatusLabel(item)"

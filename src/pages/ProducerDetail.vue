@@ -2,7 +2,6 @@
 import { ref, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useRecentViews } from '@/composables/useRecentViews'
 import { Icon } from '@iconify/vue'
 import AppHeader from '@/components/AppHeader.vue'
 import { getVnList, getProducerDetail } from '@/api/vndb'
@@ -49,8 +48,6 @@ const page = ref(1)
 const resultsPerPage = 20
 
 // 排序状态
-const { record: recordRecent } = useRecentViews()
-
 const sortBy = ref('released')
 const reverse = ref(true)
 
@@ -60,13 +57,6 @@ async function fetchProducerInfo() {
     const res = await getProducerDetail(producerId.value)
     if (res && res.results && res.results.length > 0) {
       producer.value = res.results[0]
-      recordRecent({
-        id: producer.value.id,
-        type: 'producer',
-        title: producer.value.name || '',
-        subtitle: producer.value.original || '',
-        image: ''
-      })
     }
   } catch (err) {
     console.error('获取会社详情失败:', err)
@@ -285,29 +275,29 @@ function cleanDescription(text) {
 
 <template>
   <ion-page>
-  <AppHeader
-    mode="detail"
-    :title="producer?.name || t('vn.producer_details')"
-    :subtitle="String(producerId)"
-  >
-    <template #actions>
-      <button
-        v-if="producer"
-        type="button"
-        @click="handleToggleProducerFavorite"
-        class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-xs hover:bg-neutral-50 dark:hover:bg-neutral-700 active:scale-95 transition cursor-pointer"
-        :title="isCurrentProducerFavorite ? t('favorites.remove') : t('favorites.title')"
-      >
-        <Icon
-          :icon="isCurrentProducerFavorite ? 'lucide:heart' : 'lucide:heart'"
-          class="h-4 w-4 transition"
-          :class="isCurrentProducerFavorite ? 'fill-red-500 text-red-500' : 'text-neutral-500 dark:text-neutral-400'"
-        />
-      </button>
-    </template>
-  </AppHeader>
   <ion-content>
   <div class="page-container space-y-6">
+    <AppHeader
+      mode="detail"
+      :title="producer?.name || t('vn.producer_details')"
+      :subtitle="String(producerId)"
+    >
+      <template #actions>
+        <button
+          v-if="producer"
+          type="button"
+          @click="handleToggleProducerFavorite"
+          class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 shadow-xs hover:bg-neutral-50 dark:hover:bg-neutral-700 active:scale-95 transition cursor-pointer"
+          :title="isCurrentProducerFavorite ? t('favorites.remove') : t('favorites.title')"
+        >
+          <Icon
+            :icon="isCurrentProducerFavorite ? 'lucide:heart' : 'lucide:heart'"
+            class="h-4 w-4 transition"
+            :class="isCurrentProducerFavorite ? 'fill-red-500 text-red-500' : 'text-neutral-500 dark:text-neutral-400'"
+          />
+        </button>
+      </template>
+    </AppHeader>
 
     <!-- Producer Info Section -->
     <div v-if="isProducerLoading" class="flex justify-center py-10">
@@ -517,7 +507,7 @@ function cleanDescription(text) {
             </div>
           </div>
 
-          <div class="sheet-safe-bottom flex items-center gap-2 px-4 py-3 border-t border-neutral-100 dark:border-neutral-800">
+          <div class="flex items-center gap-2 px-4 py-3 border-t border-neutral-100 dark:border-neutral-800">
             <button
               type="button"
               class="flex-1 rounded-xl border border-neutral-200 dark:border-neutral-700 px-3 py-2 text-sm font-medium text-neutral-600 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 cursor-pointer"

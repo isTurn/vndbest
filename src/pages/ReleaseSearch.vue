@@ -4,7 +4,6 @@ defineOptions({ name: 'ReleaseSearch' })
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import AppHeader from '@/components/AppHeader.vue'
 import SearchBase from '@/components/SearchBase.vue'
 import ReleaseList from '@/components/ReleaseList.vue'
 import BaseSelect from '@/components/BaseSelect.vue'
@@ -385,16 +384,6 @@ onMounted(() => {
     selectedDateTo.value = route.query.dateTo || ''
   }
 
-  // 支持 sort / reverse 传参：仪表盘的「即将发布」要从最近要发售的开始看，
-  // 而本页默认是 reverse=true（新的排前面），所以那边会传 reverse=0 覆盖掉
-  if (typeof route.query.sort === 'string' && route.query.sort) {
-    sortBy.value = route.query.sort
-  }
-  if (route.query.reverse !== undefined) {
-    const raw = String(route.query.reverse)
-    reverse.value = raw !== '0' && raw !== 'false'
-  }
-
   fetchData()
 })
 
@@ -405,7 +394,6 @@ onUnmounted(() => {
 
 <template>
   <ion-page>
-  <AppHeader mode="back" :title="t('library.releases')" />
   <ion-content>
   <div class="page-container pb-24">
   <SearchBase
@@ -419,7 +407,6 @@ onUnmounted(() => {
     @search="handleSearch"
     @clear="handleClear"
     @refresh="handleRefresh"
-    :show-header="false"
   >
     <template #filters>
       <div class="space-y-2 pb-2">
@@ -466,7 +453,6 @@ onUnmounted(() => {
               v-model="selectedLang"
               :options="langOptions"
               :label-renderer="(l) => t(l)"
-              show-lang-flag
               class="!bg-neutral-50 rounded-lg border border-neutral-100 dark:!bg-neutral-800 dark:border-neutral-700"
             >
               <template #prefix>

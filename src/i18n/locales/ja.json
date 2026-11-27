@@ -24,8 +24,7 @@
     "count_vn": "{count} 作品",
     "count_char": "{count} キャラ",
     "count_vn_short": "{count} 作品",
-    "count_char_short": "{count} キャラ",
-    "clear": "クリア"
+    "count_char_short": "{count} キャラ"
   },
   "settings": {
     "title": "設定",
@@ -221,12 +220,10 @@
     "browser_desc_custom": "外部リンクは指定したブラウザアプリで開きます。",
     "browser_ask": "毎回確認",
     "browser_ask_desc": "毎回システムの「アプリで開く」選択画面を表示します",
+    "inapp_external_button": "外部ブラウザで開く",
+    "inapp_external_button_desc": "アプリ内ブラウザ上部のツールバー右側にボタンを表示し、タップすると現在のページをシステムブラウザ（または指定ブラウザ）で開きます。",
     "touchgal_inapp": "TouchGal をアプリ内ブラウザで開く",
-    "touchgal_inapp_desc": "デフォルトで有効。有効にすると、上の設定に関係なく TouchGal を常にアプリ内ブラウザで開きます。ページを読み込んでからツールバーのボタンで外部ブラウザに渡せます。",
-    "recent_views": "最近見た項目",
-    "recent_views_desc": "ホームに最近開いた詳細ページを表示し、閲覧履歴を自動で記録します。オフにすると新しい記録は行いません（既存の履歴は残ります）。",
-    "latest_chinese_card": "最新漢化カード",
-    "latest_chinese_card_desc": "ダッシュボードに「最新漢化」カードを表示します。削除した場合はここでオンに戻すと復元できます。"
+    "touchgal_inapp_desc": "デフォルトで有効。有効にすると、上の設定に関係なく TouchGal を常にアプリ内ブラウザで開きます。ページを読み込んでからツールバーのボタンで外部ブラウザに渡せます。"
   },
   "nav": {
     "home": "ホーム",
@@ -250,7 +247,6 @@
     "upcoming_releases": "発売予定",
     "random_vn": "ランダム VN",
     "view_all": "すべて見る",
-    "view_more": "もっと見る",
     "no_results": "検索結果がありません",
     "saved_searches": "保存した検索",
     "delete": "削除",
@@ -263,14 +259,7 @@
     "no_birthday": "今日誕生日のキャラクターはいません",
     "birthday_age": "{age}歳",
     "random_vn_tip": "ランダムに作品ページへ移動します",
-    "stats_short": "データ概要",
-    "recent_views": "最近見た項目",
-    "recent_cleared": "最近見た項目をクリアしました",
-    "recent_type_vn": "作品",
-    "recent_type_character": "キャラ",
-    "recent_type_release": "リリース",
-    "recent_type_producer": "ブランド",
-    "recent_type_staff": "スタッフ"
+    "stats_short": "データ概要"
   },
   "library": {
     "title": "検索",
@@ -297,37 +286,6 @@
     "search_history": "検索履歴",
     "search_history_clear": "すべて削除",
     "search_history_remove": "この履歴を削除"
-  },
-  "image_search": {
-    "title": "画像で作品を検索",
-    "subtitle": "スクリーンショットやイラストをアップロードして作品を特定し、VNDB ページを開きます",
-    "entry": "画像で作品を検索",
-    "pick": "画像を選択",
-    "pick_hint": "スクリーンショット・イラスト・表紙（jpg / png / webp）",
-    "change": "選び直す",
-    "clear": "クリア",
-    "recognizing": "認識中…",
-    "works_found": "{count} 件の作品を認識しました",
-    "characters": "キャラクター：{names}",
-    "ai_generated": "AI 生成画像の可能性",
-    "not_confident": "信頼度が低い",
-    "vndb_matches": "VNDB の一致",
-    "search_vndb": "VNDB で「{name}」を検索",
-    "no_result": "作品を認識できませんでした。より鮮明な画像をお試しください。",
-    "credits": "画像認識は AnimeTrace 提供",
-    "error_too_large": "画像が大きすぎます。小さい画像をお試しください。",
-    "error_busy": "認識サービスが混雑しています。しばらくしてからお試しください。",
-    "error_maintenance": "認識サービスはメンテナンス中です。しばらくしてからお試しください。",
-    "error_format": "対応していない画像形式です。jpg / png / webp をお試しください。",
-    "error_not_image": "画像ファイルではありません。",
-    "error_too_many": "画像内の人物が多すぎます。別の画像をお試しください。",
-    "error_limit": "利用上限に達しました。しばらくしてからお試しください。",
-    "error_generic": "認識に失敗しました。しばらくしてからお試しください。",
-    "error_timeout": "認識がタイムアウトしました。ネットワークを確認してもう一度お試しください。",
-    "searchbox_characters": "検出されたキャラクター",
-    "searchbox_credits": "画像認識は SearchBox を利用しています",
-    "searchbox_error_limit": "SearchBox の利用上限に達しました。しばらくしてからお試しください",
-    "searchbox_error_generic": "SearchBox での認識に失敗しました。しばらくしてからお試しください"
   },
   "producer_type": {
     "co": "会社",
@@ -380,9 +338,7 @@
       "started": "開始日",
       "finished": "終了日",
       "vote": "評価",
-      "title": "タイトル",
-      "votecount": "投票数",
-      "released": "発売日"
+      "title": "タイトル"
     },
     "expand_n": "{count} 件をすべて展開",
     "collapse": "折りたたむ",
@@ -447,8 +403,7 @@
       "reviews": "レビュー",
       "quotes": "引用",
       "links": "リンク",
-      "stats": "統計",
-      "similar": "類似"
+      "stats": "統計"
     },
     "links": {
       "resource_sites": "リソースサイト",
@@ -694,9 +649,7 @@
       "user_vote": "あなたの得点",
       "count": "{count} 票",
       "percent": "{percent}%"
-    },
-    "similar_hint": "共通タグによる推薦です（参考程度）",
-    "similar_empty": "類似作品が見つかりません"
+    }
   },
   "release": {
     "title": "リリース詳細",
@@ -776,10 +729,7 @@
       "side": "サイドストーリー",
       "parent": "本編",
       "ser": "同シリーズ",
-      "set": "同スタッフ",
-      "orig": "原作",
-      "par": "親作品",
-      "char": "キャラ共有"
+      "set": "同スタッフ"
     },
     "staff_role": {
       "scenario": "シナリオ",
@@ -963,11 +913,6 @@
       "co": "会社",
       "in": "個人",
       "ng": "同人"
-    },
-    "tag_category": {
-      "cont": "内容",
-      "tech": "技術",
-      "ero": "性的"
     }
   },
   "favorites": {
@@ -1039,15 +984,11 @@
     "view_related_vns": "関連作品を見る",
     "no_results": "タグが見つかりません",
     "translation_match": "翻訳一致",
-    "translation_badge": "翻訳",
-    "detail": "タグ詳細",
-    "related_vns": "関連作品"
+    "translation_badge": "翻訳"
   },
   "trait": {
     "view_related_chars": "関連キャラを見る",
-    "no_results": "特徴が見つかりません",
-    "detail": "特徴詳細",
-    "related_chars": "関連キャラクター"
+    "no_results": "特徴が見つかりません"
   },
   "character": {
     "no_results": "キャラクターが見つかりません",
